@@ -1,67 +1,54 @@
-# ⚔️ Hybrid Anime Combat Engine (Storm 4 + Tekken + MUGEN 14)
+# ⚔️ STORM CLASH (Hybrid Anime Combat Engine)
 
 Sebuah framework pertempuran anime 3D mutakhir di Roblox yang menggabungkan tiga pilar game pertarungan legendaris:
 1. **Naruto Shippuden: Ultimate Ninja Storm 4 / Connections**: Dynamic Dual-Target Lock-On Camera, Homing Ninja Dash, Circular Orbital Strafing, Assist Striker Summon, dan Leader Swap.
 2. **Tekken**: Technical Stance Defense (High Guard vs Low Guard), 3D Double-Tap Sidestep Evasion, Guard Health Meter (dengan Guard Crush Stun), dan 180ms Just-Frame Parry Counter.
-3. **Jump Force MUGEN 14**: 4-Hit M1 Attack String dengan forward lunging, Low Shinobi Sweep, dan modular 5-class archetype architecture (Rushdown, Zoner, Grappler, Sword, Trickster).
+3. **Jump Force MUGEN 14**: 4-Hit M1 Attack String dengan forward lunging, Low Shinobi Sweep, dan modular 5-class archetype architecture.
 
 ---
 
-## 🎮 Kontrol Pertarungan
+## 🎮 Skema Kontrol Lengkap (PC / Laptop, Mobile & Gamepad)
 
-| Aksi | Tombol / Input | Keterangan |
-| :--- | :--- | :--- |
-| **Basic Attack Combo** | `Klik Kiri (M1)` | 4-hit string (Jab -> Cross -> Uppercut Lift -> Sonic Finisher Knockback) |
-| **Low Shinobi Sweep** | `Ctrl + M1` | Sapuan bawah: **Menembus High Guard** (hanya bisa ditangkis Low Guard) |
-| **High / Mid Guard** | Tahan `F` | Pelindung Cyan: Menahan serangan High & Mid |
-| **Low Guard** | Tahan `Ctrl + F` | Pelindung Amber: Menahan sapuan bawah (*Low Sweep*) |
-| **Just-Frame Parry** | Tekan `F` (180ms) | Menangkis serangan tepat waktu -> Lawan terkena **Stagger Stun 1.15s** |
-| **Tekken Sidestep** | Double-tap `A` / `D` | Menghindar menyamping secepat kilat dengan efek motion blur trail |
-| **Homing Ninja Dash** | Double-tap `Space` | Melesat cepat (85 studs/dtk) mengunci lawan dengan efek sonic burst |
-| **Assist Striker** | Tekan `T` | Memanggil partner jutsu (menembakkan proyektil energi, 20s cooldown) |
-| **Leader Swap** | Tekan `G` | Berganti peran dengan partner (tag-team combo continuation) |
-| **Toggle Lock-On** | Tekan `Z` / Klik Tengah | Mengaktifkan / mematikan kamera dual-framing dinamis |
+### 💻 Keyboard PC & Laptop (WASD + IJKL Layout)
 
----
-
-## 📂 Struktur Proyek
-
-```
-d:\VIBE CODE\combat\
-├── default.project.json           # Konfigurasi sync Rojo
-├── MasterCombatInstaller.luau     # Single-file auto installer untuk Roblox Studio
-├── generate_master_installer.py   # Script generator installer
-├── README.md                      # Dokumentasi lengkap
-└── src/
-    ├── shared/
-    │   └── CombatConfig.luau              # Konfigurasi kamera, movement, defense, combo & archetypes
-    ├── server/
-    │   ├── CombatServerMaster.luau        # Validasi hit, defense/parry server, jutsu striker
-    │   └── TrainingDummySpawner.luau      # NPC Training Dummy interaktif (bisa ganti mode guard)
-    └── client/
-        ├── StormCameraController.luau     # Kamera dual-framing dinamis + reticle lock-on HUD
-        ├── StormMovementController.luau   # Orbital strafing, Tekken sidestep, Ninja Dash
-        ├── TekkenDefenseController.luau   # High/Low guard stances, guard meter HUD, parry VFX
-        ├── CombatComboController.luau     # M1 attack combo 4-hit, Low sweep, hitbox detection
-        └── StormAssistController.luau     # Assist striker summon & Leader Swap
-```
+| Aksi | Tombol Utama | Tombol Alternatif | Keterangan |
+| :--- | :--- | :--- | :--- |
+| **Movement** | `W, A, S, D` | Arrow Keys | Gerakan melingkar (Orbital strafe) mengitari lawan |
+| **Attack (M1 String)** | `J` | `Klik Kiri (M1)` | 4-hit string (Jab -> Cross -> Uppercut -> Finisher) |
+| **Low Shinobi Sweep** | `S + J` | `Ctrl + J` / `Ctrl + M1` | Sapuan bawah: **Menembus High Guard** |
+| **High / Mid Guard** | Tahan `K` | Tahan `F` | Pelindung Cyan: Menahan pukulan atas & tengah |
+| **Low Guard** | Tahan `S + K` | Tahan `Ctrl + K` / `Ctrl + F` | Pelindung Amber: Menahan sapuan bawah (*Low Sweep*) |
+| **Just-Frame Parry** | Tekan `K` (180ms) | Tekan `F` (180ms) | Menangkis tepat waktu -> Lawan **Stagger Stun 1.15s** |
+| **Homing Ninja Dash** | `L` | Double-tap `Space` | Meluncur cepat (85 studs/dtk) mengunci musuh |
+| **Tekken Sidestep** | Double-tap `A` / `D` | - | Menghindar menyamping dengan jejak bayangan cyan |
+| **Assist Striker** | `I` | `T` | Panggil partner jutsu (tembakan energi, cooldown 20s) |
+| **Leader Swap** | `U` | `G` | Berganti peran dengan partner (tag-team synergy) |
+| **Toggle Lock-On** | `Z` | `Klik Tengah Mouse` | Mengaktifkan / mematikan kamera dual-target Storm 4 |
 
 ---
 
-## 🚀 Cara Pemasangan di Roblox Studio
+### 📱 Layar Sentuh Mobile & Tablet
+* **Action Cluster di Jempol Kanan**:
+  * Tombol **⚔️ ATTACK [J]** (Ukuran besar, mudah di-tap)
+  * Tombol **🛡️ GUARD [K]** (Bisa di-hold untuk bertahan, tap untuk parry)
+  * Tombol **💨 DASH [L]** (Ninja Dash instan)
+  * Tombol **⚡ ASSIST [I]** (Panggil partner jutsu)
+  * Tombol **🔄 SWAP [U]** (Leader Swap)
+  * Tombol **📱 TOUCH: ON/OFF** di pojok kanan atas untuk uji coba di PC.
 
-### Cara 1: Menggunakan Command Bar (Paling Cepat & Praktis)
-1. Buka tempat / game Anda di **Roblox Studio**.
-2. Buka jendela **Command Bar** (menu `View` -> `Command Bar` atau tekan `Ctrl + \``).
-3. Salin seluruh isi file [`MasterCombatInstaller.luau`](./MasterCombatInstaller.luau).
-4. Paste ke dalam Command Bar, lalu tekan **Enter**.
-5. Seluruh RemoteEvent, folder, server script, dan client script akan terpasang otomatis dalam 1 detik.
-6. Tekan **Play (F5)** untuk memulai pertarungan!
+---
 
-### Cara 2: Menggunakan Rojo
-Jika Anda menggunakan ekstensi Rojo:
-```bash
-rojo serve default.project.json
-```
-Lalu hubungkan plugin Rojo di Roblox Studio.
+### 🎮 Stik / Controller Gamepad (PlayStation & Xbox)
+* **Attack**: Tombol `Square` (PS) / `X` (Xbox)
+* **Ninja Dash**: Tombol `Circle` (PS) / `B` (Xbox)
+* **Guard**: Tombol `R1` atau `R2`
+* **Assist Striker**: Tombol `L1`
+* **Leader Swap**: Tombol `L2`
+* **Lock-On Toggle**: Tekan jempol kanan (Thumbstick R3)
+* **Movement**: Thumbstick Kiri (L3)
 
+---
+
+### ⚡ Mode Performa (Low-GFX / 60FPS)
+* Tombol **`⚡ GFX: HIGH / LOW`** di pojok kanan atas layar.
+* Menyalakan mode ini akan mematikan efek bloom, sunrays, dan bayangan berat sehingga perangkat mobile low-end & laptop kentang tetap mendapatkan **60 FPS stabil**.

@@ -2,10 +2,13 @@
 -- TekkenDefenseController.luau
 -- CLIENT SCRIPT: Tekken-Style Technical Defense System
 -- Features:
---   • High / Mid Guard (Standing 'F') vs Low Guard (LeftControl + 'F')
---   • Just-Frame Parry (180ms timing window for Perfect Counter)
---   • Guard Health Meter HUD (Cracks if overloaded, causing Guard Crush)
---   • ForceField Stance Visuals (Cyan for High, Amber for Low)
+--   • WASD Movement + IJKL Defense:
+--       [K] Hold: Standing High/Mid Guard (Cyan Shield)
+--       [S + K] or [Ctrl + K]: Crouched Low Guard (Amber Shield)
+--   • Just-Frame Parry (180ms window for counter stagger)
+--   • Full Controller Support: R1 / R2 Bumpers
+--   • Mobile Touch Support via Custom BindableEvent
+--   • Guard Health Meter HUD and Guard Crush Stun
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -32,6 +35,14 @@ local currentShieldPart: Part? = nil
 local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 15) :: Folder?
 local evBlock = combatEvents and combatEvents:FindFirstChild("BlockEvent") :: RemoteEvent?
 local evParry = combatEvents and combatEvents:FindFirstChild("ParryEvent") :: RemoteEvent?
+
+-- Mobile/UI Bindable Integration
+local evMobileGuard = ReplicatedStorage:FindFirstChild("MobileGuardAction") :: BindableEvent?
+if not evMobileGuard then
+	evMobileGuard = Instance.new("BindableEvent")
+	evMobileGuard.Name = "MobileGuardAction"
+	evMobileGuard.Parent = ReplicatedStorage
+end
 
 -- =========================================================
 -- GUARD HEALTH HUD
@@ -120,7 +131,11 @@ local function startGuard()
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not hum or hum.Health <= 0 then return end
 
-	local isCrouched = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C)
+	-- Check for Low Guard: S key (retreating/crouch) OR LeftControl / C
+	local isSHeld = UserInputService:IsKeyDown(Enum.KeyCode.S)
+	local isCtrlHeld = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C)
+	local isCrouched = isSHeld or isCtrlHeld
+
 	blockType = isCrouched and "Low" or "High"
 	isBlocking = true
 	blockStartTime = os.clock()
@@ -263,19 +278,36 @@ if evParry then
 	end)
 end
 
--- Input Bindings: F Key for Guard
+-- =========================================================
+-- MULTI-PLATFORM INPUT LISTENERS
+-- =========================================================
+local function isGuardKey(key: Enum.KeyCode): boolean
+	return key == Enum.KeyCode.K or key == Enum.KeyCode.F or key == Enum.KeyCode.ButtonR1 or key == Enum.KeyCode.ButtonR2
+end
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
-	if input.KeyCode == Enum.KeyCode.F then
+	if isGuardKey(input.KeyCode) then
 		startGuard()
 	end
 end)
 
 UserInputService.InputEnded:Connect(function(input, processed)
-	if input.KeyCode == Enum.KeyCode.F then
+	if isGuardKey(input.KeyCode) then
 		stopGuard()
 	end
 end)
+
+-- Mobile Touch Integration
+if evMobileGuard then
+	evMobileGuard.Event:Connect(function(start: boolean)
+		if start then
+			startGuard()
+		else
+			stopGuard()
+		end
+	end)
+end
 
 -- Regenerate Guard Health when not blocking
 RunService.Heartbeat:Connect(function(dt)
@@ -286,4 +318,4 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
-print("[TekkenDefenseController] ✅ Loaded — Hold 'F' for Standing Guard, 'Ctrl + F' for Low Guard.")
+print("[TekkenDefenseController] ✅ Loaded — Guard [K] / [F] / Gamepad (R1/R2), Low Guard [S+K].")

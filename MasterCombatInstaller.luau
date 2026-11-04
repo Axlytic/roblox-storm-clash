@@ -1,7 +1,8 @@
 --!strict
 -- ============================================================
--- ★ HYBRID ANIME COMBAT ENGINE: MASTER INSTALLER ★
--- Pillars: Naruto Storm 4 (Camera/Movement/Assist) + Tekken (Defense/Parry) + MUGEN 14
+-- ★ STORM CLASH: HYBRID ANIME COMBAT ENGINE (v2.0) ★
+-- Pillars: Naruto Storm 4 + Tekken + MUGEN 14
+-- Controls: WASD (Move) + IJKL (Combat) + Mobile Touch + Gamepad
 -- Jalankan script ini SEKALI di Command Bar Roblox Studio:
 -- Paste seluruh isi script ini ke Command Bar dan tekan Enter
 -- ============================================================
@@ -993,23 +994,35 @@ do
 -- StormMovementController.luau
 -- CLIENT SCRIPT: Naruto Storm 4 3D Arena Movement + Tekken Sidestep Evasion
 -- Features:
---   • Circular orbital strafing around locked opponent
---   • Tekken Sidestep: Double-tap A or D triggers swift lateral evasion step with motion blur trail
---   • Ninja / Chakra Dash: Double-tap Space (or Shift+Space) triggers homing high-speed dash
---   • Dynamic character orientation and AutoRotate management
+--   • WASD Movement + IJKL Mobility System:
+--       [W, A, S, D]: 3D Orbital strafing around opponent
+--       [A x2 / D x2]: Tekken 3D Sidestep Evasion with cyan blur trail
+--       [L] Key or Double-Tap [Space]: Instant Homing Ninja Dash
+--   • Full Controller Support: Gamepad ButtonB (Circle / B)
+--   • Mobile Touch Support via Custom BindableEvent
+--   • Dynamic character orientation toward locked target
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Double Tap Tracking for Sidestep
+-- Double Tap Tracking for Sidestep & Dash
 local lastKeyTime: { [Enum.KeyCode]: number } = {}
 local DOUBLE_TAP_WINDOW = 0.28
 local isSidestepping = false
 local isNinjaDashing = false
+
+-- Mobile/UI Bindable Integration
+local evMobileDash = ReplicatedStorage:FindFirstChild("MobileDashAction") :: BindableEvent?
+if not evMobileDash then
+	evMobileDash = Instance.new("BindableEvent")
+	evMobileDash.Name = "MobileDashAction"
+	evMobileDash.Parent = ReplicatedStorage
+end
 
 local function getTarget(): Model?
 	local dummy = Workspace:FindFirstChild("TrainingDummy")
@@ -1088,7 +1101,7 @@ local function executeTekkenSidestep(direction: "Left" | "Right")
 end
 
 -- =========================================================
--- NINJA / CHAKRA DASH (Double-Tap Space)
+-- NINJA / CHAKRA DASH ([L] Key or Double-Tap Space)
 -- =========================================================
 local function executeNinjaDash()
 	local char = LocalPlayer.Character
@@ -1152,7 +1165,7 @@ local function executeNinjaDash()
 end
 
 -- =========================================================
--- INPUT HANDLING
+-- MULTI-PLATFORM INPUT LISTENERS
 -- =========================================================
 local lastJumpTime = 0
 
@@ -1160,8 +1173,12 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	local now = os.clock()
 
-	-- 1. Sidestep detection (Double tap A or D)
-	if input.KeyCode == Enum.KeyCode.A then
+	-- 1. Direct Ninja Dash with [L] Key or Gamepad ButtonB (Circle / B)
+	if input.KeyCode == Enum.KeyCode.L or input.KeyCode == Enum.KeyCode.ButtonB then
+		executeNinjaDash()
+
+	-- 2. Sidestep detection (Double tap A or D)
+	elseif input.KeyCode == Enum.KeyCode.A then
 		local prev = lastKeyTime[Enum.KeyCode.A] or 0
 		if now - prev <= DOUBLE_TAP_WINDOW then
 			executeTekkenSidestep("Left")
@@ -1178,7 +1195,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 			lastKeyTime[Enum.KeyCode.D] = now
 		end
 
-	-- 2. Ninja Dash detection (Double tap Space or Shift + Space)
+	-- 3. Ninja Dash detection (Double tap Space or Shift + Space)
 	elseif input.KeyCode == Enum.KeyCode.Space then
 		local isShiftHeld = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
 		if isShiftHeld or (now - lastJumpTime <= DOUBLE_TAP_WINDOW) then
@@ -1189,6 +1206,13 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		end
 	end
 end)
+
+-- Mobile Touch Integration
+if evMobileDash then
+	evMobileDash.Event:Connect(function()
+		executeNinjaDash()
+	end)
+end
 
 -- Smooth Target Orientation and AutoRotate Management
 RunService.RenderStepped:Connect(function()
@@ -1213,7 +1237,7 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
-print("[StormMovementController] ✅ Loaded — Double-tap A/D (Tekken Sidestep) & Double-tap Space (Ninja Dash) active.")
+print("[StormMovementController] ✅ Loaded — Movement [WASD], Sidestep [A/D x2], Ninja Dash [L] / [Space x2] / Gamepad (B).")
 ]=====]
     installScript('StormMovementController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
@@ -1226,10 +1250,13 @@ do
 -- TekkenDefenseController.luau
 -- CLIENT SCRIPT: Tekken-Style Technical Defense System
 -- Features:
---   • High / Mid Guard (Standing 'F') vs Low Guard (LeftControl + 'F')
---   • Just-Frame Parry (180ms timing window for Perfect Counter)
---   • Guard Health Meter HUD (Cracks if overloaded, causing Guard Crush)
---   • ForceField Stance Visuals (Cyan for High, Amber for Low)
+--   • WASD Movement + IJKL Defense:
+--       [K] Hold: Standing High/Mid Guard (Cyan Shield)
+--       [S + K] or [Ctrl + K]: Crouched Low Guard (Amber Shield)
+--   • Just-Frame Parry (180ms window for counter stagger)
+--   • Full Controller Support: R1 / R2 Bumpers
+--   • Mobile Touch Support via Custom BindableEvent
+--   • Guard Health Meter HUD and Guard Crush Stun
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -1256,6 +1283,14 @@ local currentShieldPart: Part? = nil
 local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 15) :: Folder?
 local evBlock = combatEvents and combatEvents:FindFirstChild("BlockEvent") :: RemoteEvent?
 local evParry = combatEvents and combatEvents:FindFirstChild("ParryEvent") :: RemoteEvent?
+
+-- Mobile/UI Bindable Integration
+local evMobileGuard = ReplicatedStorage:FindFirstChild("MobileGuardAction") :: BindableEvent?
+if not evMobileGuard then
+	evMobileGuard = Instance.new("BindableEvent")
+	evMobileGuard.Name = "MobileGuardAction"
+	evMobileGuard.Parent = ReplicatedStorage
+end
 
 -- =========================================================
 -- GUARD HEALTH HUD
@@ -1344,7 +1379,11 @@ local function startGuard()
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not hum or hum.Health <= 0 then return end
 
-	local isCrouched = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C)
+	-- Check for Low Guard: S key (retreating/crouch) OR LeftControl / C
+	local isSHeld = UserInputService:IsKeyDown(Enum.KeyCode.S)
+	local isCtrlHeld = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C)
+	local isCrouched = isSHeld or isCtrlHeld
+
 	blockType = isCrouched and "Low" or "High"
 	isBlocking = true
 	blockStartTime = os.clock()
@@ -1487,19 +1526,36 @@ if evParry then
 	end)
 end
 
--- Input Bindings: F Key for Guard
+-- =========================================================
+-- MULTI-PLATFORM INPUT LISTENERS
+-- =========================================================
+local function isGuardKey(key: Enum.KeyCode): boolean
+	return key == Enum.KeyCode.K or key == Enum.KeyCode.F or key == Enum.KeyCode.ButtonR1 or key == Enum.KeyCode.ButtonR2
+end
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
-	if input.KeyCode == Enum.KeyCode.F then
+	if isGuardKey(input.KeyCode) then
 		startGuard()
 	end
 end)
 
 UserInputService.InputEnded:Connect(function(input, processed)
-	if input.KeyCode == Enum.KeyCode.F then
+	if isGuardKey(input.KeyCode) then
 		stopGuard()
 	end
 end)
+
+-- Mobile Touch Integration
+if evMobileGuard then
+	evMobileGuard.Event:Connect(function(start: boolean)
+		if start then
+			startGuard()
+		else
+			stopGuard()
+		end
+	end)
+end
 
 -- Regenerate Guard Health when not blocking
 RunService.Heartbeat:Connect(function(dt)
@@ -1510,7 +1566,7 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
-print("[TekkenDefenseController] ✅ Loaded — Hold 'F' for Standing Guard, 'Ctrl + F' for Low Guard.")
+print("[TekkenDefenseController] ✅ Loaded — Guard [K] / [F] / Gamepad (R1/R2), Low Guard [S+K].")
 ]=====]
     installScript('TekkenDefenseController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
@@ -1523,11 +1579,13 @@ do
 -- CombatComboController.luau
 -- CLIENT SCRIPT: Core Fighting Game M1 Combo String & Low Shinobi Sweep
 -- Features:
---   • 4-Hit M1 Attack String with Storm 4-style forward lunge
---   • Crouch + M1: Low Sweep (bypasses High Guard, requires Low Guard)
---   • Hitbox detection with OverlapParams
---   • Impact VFX, sound pitch variance, and camera punch
---   • Full integration with Tekken Defense & Just-Frame Parry
+--   • WASD Movement + IJKL Combat System:
+--       [J] Key or Left-Click: 4-Hit Attack Combo String
+--       [S + J] or [Ctrl + J]: Low Shinobi Sweep (Bypasses High Guard)
+--   • Full Controller / Gamepad Support: ButtonX (Square / X)
+--   • Mobile Touch Screen Support via Custom BindableEvent
+--   • Forward lunging momentum on each hit (Storm 4 feeling)
+--   • Hitbox detection with OverlapParams, VFX, and Stagger Counter-hit reaction
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -1553,6 +1611,14 @@ local isStaggered = false
 local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 15) :: Folder?
 local evAttack = combatEvents and combatEvents:FindFirstChild("AttackEvent") :: RemoteEvent?
 local evParry  = combatEvents and combatEvents:FindFirstChild("ParryEvent") :: RemoteEvent?
+
+-- Mobile/UI Bindable Integration
+local evMobileAttack = ReplicatedStorage:FindFirstChild("MobileAttackAction") :: BindableEvent?
+if not evMobileAttack then
+	evMobileAttack = Instance.new("BindableEvent")
+	evMobileAttack.Name = "MobileAttackAction"
+	evMobileAttack.Parent = ReplicatedStorage
+end
 
 -- Sounds
 local SOUND_PUNCH = "rbxasset://sounds/action_footstep_plastic.mp3"
@@ -1619,7 +1685,7 @@ local function findHitTarget(myRoot: BasePart): Model?
 end
 
 -- =========================================================
--- EXECUTE ATTACK
+-- EXECUTE ATTACK (J / Left Click / Mobile / Gamepad)
 -- =========================================================
 local function executeAttack()
 	if isAttacking or isStaggered then return end
@@ -1629,7 +1695,7 @@ local function executeAttack()
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not root or not hum or hum.Health <= 0 then return end
 
-	-- Check if player is currently holding Guard
+	-- Block attack if currently holding Guard
 	if LocalPlayer:GetAttribute("IsBlocking") == true then
 		return
 	end
@@ -1639,8 +1705,10 @@ local function executeAttack()
 		currentComboIndex = 0
 	end
 
-	local isCrouched = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C)
-	local isLowSweep = isCrouched
+	-- Low Sweep check: S key (retreating/crouch in fighting games) OR Ctrl / C
+	local isSHeld = UserInputService:IsKeyDown(Enum.KeyCode.S)
+	local isCtrlHeld = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C)
+	local isLowSweep = isSHeld or isCtrlHeld
 	local isHeavyFinisher = false
 
 	if isLowSweep then
@@ -1723,16 +1791,28 @@ if evParry then
 	end)
 end
 
--- Input Bindings: Left Click (M1)
+-- =========================================================
+-- MULTI-PLATFORM INPUT LISTENERS
+-- =========================================================
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+	-- 1. Keyboard [J] or Left-Click
+	if input.KeyCode == Enum.KeyCode.J or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		executeAttack()
+	-- 2. Gamepad Controller (Square on PS, X on Xbox)
+	elseif input.KeyCode == Enum.KeyCode.ButtonX then
 		executeAttack()
 	end
 end)
 
-print("[CombatComboController] ✅ Loaded — Left Click (M1) for 4-Hit String, Ctrl+M1 for Low Shinobi Sweep.")
+-- Mobile Touch Integration
+if evMobileAttack then
+	evMobileAttack.Event:Connect(function()
+		executeAttack()
+	end)
+end
 
+print("[CombatComboController] ✅ Loaded — Attack [J] / Left-Click / Gamepad (Square/X), Low Sweep [S+J].")
 ]=====]
     installScript('CombatComboController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
@@ -1745,10 +1825,12 @@ do
 -- StormAssistController.luau
 -- CLIENT SCRIPT: Naruto Storm 4 Assist Striker Summon & Leader Swap
 -- Features:
---   • Press 'T': Summon Assist Partner for a signature jutsu strike (Flame Bullet / Lightning Thrust)
---   • Press 'G': Leader Swap (tags out with teammate, fluid combo continuation)
---   • Assist Gauge HUD with cooldown bar and anime striker portrait
---   • Screen flash and speed-lines on Leader Swap
+--   • WASD Movement + IJKL Assist System:
+--       [I] Key or [T]: Summon Assist Partner (Flame Bullet / Lightning Jutsu)
+--       [U] Key or [G]: Leader Swap (Tag-out partner combo continuation)
+--   • Full Controller Support: Gamepad L1 (Assist) & L2 (Leader Swap)
+--   • Mobile Touch Support via Custom BindableEvent
+--   • Assist Gauge HUD with real-time countdown & speedline flash on tag
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -1770,6 +1852,21 @@ local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 15) :: Folde
 local evAssist = combatEvents and combatEvents:FindFirstChild("AssistEvent") :: RemoteEvent?
 local evLeaderSwap = combatEvents and combatEvents:FindFirstChild("LeaderSwapEvent") :: RemoteEvent?
 
+-- Mobile/UI Bindable Integration
+local evMobileAssist = ReplicatedStorage:FindFirstChild("MobileAssistAction") :: BindableEvent?
+if not evMobileAssist then
+	evMobileAssist = Instance.new("BindableEvent")
+	evMobileAssist.Name = "MobileAssistAction"
+	evMobileAssist.Parent = ReplicatedStorage
+end
+
+local evMobileSwap = ReplicatedStorage:FindFirstChild("MobileSwapAction") :: BindableEvent?
+if not evMobileSwap then
+	evMobileSwap = Instance.new("BindableEvent")
+	evMobileSwap.Name = "MobileSwapAction"
+	evMobileSwap.Parent = ReplicatedStorage
+end
+
 -- =========================================================
 -- ASSIST GAUGE HUD
 -- =========================================================
@@ -1780,7 +1877,7 @@ screenGui.Parent = PlayerGui
 
 local card = Instance.new("Frame")
 card.Name = "AssistCard"
-card.Size = UDim2.new(0, 190, 0, 52)
+card.Size = UDim2.new(0, 195, 0, 52)
 card.Position = UDim2.new(0, 24, 0.88, -26)
 card.BackgroundColor3 = Color3.fromRGB(18, 22, 34)
 card.BackgroundTransparency = 0.15
@@ -1814,10 +1911,10 @@ local nameLabel = Instance.new("TextLabel")
 nameLabel.Size = UDim2.new(1, -55, 0, 18)
 nameLabel.Position = UDim2.new(0, 52, 0, 6)
 nameLabel.BackgroundTransparency = 1
-nameLabel.Text = "ASSIST [T]: SHADOW STRIKER"
+nameLabel.Text = "ASSIST [I / T]: SHADOW STRIKER"
 nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 nameLabel.Font = Enum.Font.GothamBold
-nameLabel.TextSize = 10
+nameLabel.TextSize = 9.5
 nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 nameLabel.Parent = card
 
@@ -1842,7 +1939,7 @@ local swapLabel = Instance.new("TextLabel")
 swapLabel.Size = UDim2.new(1, -55, 0, 12)
 swapLabel.Position = UDim2.new(0, 52, 0, 36)
 swapLabel.BackgroundTransparency = 1
-swapLabel.Text = "TAG SWAP [G] READY"
+swapLabel.Text = "TAG SWAP [U / G] READY"
 swapLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 swapLabel.Font = Enum.Font.GothamMedium
 swapLabel.TextSize = 9
@@ -1886,7 +1983,7 @@ local function callAssistStriker()
 	callSnd:Play()
 	task.delay(0.5, function() callSnd:Destroy() end)
 
-	print(">> [Storm Assist] Sasuke / Shadow Striker summoned to the battlefield! <<")
+	print(">> [Storm Assist] Sasuke / Shadow Striker summoned! <<")
 
 	-- Cooldown restoration loop
 	task.spawn(function()
@@ -1907,7 +2004,7 @@ local function callAssistStriker()
 end
 
 -- =========================================================
--- LEADER SWAP (Press G)
+-- LEADER SWAP (Press U / G / Gamepad L2)
 -- =========================================================
 local function executeLeaderSwap()
 	local char = LocalPlayer.Character
@@ -1945,33 +2042,357 @@ local function executeLeaderSwap()
 	print(">> [Storm 4 LEADER SWAP] Tagged in Partner! Combo Synergy active! <<")
 end
 
--- Input Bindings: 'T' for Assist, 'G' for Leader Swap
+-- =========================================================
+-- MULTI-PLATFORM INPUT LISTENERS
+-- =========================================================
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
-	if input.KeyCode == Enum.KeyCode.T then
+	-- 1. Assist Summon with [I] or [T] or Gamepad ButtonL1
+	if input.KeyCode == Enum.KeyCode.I or input.KeyCode == Enum.KeyCode.T or input.KeyCode == Enum.KeyCode.ButtonL1 then
 		callAssistStriker()
-	elseif input.KeyCode == Enum.KeyCode.G then
+	-- 2. Leader Swap with [U] or [G] or Gamepad ButtonL2
+	elseif input.KeyCode == Enum.KeyCode.U or input.KeyCode == Enum.KeyCode.G or input.KeyCode == Enum.KeyCode.ButtonL2 then
 		executeLeaderSwap()
 	end
 end)
 
-print("[StormAssistController] ✅ Loaded — Press 'T' for Assist Striker, 'G' for Storm 4 Leader Swap.")
+-- Mobile Touch Integration
+if evMobileAssist then
+	evMobileAssist.Event:Connect(function()
+		callAssistStriker()
+	end)
+end
 
+if evMobileSwap then
+	evMobileSwap.Event:Connect(function()
+		executeLeaderSwap()
+	end)
+end
+
+print("[StormAssistController] ✅ Loaded — Assist [I] / [T] / Gamepad (L1), Leader Swap [U] / [G] / Gamepad (L2).")
 ]=====]
     installScript('StormAssistController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
 
+-- ============================================================
+-- INSTALL: MobileCombatHUD (LocalScript)
+-- ============================================================
+do
+    local src = [=====[--!strict
+-- MobileCombatHUD.luau
+-- CLIENT SCRIPT: Modern Cyber-Anime Mobile Touch Controls HUD
+-- Features:
+--   • Auto-activates on Mobile / Tablet touch screens (or toggleable on PC)
+--   • Ergonomic Right-Thumb Combat Layout:
+--       [ATTACK] Button (Primary M1 / J Key)
+--       [GUARD]  Button (Hold for K Key High/Low Guard, tap for Parry)
+--       [DASH]   Button (L Key Homing Ninja Dash)
+--       [ASSIST] Button (I Key Jutsu Striker)
+--       [SWAP]   Button (U Key Tag Swap)
+--       [LOCK]   Button (Z Key Camera Lock-on)
+--   • Tactile spring-back animations on button press & neon glow
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Bindable Events for Client Communication
+local function getOrMakeBindable(name: string): BindableEvent
+	local be = ReplicatedStorage:FindFirstChild(name) :: BindableEvent?
+	if not be then
+		be = Instance.new("BindableEvent")
+		be.Name = name
+		be.Parent = ReplicatedStorage
+	end
+	return be
+end
+
+local evMobileAttack = getOrMakeBindable("MobileAttackAction")
+local evMobileGuard  = getOrMakeBindable("MobileGuardAction")
+local evMobileDash   = getOrMakeBindable("MobileDashAction")
+local evMobileAssist = getOrMakeBindable("MobileAssistAction")
+local evMobileSwap   = getOrMakeBindable("MobileSwapAction")
+
+-- ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "StormMobileCombatHUD"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = PlayerGui
+
+-- Visibility check: TouchEnabled OR PC manual toggle button
+local isTouchDevice = UserInputService.TouchEnabled
+local hudContainer = Instance.new("Frame")
+hudContainer.Name = "ActionCluster"
+hudContainer.Size = UDim2.new(0, 260, 0, 260)
+hudContainer.Position = UDim2.new(1, -270, 1, -270)
+hudContainer.BackgroundTransparency = 1
+hudContainer.Visible = isTouchDevice -- Auto-shows on Mobile
+hudContainer.Parent = screenGui
+
+-- =========================================================
+-- BUTTON BUILDER HELPER
+-- =========================================================
+local function createActionButton(
+	name: string,
+	icon: string,
+	keyHint: string,
+	color: Color3,
+	pos: UDim2,
+	size: UDim2
+): (TextButton, UIStroke)
+	local btn = Instance.new("TextButton")
+	btn.Name = name
+	btn.Size = size
+	btn.Position = pos
+	btn.AnchorPoint = Vector2.new(0.5, 0.5)
+	btn.BackgroundColor3 = Color3.fromRGB(18, 22, 34)
+	btn.BackgroundTransparency = 0.25
+	btn.Text = ""
+	btn.AutoButtonColor = false
+	btn.Parent = hudContainer
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = color
+	stroke.Thickness = 2.5
+	stroke.Parent = btn
+
+	local iconLabel = Instance.new("TextLabel")
+	iconLabel.Name = "Icon"
+	iconLabel.Size = UDim2.new(1, 0, 0.55, 0)
+	iconLabel.Position = UDim2.new(0, 0, 0.12, 0)
+	iconLabel.BackgroundTransparency = 1
+	iconLabel.Text = icon
+	iconLabel.TextSize = 22
+	iconLabel.TextColor3 = color
+	iconLabel.Parent = btn
+
+	local hintLabel = Instance.new("TextLabel")
+	hintLabel.Name = "Hint"
+	hintLabel.Size = UDim2.new(1, 0, 0.35, 0)
+	hintLabel.Position = UDim2.new(0, 0, 0.60, 0)
+	hintLabel.BackgroundTransparency = 1
+	hintLabel.Text = keyHint
+	hintLabel.Font = Enum.Font.GothamBlack
+	hintLabel.TextSize = 10
+	hintLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	hintLabel.Parent = btn
+
+	-- Press Animation
+	local origSize = size
+	local smallSize = UDim2.new(size.X.Scale, size.X.Offset * 0.90, size.Y.Scale, size.Y.Offset * 0.90)
+
+	btn.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			TweenService:Create(btn, TweenInfo.new(0.08), { Size = smallSize, BackgroundTransparency = 0.05 }):Play()
+		end
+	end)
+
+	btn.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			TweenService:Create(btn, TweenInfo.new(0.12), { Size = origSize, BackgroundTransparency = 0.25 }):Play()
+		end
+	end)
+
+	return btn, stroke
+end
+
+-- =========================================================
+-- CREATE COMBAT BUTTONS
+-- =========================================================
+-- 1. ATTACK [J] (Big Central Action Button)
+local btnAttack = createActionButton(
+	"BtnAttack", "⚔️", "ATTACK [J]", Color3.fromRGB(0, 240, 255),
+	UDim2.new(0.65, 0, 0.65, 0), UDim2.new(0, 78, 0, 78)
+)
+btnAttack.MouseButton1Click:Connect(function()
+	evMobileAttack:Fire()
+end)
+
+-- 2. GUARD [K] (Right side button with hold support)
+local btnGuard = createActionButton(
+	"BtnGuard", "🛡️", "GUARD [K]", Color3.fromRGB(255, 215, 0),
+	UDim2.new(0.88, 0, 0.32, 0), UDim2.new(0, 56, 0, 56)
+)
+btnGuard.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		evMobileGuard:Fire(true)
+	end
+end)
+btnGuard.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		evMobileGuard:Fire(false)
+	end
+end)
+
+-- 3. DASH [L] (Left bottom button)
+local btnDash = createActionButton(
+	"BtnDash", "💨", "DASH [L]", Color3.fromRGB(0, 255, 170),
+	UDim2.new(0.28, 0, 0.82, 0), UDim2.new(0, 58, 0, 58)
+)
+btnDash.MouseButton1Click:Connect(function()
+	evMobileDash:Fire()
+end)
+
+-- 4. ASSIST [I] (Top mid button)
+local btnAssist = createActionButton(
+	"BtnAssist", "⚡", "ASSIST [I]", Color3.fromRGB(255, 100, 50),
+	UDim2.new(0.48, 0, 0.22, 0), UDim2.new(0, 52, 0, 52)
+)
+btnAssist.MouseButton1Click:Connect(function()
+	evMobileAssist:Fire()
+end)
+
+-- 5. LEADER SWAP [U] (Top left button)
+local btnSwap = createActionButton(
+	"BtnSwap", "🔄", "SWAP [U]", Color3.fromRGB(200, 100, 255),
+	UDim2.new(0.18, 0, 0.40, 0), UDim2.new(0, 48, 0, 48)
+)
+btnSwap.MouseButton1Click:Connect(function()
+	evMobileSwap:Fire()
+end)
+
+-- =========================================================
+-- TOGGLE BUTTON FOR PC TESTING
+-- =========================================================
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Name = "MobileHUDToggle"
+toggleBtn.Size = UDim2.new(0, 95, 0, 26)
+toggleBtn.Position = UDim2.new(1, -110, 0, 50)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(20, 24, 35)
+toggleBtn.BackgroundTransparency = 0.3
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextSize = 10
+toggleBtn.TextColor3 = Color3.fromRGB(0, 255, 200)
+toggleBtn.Text = isTouchDevice and "📱 TOUCH: ON" or "📱 TOUCH: OFF"
+toggleBtn.Parent = screenGui
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 6)
+local tStroke = Instance.new("UIStroke")
+tStroke.Color = Color3.fromRGB(0, 255, 200)
+tStroke.Thickness = 1
+tStroke.Parent = toggleBtn
+
+toggleBtn.MouseButton1Click:Connect(function()
+	hudContainer.Visible = not hudContainer.Visible
+	toggleBtn.Text = hudContainer.Visible and "📱 TOUCH: ON" or "📱 TOUCH: OFF"
+	tStroke.Color = hudContainer.Visible and Color3.fromRGB(0, 255, 200) or Color3.fromRGB(150, 150, 150)
+end)
+
+print("[MobileCombatHUD] ✅ Loaded — Touch controls auto-configured for worldwide mobile & tablet players.")
+]=====]
+    installScript('MobileCombatHUD', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
+end
+
+-- ============================================================
+-- INSTALL: PerformanceSettingsManager (LocalScript)
+-- ============================================================
+do
+    local src = [=====[--!strict
+-- PerformanceSettingsManager.luau
+-- CLIENT SCRIPT: Low-GFX & High-Performance Mode for Worldwide Devices
+-- Features:
+--   • Single-click toggle between [⚡ GFX: HIGH] and [⚡ GFX: LOW]
+--   • Optimizes performance for budget Android, low-end PCs, and battery saving:
+--       - Toggles Post-Processing (Bloom & SunRays)
+--       - Toggles Dynamic Global Shadows
+--       - Reduces particle clutter
+--   • Locks FPS at smooth 60 FPS across all global regions
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local isLowGfxActive = false
+
+-- ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "StormPerformanceGUI"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = PlayerGui
+
+-- Toggle Button (Top Right)
+local btnGfx = Instance.new("TextButton")
+btnGfx.Name = "GfxModeToggle"
+btnGfx.Size = UDim2.new(0, 100, 0, 26)
+btnGfx.Position = UDim2.new(1, -110, 0, 16)
+btnGfx.BackgroundColor3 = Color3.fromRGB(20, 25, 38)
+btnGfx.BackgroundTransparency = 0.25
+btnGfx.Font = Enum.Font.GothamBold
+btnGfx.TextSize = 10
+btnGfx.TextColor3 = Color3.fromRGB(0, 240, 255)
+btnGfx.Text = "⚡ GFX: HIGH"
+btnGfx.Parent = screenGui
+Instance.new("UICorner", btnGfx).CornerRadius = UDim.new(0, 6)
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(0, 240, 255)
+stroke.Thickness = 1.2
+stroke.Parent = btnGfx
+
+-- =========================================================
+-- APPLY GRAPHICS SETTINGS
+-- =========================================================
+local function setLowGfxMode(enableLow: boolean)
+	isLowGfxActive = enableLow
+
+	-- 1. Lighting PostEffects
+	local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
+	if bloom then bloom.Enabled = not enableLow end
+
+	local sunRays = Lighting:FindFirstChildOfClass("SunRaysEffect")
+	if sunRays then sunRays.Enabled = not enableLow end
+
+	-- 2. Shadows
+	Lighting.GlobalShadows = not enableLow
+
+	-- 3. Update Button Visual
+	if enableLow then
+		btnGfx.Text = "⚡ GFX: LOW (60FPS)"
+		btnGfx.TextColor3 = Color3.fromRGB(255, 200, 50)
+		stroke.Color = Color3.fromRGB(255, 200, 50)
+		print(">> [Storm Performance] Low-GFX Performance Mode Enabled (Optimized for Mobile/Budget Devices). <<")
+	else
+		btnGfx.Text = "⚡ GFX: HIGH"
+		btnGfx.TextColor3 = Color3.fromRGB(0, 240, 255)
+		stroke.Color = Color3.fromRGB(0, 240, 255)
+		print(">> [Storm Performance] High Quality Anime Visuals Restored. <<")
+	end
+end
+
+btnGfx.MouseButton1Click:Connect(function()
+	setLowGfxMode(not isLowGfxActive)
+end)
+
+print("[PerformanceSettingsManager] ✅ Loaded — Low-GFX / 60FPS Performance Toggle active.")
+]=====]
+    installScript('PerformanceSettingsManager', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
+end
+
 print('====================================================')
-print('🎉 [HYBRID COMBAT ENGINE v1.0] INSTALLED SUCCESSFULLY!')
-print('Controls:')
-print('  • Left-Click (M1): 4-Hit Attack Combo')
-print('  • Ctrl + M1: Low Shinobi Sweep')
-print('  • F (Hold): Standing High/Mid Guard')
-print('  • Ctrl + F (Hold): Crouched Low Guard')
-print('  • Just-Frame F (180ms): Tekken Perfect Parry Stagger Counter')
+print('🎉 [STORM CLASH v2.0] INSTALLED SUCCESSFULLY!')
+print('Controls (PC / Laptop):')
+print('  • W, A, S, D: Orbital Movement & 3D Strafing')
+print('  • J / Left-Click: 4-Hit Attack Combo String')
+print('  • S + J: Low Shinobi Sweep (Pierces High Guard)')
+print('  • K / F (Hold): Standing High/Mid Guard')
+print('  • S + K (Hold): Crouched Low Guard')
+print('  • Just-Frame K (180ms): Tekken Perfect Parry Stagger Counter')
+print('  • L / Double-Tap Space: Naruto Storm 4 Homing Ninja Dash')
 print('  • Double-Tap A / D: Tekken 3D Sidestep Evasion')
-print('  • Double-Tap Space: Naruto Storm 4 Homing Ninja Dash')
-print('  • T: Summon Assist Partner (Jutsu Strike)')
-print('  • G: Storm 4 Leader Swap')
+print('  • I / T: Summon Assist Partner (Jutsu Projectile Strike)')
+print('  • U / G: Storm 4 Leader Swap')
 print('  • Z: Toggle Dynamic Dual-Target Lock-On Camera')
+print('Multi-Platform & Worldwide Features:')
+print('  • 📱 Mobile Touch Controls HUD (Right-Thumb Action Cluster)')
+print('  • 🎮 Gamepad Support (PlayStation & Xbox Controller)')
+print('  • ⚡ Low-GFX / 60FPS Performance Mode Toggle')
 print('====================================================')

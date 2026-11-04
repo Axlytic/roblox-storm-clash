@@ -2,11 +2,13 @@
 -- CombatComboController.luau
 -- CLIENT SCRIPT: Core Fighting Game M1 Combo String & Low Shinobi Sweep
 -- Features:
---   • 4-Hit M1 Attack String with Storm 4-style forward lunge
---   • Crouch + M1: Low Sweep (bypasses High Guard, requires Low Guard)
---   • Hitbox detection with OverlapParams
---   • Impact VFX, sound pitch variance, and camera punch
---   • Full integration with Tekken Defense & Just-Frame Parry
+--   • WASD Movement + IJKL Combat System:
+--       [J] Key or Left-Click: 4-Hit Attack Combo String
+--       [S + J] or [Ctrl + J]: Low Shinobi Sweep (Bypasses High Guard)
+--   • Full Controller / Gamepad Support: ButtonX (Square / X)
+--   • Mobile Touch Screen Support via Custom BindableEvent
+--   • Forward lunging momentum on each hit (Storm 4 feeling)
+--   • Hitbox detection with OverlapParams, VFX, and Stagger Counter-hit reaction
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -32,6 +34,14 @@ local isStaggered = false
 local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 15) :: Folder?
 local evAttack = combatEvents and combatEvents:FindFirstChild("AttackEvent") :: RemoteEvent?
 local evParry  = combatEvents and combatEvents:FindFirstChild("ParryEvent") :: RemoteEvent?
+
+-- Mobile/UI Bindable Integration
+local evMobileAttack = ReplicatedStorage:FindFirstChild("MobileAttackAction") :: BindableEvent?
+if not evMobileAttack then
+	evMobileAttack = Instance.new("BindableEvent")
+	evMobileAttack.Name = "MobileAttackAction"
+	evMobileAttack.Parent = ReplicatedStorage
+end
 
 -- Sounds
 local SOUND_PUNCH = "rbxasset://sounds/action_footstep_plastic.mp3"
@@ -98,7 +108,7 @@ local function findHitTarget(myRoot: BasePart): Model?
 end
 
 -- =========================================================
--- EXECUTE ATTACK
+-- EXECUTE ATTACK (J / Left Click / Mobile / Gamepad)
 -- =========================================================
 local function executeAttack()
 	if isAttacking or isStaggered then return end
@@ -108,7 +118,7 @@ local function executeAttack()
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not root or not hum or hum.Health <= 0 then return end
 
-	-- Check if player is currently holding Guard
+	-- Block attack if currently holding Guard
 	if LocalPlayer:GetAttribute("IsBlocking") == true then
 		return
 	end
@@ -118,8 +128,10 @@ local function executeAttack()
 		currentComboIndex = 0
 	end
 
-	local isCrouched = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C)
-	local isLowSweep = isCrouched
+	-- Low Sweep check: S key (retreating/crouch in fighting games) OR Ctrl / C
+	local isSHeld = UserInputService:IsKeyDown(Enum.KeyCode.S)
+	local isCtrlHeld = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C)
+	local isLowSweep = isSHeld or isCtrlHeld
 	local isHeavyFinisher = false
 
 	if isLowSweep then
@@ -202,13 +214,25 @@ if evParry then
 	end)
 end
 
--- Input Bindings: Left Click (M1)
+-- =========================================================
+-- MULTI-PLATFORM INPUT LISTENERS
+-- =========================================================
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+	-- 1. Keyboard [J] or Left-Click
+	if input.KeyCode == Enum.KeyCode.J or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		executeAttack()
+	-- 2. Gamepad Controller (Square on PS, X on Xbox)
+	elseif input.KeyCode == Enum.KeyCode.ButtonX then
 		executeAttack()
 	end
 end)
 
-print("[CombatComboController] ✅ Loaded — Left Click (M1) for 4-Hit String, Ctrl+M1 for Low Shinobi Sweep.")
+-- Mobile Touch Integration
+if evMobileAttack then
+	evMobileAttack.Event:Connect(function()
+		executeAttack()
+	end)
+end
 
+print("[CombatComboController] ✅ Loaded — Attack [J] / Left-Click / Gamepad (Square/X), Low Sweep [S+J].")

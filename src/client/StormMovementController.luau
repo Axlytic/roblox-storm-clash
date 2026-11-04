@@ -2,23 +2,35 @@
 -- StormMovementController.luau
 -- CLIENT SCRIPT: Naruto Storm 4 3D Arena Movement + Tekken Sidestep Evasion
 -- Features:
---   • Circular orbital strafing around locked opponent
---   • Tekken Sidestep: Double-tap A or D triggers swift lateral evasion step with motion blur trail
---   • Ninja / Chakra Dash: Double-tap Space (or Shift+Space) triggers homing high-speed dash
---   • Dynamic character orientation and AutoRotate management
+--   • WASD Movement + IJKL Mobility System:
+--       [W, A, S, D]: 3D Orbital strafing around opponent
+--       [A x2 / D x2]: Tekken 3D Sidestep Evasion with cyan blur trail
+--       [L] Key or Double-Tap [Space]: Instant Homing Ninja Dash
+--   • Full Controller Support: Gamepad ButtonB (Circle / B)
+--   • Mobile Touch Support via Custom BindableEvent
+--   • Dynamic character orientation toward locked target
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Double Tap Tracking for Sidestep
+-- Double Tap Tracking for Sidestep & Dash
 local lastKeyTime: { [Enum.KeyCode]: number } = {}
 local DOUBLE_TAP_WINDOW = 0.28
 local isSidestepping = false
 local isNinjaDashing = false
+
+-- Mobile/UI Bindable Integration
+local evMobileDash = ReplicatedStorage:FindFirstChild("MobileDashAction") :: BindableEvent?
+if not evMobileDash then
+	evMobileDash = Instance.new("BindableEvent")
+	evMobileDash.Name = "MobileDashAction"
+	evMobileDash.Parent = ReplicatedStorage
+end
 
 local function getTarget(): Model?
 	local dummy = Workspace:FindFirstChild("TrainingDummy")
@@ -97,7 +109,7 @@ local function executeTekkenSidestep(direction: "Left" | "Right")
 end
 
 -- =========================================================
--- NINJA / CHAKRA DASH (Double-Tap Space)
+-- NINJA / CHAKRA DASH ([L] Key or Double-Tap Space)
 -- =========================================================
 local function executeNinjaDash()
 	local char = LocalPlayer.Character
@@ -161,7 +173,7 @@ local function executeNinjaDash()
 end
 
 -- =========================================================
--- INPUT HANDLING
+-- MULTI-PLATFORM INPUT LISTENERS
 -- =========================================================
 local lastJumpTime = 0
 
@@ -169,8 +181,12 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	local now = os.clock()
 
-	-- 1. Sidestep detection (Double tap A or D)
-	if input.KeyCode == Enum.KeyCode.A then
+	-- 1. Direct Ninja Dash with [L] Key or Gamepad ButtonB (Circle / B)
+	if input.KeyCode == Enum.KeyCode.L or input.KeyCode == Enum.KeyCode.ButtonB then
+		executeNinjaDash()
+
+	-- 2. Sidestep detection (Double tap A or D)
+	elseif input.KeyCode == Enum.KeyCode.A then
 		local prev = lastKeyTime[Enum.KeyCode.A] or 0
 		if now - prev <= DOUBLE_TAP_WINDOW then
 			executeTekkenSidestep("Left")
@@ -187,7 +203,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 			lastKeyTime[Enum.KeyCode.D] = now
 		end
 
-	-- 2. Ninja Dash detection (Double tap Space or Shift + Space)
+	-- 3. Ninja Dash detection (Double tap Space or Shift + Space)
 	elseif input.KeyCode == Enum.KeyCode.Space then
 		local isShiftHeld = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
 		if isShiftHeld or (now - lastJumpTime <= DOUBLE_TAP_WINDOW) then
@@ -198,6 +214,13 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		end
 	end
 end)
+
+-- Mobile Touch Integration
+if evMobileDash then
+	evMobileDash.Event:Connect(function()
+		executeNinjaDash()
+	end)
+end
 
 -- Smooth Target Orientation and AutoRotate Management
 RunService.RenderStepped:Connect(function()
@@ -222,4 +245,4 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
-print("[StormMovementController] ✅ Loaded — Double-tap A/D (Tekken Sidestep) & Double-tap Space (Ninja Dash) active.")
+print("[StormMovementController] ✅ Loaded — Movement [WASD], Sidestep [A/D x2], Ninja Dash [L] / [Space x2] / Gamepad (B).")

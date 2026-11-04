@@ -2,10 +2,12 @@
 -- StormAssistController.luau
 -- CLIENT SCRIPT: Naruto Storm 4 Assist Striker Summon & Leader Swap
 -- Features:
---   • Press 'T': Summon Assist Partner for a signature jutsu strike (Flame Bullet / Lightning Thrust)
---   • Press 'G': Leader Swap (tags out with teammate, fluid combo continuation)
---   • Assist Gauge HUD with cooldown bar and anime striker portrait
---   • Screen flash and speed-lines on Leader Swap
+--   • WASD Movement + IJKL Assist System:
+--       [I] Key or [T]: Summon Assist Partner (Flame Bullet / Lightning Jutsu)
+--       [U] Key or [G]: Leader Swap (Tag-out partner combo continuation)
+--   • Full Controller Support: Gamepad L1 (Assist) & L2 (Leader Swap)
+--   • Mobile Touch Support via Custom BindableEvent
+--   • Assist Gauge HUD with real-time countdown & speedline flash on tag
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -27,6 +29,21 @@ local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 15) :: Folde
 local evAssist = combatEvents and combatEvents:FindFirstChild("AssistEvent") :: RemoteEvent?
 local evLeaderSwap = combatEvents and combatEvents:FindFirstChild("LeaderSwapEvent") :: RemoteEvent?
 
+-- Mobile/UI Bindable Integration
+local evMobileAssist = ReplicatedStorage:FindFirstChild("MobileAssistAction") :: BindableEvent?
+if not evMobileAssist then
+	evMobileAssist = Instance.new("BindableEvent")
+	evMobileAssist.Name = "MobileAssistAction"
+	evMobileAssist.Parent = ReplicatedStorage
+end
+
+local evMobileSwap = ReplicatedStorage:FindFirstChild("MobileSwapAction") :: BindableEvent?
+if not evMobileSwap then
+	evMobileSwap = Instance.new("BindableEvent")
+	evMobileSwap.Name = "MobileSwapAction"
+	evMobileSwap.Parent = ReplicatedStorage
+end
+
 -- =========================================================
 -- ASSIST GAUGE HUD
 -- =========================================================
@@ -37,7 +54,7 @@ screenGui.Parent = PlayerGui
 
 local card = Instance.new("Frame")
 card.Name = "AssistCard"
-card.Size = UDim2.new(0, 190, 0, 52)
+card.Size = UDim2.new(0, 195, 0, 52)
 card.Position = UDim2.new(0, 24, 0.88, -26)
 card.BackgroundColor3 = Color3.fromRGB(18, 22, 34)
 card.BackgroundTransparency = 0.15
@@ -71,10 +88,10 @@ local nameLabel = Instance.new("TextLabel")
 nameLabel.Size = UDim2.new(1, -55, 0, 18)
 nameLabel.Position = UDim2.new(0, 52, 0, 6)
 nameLabel.BackgroundTransparency = 1
-nameLabel.Text = "ASSIST [T]: SHADOW STRIKER"
+nameLabel.Text = "ASSIST [I / T]: SHADOW STRIKER"
 nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 nameLabel.Font = Enum.Font.GothamBold
-nameLabel.TextSize = 10
+nameLabel.TextSize = 9.5
 nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 nameLabel.Parent = card
 
@@ -99,7 +116,7 @@ local swapLabel = Instance.new("TextLabel")
 swapLabel.Size = UDim2.new(1, -55, 0, 12)
 swapLabel.Position = UDim2.new(0, 52, 0, 36)
 swapLabel.BackgroundTransparency = 1
-swapLabel.Text = "TAG SWAP [G] READY"
+swapLabel.Text = "TAG SWAP [U / G] READY"
 swapLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 swapLabel.Font = Enum.Font.GothamMedium
 swapLabel.TextSize = 9
@@ -143,7 +160,7 @@ local function callAssistStriker()
 	callSnd:Play()
 	task.delay(0.5, function() callSnd:Destroy() end)
 
-	print(">> [Storm Assist] Sasuke / Shadow Striker summoned to the battlefield! <<")
+	print(">> [Storm Assist] Sasuke / Shadow Striker summoned! <<")
 
 	-- Cooldown restoration loop
 	task.spawn(function()
@@ -164,7 +181,7 @@ local function callAssistStriker()
 end
 
 -- =========================================================
--- LEADER SWAP (Press G)
+-- LEADER SWAP (Press U / G / Gamepad L2)
 -- =========================================================
 local function executeLeaderSwap()
 	local char = LocalPlayer.Character
@@ -202,15 +219,31 @@ local function executeLeaderSwap()
 	print(">> [Storm 4 LEADER SWAP] Tagged in Partner! Combo Synergy active! <<")
 end
 
--- Input Bindings: 'T' for Assist, 'G' for Leader Swap
+-- =========================================================
+-- MULTI-PLATFORM INPUT LISTENERS
+-- =========================================================
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
-	if input.KeyCode == Enum.KeyCode.T then
+	-- 1. Assist Summon with [I] or [T] or Gamepad ButtonL1
+	if input.KeyCode == Enum.KeyCode.I or input.KeyCode == Enum.KeyCode.T or input.KeyCode == Enum.KeyCode.ButtonL1 then
 		callAssistStriker()
-	elseif input.KeyCode == Enum.KeyCode.G then
+	-- 2. Leader Swap with [U] or [G] or Gamepad ButtonL2
+	elseif input.KeyCode == Enum.KeyCode.U or input.KeyCode == Enum.KeyCode.G or input.KeyCode == Enum.KeyCode.ButtonL2 then
 		executeLeaderSwap()
 	end
 end)
 
-print("[StormAssistController] ✅ Loaded — Press 'T' for Assist Striker, 'G' for Storm 4 Leader Swap.")
+-- Mobile Touch Integration
+if evMobileAssist then
+	evMobileAssist.Event:Connect(function()
+		callAssistStriker()
+	end)
+end
 
+if evMobileSwap then
+	evMobileSwap.Event:Connect(function()
+		executeLeaderSwap()
+	end)
+end
+
+print("[StormAssistController] ✅ Loaded — Assist [I] / [T] / Gamepad (L1), Leader Swap [U] / [G] / Gamepad (L2).")

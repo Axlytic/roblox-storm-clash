@@ -52,13 +52,26 @@ scripts = [
         "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
         "file": os.path.join(base_dir, "client", "StormAssistController.luau")
     },
+    {
+        "name": "MobileCombatHUD",
+        "type": "LocalScript",
+        "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
+        "file": os.path.join(base_dir, "client", "MobileCombatHUD.luau")
+    },
+    {
+        "name": "PerformanceSettingsManager",
+        "type": "LocalScript",
+        "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
+        "file": os.path.join(base_dir, "client", "PerformanceSettingsManager.luau")
+    },
 ]
 
 out = []
 out.append("--!strict")
 out.append("-- ============================================================")
-out.append("-- ★ HYBRID ANIME COMBAT ENGINE: MASTER INSTALLER ★")
-out.append("-- Pillars: Naruto Storm 4 (Camera/Movement/Assist) + Tekken (Defense/Parry) + MUGEN 14")
+out.append("-- ★ STORM CLASH: HYBRID ANIME COMBAT ENGINE (v2.0) ★")
+out.append("-- Pillars: Naruto Storm 4 + Tekken + MUGEN 14")
+out.append("-- Controls: WASD (Move) + IJKL (Combat) + Mobile Touch + Gamepad")
 out.append("-- Jalankan script ini SEKALI di Command Bar Roblox Studio:")
 out.append("-- Paste seluruh isi script ini ke Command Bar dan tekan Enter")
 out.append("-- ============================================================\n")
@@ -107,18 +120,23 @@ for s in scripts:
     out.append(f"end\n")
 
 out.append("print('====================================================')")
-out.append("print('🎉 [HYBRID COMBAT ENGINE v1.0] INSTALLED SUCCESSFULLY!')")
-out.append("print('Controls:')")
-out.append("print('  • Left-Click (M1): 4-Hit Attack Combo')")
-out.append("print('  • Ctrl + M1: Low Shinobi Sweep')")
-out.append("print('  • F (Hold): Standing High/Mid Guard')")
-out.append("print('  • Ctrl + F (Hold): Crouched Low Guard')")
-out.append("print('  • Just-Frame F (180ms): Tekken Perfect Parry Stagger Counter')")
+out.append("print('🎉 [STORM CLASH v2.0] INSTALLED SUCCESSFULLY!')")
+out.append("print('Controls (PC / Laptop):')")
+out.append("print('  • W, A, S, D: Orbital Movement & 3D Strafing')")
+out.append("print('  • J / Left-Click: 4-Hit Attack Combo String')")
+out.append("print('  • S + J: Low Shinobi Sweep (Pierces High Guard)')")
+out.append("print('  • K / F (Hold): Standing High/Mid Guard')")
+out.append("print('  • S + K (Hold): Crouched Low Guard')")
+out.append("print('  • Just-Frame K (180ms): Tekken Perfect Parry Stagger Counter')")
+out.append("print('  • L / Double-Tap Space: Naruto Storm 4 Homing Ninja Dash')")
 out.append("print('  • Double-Tap A / D: Tekken 3D Sidestep Evasion')")
-out.append("print('  • Double-Tap Space: Naruto Storm 4 Homing Ninja Dash')")
-out.append("print('  • T: Summon Assist Partner (Jutsu Strike)')")
-out.append("print('  • G: Storm 4 Leader Swap')")
+out.append("print('  • I / T: Summon Assist Partner (Jutsu Projectile Strike)')")
+out.append("print('  • U / G: Storm 4 Leader Swap')")
 out.append("print('  • Z: Toggle Dynamic Dual-Target Lock-On Camera')")
+out.append("print('Multi-Platform & Worldwide Features:')")
+out.append("print('  • 📱 Mobile Touch Controls HUD (Right-Thumb Action Cluster)')")
+out.append("print('  • 🎮 Gamepad Support (PlayStation & Xbox Controller)')")
+out.append("print('  • ⚡ Low-GFX / 60FPS Performance Mode Toggle')")
 out.append("print('====================================================')")
 
 with open(installer_out, "w", encoding="utf-8") as f:

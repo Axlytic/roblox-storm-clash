@@ -1,5 +1,5 @@
 {
-  "name": "HybridAnimeCombat",
+  "name": "StormClash",
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
@@ -31,9 +31,14 @@
         },
         "StormAssistController": {
           "$path": "src/client/StormAssistController.luau"
+        },
+        "MobileCombatHUD": {
+          "$path": "src/client/MobileCombatHUD.luau"
+        },
+        "PerformanceSettingsManager": {
+          "$path": "src/client/PerformanceSettingsManager.luau"
         }
       }
     }
   }
 }
-

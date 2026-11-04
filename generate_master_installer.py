@@ -29,6 +29,12 @@ scripts = [
         "file": os.path.join(base_dir, "server", "StormWeaponServer.luau")
     },
     {
+        "name": "LobbyManagerServer",
+        "type": "Script",
+        "parent": "game:GetService('ServerScriptService')",
+        "file": os.path.join(base_dir, "server", "LobbyManagerServer.luau")
+    },
+    {
         "name": "StormCameraController",
         "type": "LocalScript",
         "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
@@ -87,6 +93,12 @@ scripts = [
         "type": "LocalScript",
         "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
         "file": os.path.join(base_dir, "client", "PerformanceSettingsManager.luau")
+    },
+    {
+        "name": "StormCharacterSelectHUD",
+        "type": "LocalScript",
+        "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
+        "file": os.path.join(base_dir, "client", "StormCharacterSelectHUD.luau")
     },
 ]
 

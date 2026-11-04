@@ -17,6 +17,10 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 10) :: Folder
+local evCharSelect = combatEvents:WaitForChild("CharacterSelectEvent", 10) :: RemoteEvent?
+
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -81,6 +85,37 @@ roundLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
 roundLabel.Text = "ROUND 1"
 roundLabel.Parent = centerFrame
 
+-- ROSTER BUTTON [B]
+local rosterBtn = Instance.new("TextButton")
+rosterBtn.Name = "OpenRosterHUDButton"
+rosterBtn.Size = UDim2.new(0, 110, 0, 22)
+rosterBtn.Position = UDim2.new(0.5, 0, 0, 88)
+rosterBtn.AnchorPoint = Vector2.new(0.5, 0)
+rosterBtn.BackgroundColor3 = Color3.fromRGB(15, 20, 32)
+rosterBtn.BackgroundTransparency = 0.2
+rosterBtn.Font = Enum.Font.GothamBold
+rosterBtn.TextSize = 10
+rosterBtn.TextColor3 = Color3.fromRGB(0, 240, 255)
+rosterBtn.Text = "👥 ROSTER [B]"
+rosterBtn.Parent = topContainer
+Instance.new("UICorner", rosterBtn).CornerRadius = UDim.new(0, 6)
+local rStroke = Instance.new("UIStroke")
+rStroke.Color = Color3.fromRGB(0, 240, 255)
+rStroke.Thickness = 1.2
+rStroke.Parent = rosterBtn
+
+rosterBtn.MouseButton1Click:Connect(function()
+	local hud = PlayerGui:FindFirstChild("StormCharacterSelectHUD")
+	if hud then
+		local bindable = hud:FindFirstChild("ToggleRosterUI") :: BindableFunction?
+		if bindable then
+			bindable:Invoke(true)
+		else
+			hud.Enabled = not hud.Enabled
+		end
+	end
+end)
+
 -- =========================================================
 -- FIGHTER 1 (LEFT SIDE - LOCAL PLAYER)
 -- =========================================================
@@ -125,6 +160,37 @@ p1Name.TextColor3 = Color3.fromRGB(255, 255, 255)
 p1Name.TextXAlignment = Enum.TextXAlignment.Left
 p1Name.Text = string.upper(LocalPlayer.DisplayName) .. " [SHINOBI]"
 p1Name.Parent = p1Frame
+
+local function updateLocalFighterUI(charId: string)
+	local char = CombatConfig.Characters[charId]
+	if char then
+		p1Name.Text = string.format("%s // %s [%s]", string.upper(char.Name), string.upper(LocalPlayer.DisplayName), string.upper(char.Archetype))
+		p1Stroke.Color = char.PrimaryColor
+	else
+		p1Name.Text = string.upper(LocalPlayer.DisplayName) .. " [SHINOBI]"
+	end
+end
+
+LocalPlayer:GetAttributeChangedSignal("SelectedCharacter"):Connect(function()
+	local cur = LocalPlayer:GetAttribute("SelectedCharacter")
+	if cur then
+		updateLocalFighterUI(tostring(cur))
+	end
+end)
+
+if evCharSelect then
+	evCharSelect.OnClientEvent:Connect(function(player: Player, charId: string, charData: any)
+		if player == LocalPlayer then
+			updateLocalFighterUI(charId)
+		end
+	end)
+end
+
+task.spawn(function()
+	task.wait(0.5)
+	local initChar = LocalPlayer:GetAttribute("SelectedCharacter") or "Naruto"
+	updateLocalFighterUI(tostring(initChar))
+end)
 
 -- P1 Health Bar Container
 local p1HealthBg = Instance.new("Frame")
@@ -376,11 +442,19 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local dummy = Workspace:FindFirstChild("TrainingDummy")
 	if dummy and dummy:IsA("Model") then
 		targetModel = dummy
+		p2Name.Text = "TRAINING DUMMY LAB [BOT]"
 	else
 		for _, p in ipairs(Players:GetPlayers()) do
 			if p ~= LocalPlayer and p.Character then
 				targetModel = p.Character
-				p2Name.Text = string.upper(p.DisplayName)
+				local oppCharId = p:GetAttribute("SelectedCharacter")
+				local oppData = oppCharId and CombatConfig.Characters[oppCharId]
+				if oppData then
+					p2Name.Text = string.format("%s // %s [%s]", string.upper(oppData.Name), string.upper(p.DisplayName), string.upper(oppData.Archetype))
+					p2Stroke.Color = oppData.PrimaryColor
+				else
+					p2Name.Text = string.upper(p.DisplayName)
+				end
 				break
 			end
 		end

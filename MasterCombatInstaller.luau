@@ -265,6 +265,107 @@ CombatConfig.Weapon = {
 	WieldOffset   = CFrame.new(0, -1.0, 0) * CFrame.Angles(math.rad(-90), 0, 0),
 }
 
+-- =========================================================
+-- 11. PLAYABLE CHARACTER ROSTER (Jump Force & Storm 4 Roster)
+-- =========================================================
+CombatConfig.Characters = {
+	["Naruto"] = {
+		Id = "Naruto",
+		Name = "Naruto Uzumaki",
+		Anime = "Naruto Shippuden",
+		Title = "Hero of the Hidden Leaf",
+		Icon = "🦊",
+		Archetype = "Rushdown",
+		PrimaryColor = Color3.fromRGB(255, 130, 20),
+		AccentColor = Color3.fromRGB(0, 220, 255),
+		WalkSpeed = 18,
+		NinjaDashSpeed = 92,
+		GuardHealth = 90,
+		Stats = { Speed = 90, Power = 85, Defense = 75, Jutsu = 88 },
+		M1Name = "Shinobi Taijutsu Barrage",
+		SweepName = "Uzumaki Low Sweep",
+		AssistName = "Shadow Clone Rasengan",
+		UltimateName = "Wind Style: Rasenshuriken Blast",
+		Quote = "I never go back on my word! That's my ninja way!",
+	},
+	["Sasuke"] = {
+		Id = "Sasuke",
+		Name = "Sasuke Uchiha",
+		Anime = "Naruto Shippuden",
+		Title = "Avenger of the Uchiha",
+		Icon = "⚡",
+		Archetype = "Zoner",
+		PrimaryColor = Color3.fromRGB(150, 70, 255),
+		AccentColor = Color3.fromRGB(80, 200, 255),
+		WalkSpeed = 16,
+		NinjaDashSpeed = 88,
+		GuardHealth = 95,
+		Stats = { Speed = 85, Power = 88, Defense = 80, Jutsu = 96 },
+		M1Name = "Kusanagi Sword Flurry",
+		SweepName = "Chidori Stream Sweep",
+		AssistName = "Fireball Jutsu / Flame Bullet",
+		UltimateName = "Kirin: Heavenly Lightning Strike",
+		Quote = "My dream doesn't exist in the future. It lies in the past.",
+	},
+	["Luffy"] = {
+		Id = "Luffy",
+		Name = "Monkey D. Luffy",
+		Anime = "One Piece",
+		Title = "Captain of the Straw Hats",
+		Icon = "🍖",
+		Archetype = "Grappler",
+		PrimaryColor = Color3.fromRGB(240, 40, 40),
+		AccentColor = Color3.fromRGB(255, 215, 0),
+		WalkSpeed = 15,
+		NinjaDashSpeed = 82,
+		GuardHealth = 125,
+		Stats = { Speed = 78, Power = 95, Defense = 98, Jutsu = 70 },
+		M1Name = "Gum-Gum Pistol Combo",
+		SweepName = "Gum-Gum Whip Sweep",
+		AssistName = "Gum-Gum Bazooka Striker",
+		UltimateName = "Gear Fourth: King Kong Gun",
+		Quote = "I'm gonna be King of the Pirates!",
+	},
+	["Zoro"] = {
+		Id = "Zoro",
+		Name = "Roronoa Zoro",
+		Anime = "One Piece",
+		Title = "Pirate Hunter / Santoryu",
+		Icon = "⚔️",
+		Archetype = "Sword",
+		PrimaryColor = Color3.fromRGB(30, 220, 110),
+		AccentColor = Color3.fromRGB(240, 255, 255),
+		WalkSpeed = 16,
+		NinjaDashSpeed = 86,
+		GuardHealth = 105,
+		Stats = { Speed = 82, Power = 94, Defense = 88, Jutsu = 80 },
+		M1Name = "Three-Sword Style Onigiri",
+		SweepName = "Dragon Twister Sweep",
+		AssistName = "1080 Pound Ho Cannon",
+		UltimateName = "Billion-Fold World Trichiliocosm",
+		Quote = "Scars on the back are a swordsman's shame.",
+	},
+	["Killua"] = {
+		Id = "Killua",
+		Name = "Killua Zoldyck",
+		Anime = "Hunter x Hunter",
+		Title = "Assassin Prodigy",
+		Icon = "⚡",
+		Archetype = "Trickster",
+		PrimaryColor = Color3.fromRGB(0, 255, 230),
+		AccentColor = Color3.fromRGB(180, 100, 255),
+		WalkSpeed = 18,
+		NinjaDashSpeed = 100,
+		GuardHealth = 80,
+		Stats = { Speed = 99, Power = 80, Defense = 70, Jutsu = 92 },
+		M1Name = "Assassin Claws & Palm Strike",
+		SweepName = "Rhythm Echo Sweep",
+		AssistName = "Thunderbolt Striker",
+		UltimateName = "Godspeed: Whirlwind Execution",
+		Quote = "If I don't defeat you right now... I can't protect anyone!",
+	},
+}
+
 return CombatConfig
 ]=====]
     installScript('CombatConfig', 'ModuleScript', game:GetService('ReplicatedStorage'), src)
@@ -1012,8 +1113,317 @@ task.spawn(function()
 end)
 
 print("[StormWeaponServer] ✅ Anime Katana & Slash Trail System active.")
+
 ]=====]
     installScript('StormWeaponServer', 'Script', game:GetService('ServerScriptService'), src)
+end
+
+-- ============================================================
+-- INSTALL: LobbyManagerServer (Script)
+-- ============================================================
+do
+    local src = [=====[--!strict
+-- LobbyManagerServer.luau
+-- SERVER SCRIPT: Anime Staging Lobby & Character Roster Management
+-- Features:
+--   • Procedural Shinobi Staging Lobby (separate from Combat Arena)
+--   • SpawnLocation situated in the Lobby courtyard
+--   • Interactive Gateways (Teleport to 1v1 Arena & Return to Lobby)
+--   • Character Select Pedestal & Terminal
+--   • Authoritative Character Roster & Attribute Replication
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+
+-- Positions
+local LOBBY_CENTER = Vector3.new(0, 50, -160)
+local ARENA_SPAWN  = Vector3.new(0, 52.5, 0)
+local LOBBY_SPAWN  = Vector3.new(0, 52.5, -160)
+
+-- Remotes
+local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 10) :: Folder
+local function ensureRemote(name: string): RemoteEvent
+	local ev = combatEvents:FindFirstChild(name) :: RemoteEvent?
+	if not ev then
+		ev = Instance.new("RemoteEvent")
+		ev.Name = name
+		ev.Parent = combatEvents
+	end
+	return ev
+end
+
+local evCharSelect   = ensureRemote("CharacterSelectEvent")
+local evOpenRoster   = ensureRemote("OpenRosterEvent")
+local evTeleportGate = ensureRemote("TeleportGateEvent")
+
+-- =========================================================
+-- BUILD PROCEDURAL SHINOBI LOBBY
+-- =========================================================
+local function buildLobby()
+	-- Remove any old default SpawnLocations outside Lobby
+	for _, desc in ipairs(Workspace:GetChildren()) do
+		if desc:IsA("SpawnLocation") and desc.Name ~= "LobbySpawnLocation" then
+			desc:Destroy()
+		end
+	end
+
+	local existing = Workspace:FindFirstChild("StormClashLobby")
+	if existing then existing:Destroy() end
+
+	local lobbyModel = Instance.new("Model")
+	lobbyModel.Name = "StormClashLobby"
+
+	-- 1. Main Floor Platform (Diameter 70)
+	local floor = Instance.new("Part")
+	floor.Name = "LobbyFloor"
+	floor.Shape = Enum.PartType.Cylinder
+	floor.Size = Vector3.new(4, 70, 70)
+	floor.CFrame = CFrame.new(LOBBY_CENTER) * CFrame.Angles(0, 0, math.rad(90))
+	floor.Material = Enum.Material.Slate
+	floor.Color = Color3.fromRGB(32, 35, 46)
+	floor.Anchored = true
+	floor.CanCollide = true
+	floor.Parent = lobbyModel
+
+	-- Inner Ring
+	local ring = Instance.new("Part")
+	ring.Name = "InnerRing"
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(4.1, 40, 40)
+	ring.CFrame = CFrame.new(LOBBY_CENTER) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Material = Enum.Material.WoodPlanks
+	ring.Color = Color3.fromRGB(75, 45, 30)
+	ring.Anchored = true
+	ring.CanCollide = true
+	ring.Parent = lobbyModel
+
+	-- 2. SpawnLocation in Lobby
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "LobbySpawnLocation"
+	spawn.Size = Vector3.new(10, 0.4, 10)
+	spawn.Position = LOBBY_SPAWN + Vector3.new(0, -1.8, 0)
+	spawn.Material = Enum.Material.Neon
+	spawn.Color = Color3.fromRGB(0, 200, 255)
+	spawn.Transparency = 0.6
+	spawn.Anchored = true
+	spawn.CanCollide = true
+	spawn.Neutral = true
+	spawn.Duration = 0
+	spawn.Parent = lobbyModel
+
+	-- 3. Japanese Torii Gate at Arena Entrance
+	local gatePos = LOBBY_CENTER + Vector3.new(0, 0, 30)
+
+	local function createPillar(offset: Vector3)
+		local p = Instance.new("Part")
+		p.Size = Vector3.new(1.8, 16, 1.8)
+		p.Position = gatePos + offset
+		p.Color = Color3.fromRGB(180, 25, 25)
+		p.Material = Enum.Material.Wood
+		p.Anchored = true
+		p.CanCollide = true
+		p.Parent = lobbyModel
+	end
+	createPillar(Vector3.new(-7, 8, 0))
+	createPillar(Vector3.new(7, 8, 0))
+
+	-- Torii Header
+	local header = Instance.new("Part")
+	header.Size = Vector3.new(18, 1.6, 2.4)
+	header.Position = gatePos + Vector3.new(0, 16, 0)
+	header.Color = Color3.fromRGB(24, 24, 28)
+	header.Material = Enum.Material.Wood
+	header.Anchored = true
+	header.CanCollide = true
+	header.Parent = lobbyModel
+
+	-- 4. Gateway Portal to Combat Arena
+	local portal = Instance.new("Part")
+	portal.Name = "ArenaPortalGate"
+	portal.Size = Vector3.new(12, 14, 0.5)
+	portal.Position = gatePos + Vector3.new(0, 7, 0)
+	portal.Material = Enum.Material.ForceField
+	portal.Color = Color3.fromRGB(0, 240, 255)
+	portal.Transparency = 0.5
+	portal.Anchored = true
+	portal.CanCollide = false
+	portal.Parent = lobbyModel
+
+	local portalPe = Instance.new("ParticleEmitter")
+	portalPe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	portalPe.Color = ColorSequence.new(Color3.fromRGB(0, 240, 255), Color3.fromRGB(255, 255, 255))
+	portalPe.Size = NumberSequence.new(1.5, 0)
+	portalPe.Rate = 35
+	portalPe.Speed = NumberRange.new(4, 8)
+	portalPe.Parent = portal
+
+	-- Portal Prompt
+	local portalPrompt = Instance.new("ProximityPrompt")
+	portalPrompt.ActionText = "Masuk ke Arena Pertarungan"
+	portalPrompt.ObjectText = "⚔️ COMBAT ARENA"
+	portalPrompt.HoldDuration = 0
+	portalPrompt.MaxActivationDistance = 14
+	portalPrompt.Parent = portal
+
+	portalPrompt.Triggered:Connect(function(player)
+		local char = player.Character
+		if char then
+			local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if root then
+				root.CFrame = CFrame.new(ARENA_SPAWN)
+				print(string.format(">> [Lobby] %s entered the Combat Arena! <<", player.Name))
+			end
+		end
+	end)
+
+	-- 5. Character Select Pedestal (Center of Lobby)
+	local pedPos = LOBBY_CENTER + Vector3.new(0, 0, -10)
+	local pedestal = Instance.new("Part")
+	pedestal.Name = "RosterPedestal"
+	pedestal.Shape = Enum.PartType.Cylinder
+	pedestal.Size = Vector3.new(2.4, 6, 6)
+	pedestal.CFrame = CFrame.new(pedPos + Vector3.new(0, 1.2, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	pedestal.Color = Color3.fromRGB(255, 215, 0)
+	pedestal.Material = Enum.Material.Neon
+	pedestal.Anchored = true
+	pedestal.CanCollide = true
+	pedestal.Parent = lobbyModel
+
+	local pedPrompt = Instance.new("ProximityPrompt")
+	pedPrompt.ActionText = "Pilih Karakter Anime"
+	pedPrompt.ObjectText = "👥 ROSTER FIGHTER"
+	pedPrompt.HoldDuration = 0
+	pedPrompt.MaxActivationDistance = 12
+	pedPrompt.Parent = pedestal
+
+	pedPrompt.Triggered:Connect(function(player)
+		evOpenRoster:FireClient(player)
+	end)
+
+	-- 6. Arena Return Portal (Back from Arena to Lobby)
+	local arenaReturn = Instance.new("Part")
+	arenaReturn.Name = "ArenaReturnPad"
+	arenaReturn.Size = Vector3.new(6, 0.4, 6)
+	arenaReturn.Position = Vector3.new(0, 50.3, 56)
+	arenaReturn.Color = Color3.fromRGB(255, 140, 0)
+	arenaReturn.Material = Enum.Material.Neon
+	arenaReturn.Transparency = 0.4
+	arenaReturn.Anchored = true
+	arenaReturn.CanCollide = true
+	arenaReturn.Parent = Workspace
+
+	local retPrompt = Instance.new("ProximityPrompt")
+	retPrompt.ActionText = "Kembali ke Lobi"
+	retPrompt.ObjectText = "🏯 LOBI UTAMA"
+	retPrompt.HoldDuration = 0
+	retPrompt.MaxActivationDistance = 10
+	retPrompt.Parent = arenaReturn
+
+	retPrompt.Triggered:Connect(function(player)
+		local char = player.Character
+		if char then
+			local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if root then
+				root.CFrame = CFrame.new(LOBBY_SPAWN)
+				print(string.format(">> [Lobby] %s returned to the Lobby! <<", player.Name))
+			end
+		end
+	end)
+
+	lobbyModel.Parent = Workspace
+	print(">> [LobbyManager] Shinobi Lobby Courtyard & Gateways built successfully! <<")
+end
+
+-- =========================================================
+-- CHARACTER SELECTION & APPLICATION
+-- =========================================================
+local function applyCharacter(player: Player, charId: string)
+	local charData = CombatConfig.Characters[charId]
+	if not charData then return end
+
+	local char = player.Character
+	if not char then return end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+
+	-- 1. Set Attributes
+	player:SetAttribute("SelectedCharacter", charId)
+	player:SetAttribute("CharacterName", charData.Name)
+	player:SetAttribute("CharacterTitle", charData.Title)
+	player:SetAttribute("CharacterIcon", charData.Icon)
+	player:SetAttribute("CharacterArchetype", charData.Archetype)
+
+	-- 2. Apply Speeds & Health
+	hum.WalkSpeed = charData.WalkSpeed
+	player:SetAttribute("NinjaDashSpeed", charData.NinjaDashSpeed)
+	player:SetAttribute("MaxGuardHealth", charData.GuardHealth)
+
+	-- 3. Update Katana / Blade Visuals with Character Palette
+	local katana = char:FindFirstChild("StormKatana")
+	if katana then
+		local edge = katana:FindFirstChild("NeonEdge") :: BasePart?
+		if edge then
+			edge.Color = charData.PrimaryColor
+		end
+
+		local blade = katana:FindFirstChild("Blade") :: BasePart?
+		if blade then
+			local trail = blade:FindFirstChild("SlashTrail") :: Trail?
+			if trail then
+				trail.Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, charData.PrimaryColor),
+					ColorSequenceKeypoint.new(0.6, charData.AccentColor),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+				})
+			end
+		end
+	end
+
+	-- 4. Replicate to all clients
+	evCharSelect:FireAllClients(player, charId, charData)
+	print(string.format(">> [Roster] %s chose: %s [%s]! <<", player.Name, charData.Name, charData.Archetype))
+end
+
+evCharSelect.OnServerEvent:Connect(function(player: Player, charId: string)
+	applyCharacter(player, charId)
+end)
+
+-- Default setup for new players
+local function onCharacter(player: Player, char: Model)
+	task.wait(0.2)
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if root then
+		root.CFrame = CFrame.new(LOBBY_SPAWN)
+	end
+	local current = player:GetAttribute("SelectedCharacter") or "Naruto"
+	applyCharacter(player, tostring(current))
+end
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function(char)
+		onCharacter(player, char)
+	end)
+	if player.Character then
+		onCharacter(player, player.Character)
+	end
+end)
+
+for _, p in ipairs(Players:GetPlayers()) do
+	if p.Character then
+		onCharacter(p, p.Character)
+	end
+end
+
+-- Build lobby on server start
+buildLobby()
+
+print("[LobbyManagerServer] ✅ Lobby & Character Roster Server active.")
+]=====]
+    installScript('LobbyManagerServer', 'Script', game:GetService('ServerScriptService'), src)
 end
 
 -- ============================================================
@@ -2756,6 +3166,7 @@ end
 RunService:BindToRenderStep("StormProceduralAnim", Enum.RenderPriority.Character.Value + 1, onRenderStep)
 
 print("[StormAnimationController] ✅ Procedural Anime Combat Animation Engine active.")
+
 ]=====]
     installScript('StormAnimationController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
@@ -2782,6 +3193,10 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+
+local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 10) :: Folder
+local evCharSelect = combatEvents:WaitForChild("CharacterSelectEvent", 10) :: RemoteEvent?
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -2847,6 +3262,37 @@ roundLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
 roundLabel.Text = "ROUND 1"
 roundLabel.Parent = centerFrame
 
+-- ROSTER BUTTON [B]
+local rosterBtn = Instance.new("TextButton")
+rosterBtn.Name = "OpenRosterHUDButton"
+rosterBtn.Size = UDim2.new(0, 110, 0, 22)
+rosterBtn.Position = UDim2.new(0.5, 0, 0, 88)
+rosterBtn.AnchorPoint = Vector2.new(0.5, 0)
+rosterBtn.BackgroundColor3 = Color3.fromRGB(15, 20, 32)
+rosterBtn.BackgroundTransparency = 0.2
+rosterBtn.Font = Enum.Font.GothamBold
+rosterBtn.TextSize = 10
+rosterBtn.TextColor3 = Color3.fromRGB(0, 240, 255)
+rosterBtn.Text = "👥 ROSTER [B]"
+rosterBtn.Parent = topContainer
+Instance.new("UICorner", rosterBtn).CornerRadius = UDim.new(0, 6)
+local rStroke = Instance.new("UIStroke")
+rStroke.Color = Color3.fromRGB(0, 240, 255)
+rStroke.Thickness = 1.2
+rStroke.Parent = rosterBtn
+
+rosterBtn.MouseButton1Click:Connect(function()
+	local hud = PlayerGui:FindFirstChild("StormCharacterSelectHUD")
+	if hud then
+		local bindable = hud:FindFirstChild("ToggleRosterUI") :: BindableFunction?
+		if bindable then
+			bindable:Invoke(true)
+		else
+			hud.Enabled = not hud.Enabled
+		end
+	end
+end)
+
 -- =========================================================
 -- FIGHTER 1 (LEFT SIDE - LOCAL PLAYER)
 -- =========================================================
@@ -2891,6 +3337,37 @@ p1Name.TextColor3 = Color3.fromRGB(255, 255, 255)
 p1Name.TextXAlignment = Enum.TextXAlignment.Left
 p1Name.Text = string.upper(LocalPlayer.DisplayName) .. " [SHINOBI]"
 p1Name.Parent = p1Frame
+
+local function updateLocalFighterUI(charId: string)
+	local char = CombatConfig.Characters[charId]
+	if char then
+		p1Name.Text = string.format("%s // %s [%s]", string.upper(char.Name), string.upper(LocalPlayer.DisplayName), string.upper(char.Archetype))
+		p1Stroke.Color = char.PrimaryColor
+	else
+		p1Name.Text = string.upper(LocalPlayer.DisplayName) .. " [SHINOBI]"
+	end
+end
+
+LocalPlayer:GetAttributeChangedSignal("SelectedCharacter"):Connect(function()
+	local cur = LocalPlayer:GetAttribute("SelectedCharacter")
+	if cur then
+		updateLocalFighterUI(tostring(cur))
+	end
+end)
+
+if evCharSelect then
+	evCharSelect.OnClientEvent:Connect(function(player: Player, charId: string, charData: any)
+		if player == LocalPlayer then
+			updateLocalFighterUI(charId)
+		end
+	end)
+end
+
+task.spawn(function()
+	task.wait(0.5)
+	local initChar = LocalPlayer:GetAttribute("SelectedCharacter") or "Naruto"
+	updateLocalFighterUI(tostring(initChar))
+end)
 
 -- P1 Health Bar Container
 local p1HealthBg = Instance.new("Frame")
@@ -3142,11 +3619,19 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local dummy = Workspace:FindFirstChild("TrainingDummy")
 	if dummy and dummy:IsA("Model") then
 		targetModel = dummy
+		p2Name.Text = "TRAINING DUMMY LAB [BOT]"
 	else
 		for _, p in ipairs(Players:GetPlayers()) do
 			if p ~= LocalPlayer and p.Character then
 				targetModel = p.Character
-				p2Name.Text = string.upper(p.DisplayName)
+				local oppCharId = p:GetAttribute("SelectedCharacter")
+				local oppData = oppCharId and CombatConfig.Characters[oppCharId]
+				if oppData then
+					p2Name.Text = string.format("%s // %s [%s]", string.upper(oppData.Name), string.upper(p.DisplayName), string.upper(oppData.Archetype))
+					p2Stroke.Color = oppData.PrimaryColor
+				else
+					p2Name.Text = string.upper(p.DisplayName)
+				end
 				break
 			end
 		end
@@ -3996,6 +4481,576 @@ print("[PerformanceSettingsManager] ✅ Loaded — Low-GFX / 60FPS Performance T
 
 ]=====]
     installScript('PerformanceSettingsManager', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
+end
+
+-- ============================================================
+-- INSTALL: StormCharacterSelectHUD (LocalScript)
+-- ============================================================
+do
+    local src = [=====[--!strict
+-- StormCharacterSelectHUD.luau
+-- CLIENT SCRIPT: Jump Force & Naruto Storm 4 Character Selection Modal & Roster HUD
+-- Features:
+--   • 5-Fighter Roster Grid: Naruto, Sasuke, Luffy, Zoro, Killua
+--   • Dynamic Archetype Badges (Rushdown, Zoner, Grappler, Sword, Trickster)
+--   • Detailed Character Dossier: 4 Stat Bars (Speed, Power, Defense, Jutsu)
+--   • Technique Arsenal Showcase (M1, Low Sweep, Ninja Assist, Secret Technique)
+--   • Interactive Selection with Sound Effects and Visual Glow
+--   • Toggleable via [B] Key, Lobby Pedestal, or Top-Left HUD Button
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+
+-- Remotes
+local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 10) :: Folder
+local evCharSelect = combatEvents:WaitForChild("CharacterSelectEvent", 10) :: RemoteEvent
+local evOpenRoster = combatEvents:WaitForChild("OpenRosterEvent", 10) :: RemoteEvent
+
+-- State
+local isOpen = false
+local currentSelectedId = LocalPlayer:GetAttribute("SelectedCharacter") or "Naruto"
+local previewSelectedId = currentSelectedId
+
+-- Sounds helper
+local function playUiSound(soundName: string, pitch: number)
+	task.spawn(function()
+		pcall(function()
+			local sound = Instance.new("Sound")
+			sound.SoundId = "rbxasset://sounds/" .. soundName
+			sound.Volume = 0.5
+			sound.PlaybackSpeed = pitch or 1.0
+			sound.Parent = SoundService
+			sound:Play()
+			sound.Ended:Connect(function()
+				sound:Destroy()
+			end)
+		end)
+	end)
+end
+
+-- =========================================================
+-- SCREEN GUI CREATION
+-- =========================================================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "StormCharacterSelectHUD"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Enabled = false
+screenGui.Parent = PlayerGui
+
+-- Dark Vignette Backdrop
+local backdrop = Instance.new("Frame")
+backdrop.Name = "ModalBackdrop"
+backdrop.Size = UDim2.new(1, 0, 1, 0)
+backdrop.Position = UDim2.new(0, 0, 0, 0)
+backdrop.BackgroundColor3 = Color3.fromRGB(8, 10, 16)
+backdrop.BackgroundTransparency = 0.35
+backdrop.Parent = screenGui
+
+-- Main Modal Window
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainModal"
+mainFrame.Size = UDim2.new(0.85, 0, 0.85, 0)
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.BackgroundColor3 = Color3.fromRGB(16, 20, 30)
+mainFrame.BackgroundTransparency = 0.1
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = backdrop
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
+
+local modalStroke = Instance.new("UIStroke")
+modalStroke.Color = Color3.fromRGB(0, 240, 255)
+modalStroke.Thickness = 2
+modalStroke.Parent = mainFrame
+
+-- Header Bar
+local headerFrame = Instance.new("Frame")
+headerFrame.Name = "HeaderBar"
+headerFrame.Size = UDim2.new(1, 0, 0, 56)
+headerFrame.BackgroundColor3 = Color3.fromRGB(12, 15, 24)
+headerFrame.BackgroundTransparency = 0.2
+headerFrame.BorderSizePixel = 0
+headerFrame.Parent = mainFrame
+Instance.new("UICorner", headerFrame).CornerRadius = UDim.new(0, 12)
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "TitleLabel"
+titleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+titleLabel.Position = UDim2.new(0, 24, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Font = Enum.Font.GothamBlack
+titleLabel.TextSize = 22
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Text = "⚡ SHINOBI ROSTER // CHOOSE YOUR FIGHTER"
+titleLabel.Parent = headerFrame
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Name = "CloseButton"
+closeBtn.Size = UDim2.new(0, 38, 0, 38)
+closeBtn.Position = UDim2.new(1, -50, 0.5, 0)
+closeBtn.AnchorPoint = Vector2.new(0, 0.5)
+closeBtn.BackgroundColor3 = Color3.fromRGB(240, 40, 40)
+closeBtn.BackgroundTransparency = 0.2
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 18
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Text = "✕"
+closeBtn.Parent = headerFrame
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+
+-- =========================================================
+-- CONTENT SPLIT: LEFT GRID & RIGHT PREVIEW
+-- =========================================================
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "ContentFrame"
+contentFrame.Size = UDim2.new(1, -40, 1, -80)
+contentFrame.Position = UDim2.new(0, 20, 0, 68)
+contentFrame.BackgroundTransparency = 1
+contentFrame.Parent = mainFrame
+
+-- LEFT PANEL: ROSTER CARDS (Width: 42%)
+local rosterList = Instance.new("ScrollingFrame")
+rosterList.Name = "RosterList"
+rosterList.Size = UDim2.new(0.42, 0, 1, 0)
+rosterList.Position = UDim2.new(0, 0, 0, 0)
+rosterList.BackgroundTransparency = 1
+rosterList.ScrollBarThickness = 6
+rosterList.ScrollBarImageColor3 = Color3.fromRGB(0, 240, 255)
+rosterList.CanvasSize = UDim2.new(0, 0, 0, 5 * 84)
+rosterList.Parent = contentFrame
+
+local rosterLayout = Instance.new("UIListLayout")
+rosterLayout.SortOrder = Enum.SortOrder.LayoutOrder
+rosterLayout.Padding = UDim.new(0, 10)
+rosterLayout.Parent = rosterList
+
+-- RIGHT PANEL: DETAILED DOSSIER (Width: 56%)
+local previewPanel = Instance.new("Frame")
+previewPanel.Name = "PreviewPanel"
+previewPanel.Size = UDim2.new(0.56, 0, 1, 0)
+previewPanel.Position = UDim2.new(0.44, 0, 0, 0)
+previewPanel.BackgroundColor3 = Color3.fromRGB(12, 15, 24)
+previewPanel.BackgroundTransparency = 0.4
+previewPanel.Parent = contentFrame
+Instance.new("UICorner", previewPanel).CornerRadius = UDim.new(0, 10)
+
+local previewStroke = Instance.new("UIStroke")
+previewStroke.Color = Color3.fromRGB(40, 50, 70)
+previewStroke.Thickness = 1.5
+previewStroke.Parent = previewPanel
+
+-- Scroll container for preview details
+local previewScroll = Instance.new("ScrollingFrame")
+previewScroll.Name = "PreviewScroll"
+previewScroll.Size = UDim2.new(1, 0, 1, -54)
+previewScroll.Position = UDim2.new(0, 0, 0, 0)
+previewScroll.BackgroundTransparency = 1
+previewScroll.ScrollBarThickness = 4
+previewScroll.ScrollBarImageColor3 = Color3.fromRGB(0, 240, 255)
+previewScroll.CanvasSize = UDim2.new(0, 0, 0, 360)
+previewScroll.Parent = previewPanel
+
+-- Top Info: Large Icon + Name + Title
+local pIcon = Instance.new("TextLabel")
+pIcon.Name = "PreviewIcon"
+pIcon.Size = UDim2.new(0, 68, 0, 68)
+pIcon.Position = UDim2.new(0, 16, 0, 16)
+pIcon.BackgroundColor3 = Color3.fromRGB(20, 26, 38)
+pIcon.Font = Enum.Font.GothamBold
+pIcon.TextSize = 36
+pIcon.Text = "🦊"
+pIcon.Parent = previewScroll
+Instance.new("UICorner", pIcon).CornerRadius = UDim.new(0, 10)
+local pIconStroke = Instance.new("UIStroke")
+pIconStroke.Color = Color3.fromRGB(255, 130, 20)
+pIconStroke.Thickness = 2.5
+pIconStroke.Parent = pIcon
+
+local pName = Instance.new("TextLabel")
+pName.Name = "PreviewName"
+pName.Size = UDim2.new(1, -100, 0, 26)
+pName.Position = UDim2.new(0, 96, 0, 16)
+pName.BackgroundTransparency = 1
+pName.Font = Enum.Font.GothamBlack
+pName.TextSize = 20
+pName.TextColor3 = Color3.fromRGB(255, 255, 255)
+pName.TextXAlignment = Enum.TextXAlignment.Left
+pName.Text = "NARUTO UZUMAKI"
+pName.Parent = previewScroll
+
+local pTitle = Instance.new("TextLabel")
+pTitle.Name = "PreviewTitle"
+pTitle.Size = UDim2.new(1, -100, 0, 18)
+pTitle.Position = UDim2.new(0, 96, 0, 44)
+pTitle.BackgroundTransparency = 1
+pTitle.Font = Enum.Font.GothamMedium
+pTitle.TextSize = 12
+pTitle.TextColor3 = Color3.fromRGB(0, 240, 255)
+pTitle.TextXAlignment = Enum.TextXAlignment.Left
+pTitle.Text = "Hero of the Hidden Leaf • RUSHDOWN"
+pTitle.Parent = previewScroll
+
+local pQuote = Instance.new("TextLabel")
+pQuote.Name = "PreviewQuote"
+pQuote.Size = UDim2.new(1, -32, 0, 32)
+pQuote.Position = UDim2.new(0, 16, 0, 92)
+pQuote.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
+pQuote.BackgroundTransparency = 0.5
+pQuote.Font = Enum.Font.GothamMedium
+pQuote.TextSize = 12
+pQuote.RichText = true
+pQuote.TextColor3 = Color3.fromRGB(220, 220, 230)
+pQuote.TextWrapped = true
+pQuote.Text = '"I never go back on my word! That\'s my ninja way!"'
+pQuote.Parent = previewScroll
+Instance.new("UICorner", pQuote).CornerRadius = UDim.new(0, 6)
+
+-- STATS SECTION (4 Horizontal Bars)
+local statsContainer = Instance.new("Frame")
+statsContainer.Name = "StatsContainer"
+statsContainer.Size = UDim2.new(1, -32, 0, 110)
+statsContainer.Position = UDim2.new(0, 16, 0, 132)
+statsContainer.BackgroundTransparency = 1
+statsContainer.Parent = previewScroll
+
+local statFills: { [string]: Frame } = {}
+local statLabels: { [string]: TextLabel } = {}
+
+local statDefs = {
+	{ key = "Speed",   label = "SPEED",   y = 0,   color = Color3.fromRGB(0, 255, 200) },
+	{ key = "Power",   label = "POWER",   y = 28,  color = Color3.fromRGB(255, 80, 80) },
+	{ key = "Defense", label = "DEFENSE", y = 56,  color = Color3.fromRGB(255, 215, 0) },
+	{ key = "Jutsu",   label = "JUTSU",   y = 84,  color = Color3.fromRGB(180, 100, 255) },
+}
+
+for _, def in ipairs(statDefs) do
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 22)
+	row.Position = UDim2.new(0, 0, 0, def.y)
+	row.BackgroundTransparency = 1
+	row.Parent = statsContainer
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(0, 75, 1, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Font = Enum.Font.GothamBold
+	lbl.TextSize = 11
+	lbl.TextColor3 = Color3.fromRGB(180, 190, 210)
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.Text = def.label
+	lbl.Parent = row
+
+	local barBg = Instance.new("Frame")
+	barBg.Size = UDim2.new(1, -120, 0, 10)
+	barBg.Position = UDim2.new(0, 80, 0.5, 0)
+	barBg.AnchorPoint = Vector2.new(0, 0.5)
+	barBg.BackgroundColor3 = Color3.fromRGB(25, 30, 42)
+	barBg.Parent = row
+	Instance.new("UICorner", barBg).CornerRadius = UDim.new(0, 4)
+
+	local barFill = Instance.new("Frame")
+	barFill.Size = UDim2.new(0.5, 0, 1, 0)
+	barFill.BackgroundColor3 = def.color
+	barFill.BorderSizePixel = 0
+	barFill.Parent = barBg
+	Instance.new("UICorner", barFill).CornerRadius = UDim.new(0, 4)
+	statFills[def.key] = barFill
+
+	local valLbl = Instance.new("TextLabel")
+	valLbl.Size = UDim2.new(0, 35, 1, 0)
+	valLbl.Position = UDim2.new(1, -35, 0, 0)
+	valLbl.BackgroundTransparency = 1
+	valLbl.Font = Enum.Font.GothamBlack
+	valLbl.TextSize = 12
+	valLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+	valLbl.TextXAlignment = Enum.TextXAlignment.Right
+	valLbl.Text = "85"
+	valLbl.Parent = row
+	statLabels[def.key] = valLbl
+end
+
+-- SKILLS ARSENAL BOX
+local skillsBox = Instance.new("Frame")
+skillsBox.Name = "SkillsBox"
+skillsBox.Size = UDim2.new(1, -32, 0, 84)
+skillsBox.Position = UDim2.new(0, 16, 0, 248)
+skillsBox.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
+skillsBox.BackgroundTransparency = 0.4
+skillsBox.Parent = previewScroll
+Instance.new("UICorner", skillsBox).CornerRadius = UDim.new(0, 8)
+
+local sListLayout = Instance.new("UIListLayout")
+sListLayout.Padding = UDim.new(0, 3)
+sListLayout.Parent = skillsBox
+
+local function createSkillRow(prefix: string, name: string): TextLabel
+	local row = Instance.new("TextLabel")
+	row.Size = UDim2.new(1, -12, 0, 18)
+	row.BackgroundTransparency = 1
+	row.Font = Enum.Font.GothamMedium
+	row.TextSize = 11
+	row.TextColor3 = Color3.fromRGB(200, 210, 230)
+	row.TextXAlignment = Enum.TextXAlignment.Left
+	row.Text = "  " .. prefix .. ": " .. name
+	row.Parent = skillsBox
+	return row
+end
+
+local m1SkillLbl   = createSkillRow("🥊 Combo M1", "Shinobi Taijutsu Barrage")
+local sweepSkillLbl = createSkillRow("⚡ Sweep", "Uzumaki Low Sweep")
+local assistSkillLbl = createSkillRow("👥 Assist", "Shadow Clone Rasengan")
+local ultSkillLbl  = createSkillRow("💥 Ultimate", "Wind Style: Rasenshuriken")
+
+-- BOTTOM ACTION BUTTON (Docked at base of PreviewPanel)
+local selectBtn = Instance.new("TextButton")
+selectBtn.Name = "SelectFighterButton"
+selectBtn.Size = UDim2.new(1, -32, 0, 42)
+selectBtn.Position = UDim2.new(0, 16, 1, -48)
+selectBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 140)
+selectBtn.Font = Enum.Font.GothamBlack
+selectBtn.TextSize = 14
+selectBtn.TextColor3 = Color3.fromRGB(12, 18, 24)
+selectBtn.Text = "⚔️ PILIH KARAKTER SHINOBI (SELECT)"
+selectBtn.Parent = previewPanel
+Instance.new("UICorner", selectBtn).CornerRadius = UDim.new(0, 8)
+
+local selStroke = Instance.new("UIStroke")
+selStroke.Color = Color3.fromRGB(255, 255, 255)
+selStroke.Thickness = 1.5
+selStroke.Parent = selectBtn
+
+-- =========================================================
+-- ROSTER CARD CREATION & SELECTION LOGIC
+-- =========================================================
+local cardStrokes: { [string]: UIStroke } = {}
+local cardFrames: { [string]: TextButton } = {}
+
+local function updatePreview(charId: string)
+	local char = CombatConfig.Characters[charId]
+	if not char then return end
+
+	previewSelectedId = charId
+
+	-- Update preview text & visuals
+	pIcon.Text = char.Icon
+	pIconStroke.Color = char.PrimaryColor
+	pName.Text = string.upper(char.Name)
+	pName.TextColor3 = char.PrimaryColor
+	pTitle.Text = char.Title .. " • " .. string.upper(char.Archetype)
+	pTitle.TextColor3 = char.AccentColor
+	pQuote.Text = '"' .. char.Quote .. '"'
+
+	-- Update Stats
+	local stats = char.Stats or { Speed = 80, Power = 80, Defense = 80, Jutsu = 80 }
+	for key, fill in pairs(statFills) do
+		local val = stats[key] or 80
+		local ratio = math.clamp(val / 100, 0, 1)
+		TweenService:Create(fill, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(ratio, 0, 1, 0),
+		}):Play()
+		if statLabels[key] then
+			statLabels[key].Text = tostring(val)
+		end
+	end
+
+	-- Update Skill Names
+	m1SkillLbl.Text    = "  🥊 Combo [J]: " .. char.M1Name
+	sweepSkillLbl.Text = "  ⚡ Sweep [S+J]: " .. char.SweepName
+	assistSkillLbl.Text = "  👥 Assist [U]: " .. char.AssistName
+	ultSkillLbl.Text   = "  💥 Ultimate [I]: " .. char.UltimateName
+
+	-- Update Button State
+	if charId == currentSelectedId then
+		selectBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 95)
+		selectBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		selectBtn.Text = "✓ KARAKTER TERPILIH (CURRENT)"
+	else
+		selectBtn.BackgroundColor3 = char.PrimaryColor
+		selectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		selectBtn.Text = "⚔️ PILIH " .. string.upper(char.Name) .. " (SELECT)"
+	end
+
+	-- Highlight active card
+	for id, stroke in pairs(cardStrokes) do
+		if id == charId then
+			stroke.Color = Color3.fromRGB(255, 215, 0)
+			stroke.Thickness = 3
+		else
+			stroke.Color = Color3.fromRGB(45, 55, 75)
+			stroke.Thickness = 1.5
+		end
+	end
+end
+
+-- Build Card for each fighter
+local charOrder = { "Naruto", "Sasuke", "Luffy", "Zoro", "Killua" }
+for idx, charId in ipairs(charOrder) do
+	local char = CombatConfig.Characters[charId]
+	if not char then continue end
+
+	local card = Instance.new("TextButton")
+	card.Name = "Card_" .. charId
+	card.Size = UDim2.new(1, -6, 0, 74)
+	card.BackgroundColor3 = Color3.fromRGB(20, 25, 36)
+	card.BackgroundTransparency = 0.2
+	card.Text = ""
+	card.AutoButtonColor = false
+	card.LayoutOrder = idx
+	card.Parent = rosterList
+	Instance.new("UICorner", card).CornerRadius = UDim.new(0, 8)
+
+	local cStroke = Instance.new("UIStroke")
+	cStroke.Color = Color3.fromRGB(45, 55, 75)
+	cStroke.Thickness = 1.5
+	cStroke.Parent = card
+	cardStrokes[charId] = cStroke
+	cardFrames[charId] = card
+
+	-- Fighter Icon
+	local cIcon = Instance.new("TextLabel")
+	cIcon.Size = UDim2.new(0, 50, 0, 50)
+	cIcon.Position = UDim2.new(0, 12, 0.5, 0)
+	cIcon.AnchorPoint = Vector2.new(0, 0.5)
+	cIcon.BackgroundColor3 = Color3.fromRGB(28, 34, 48)
+	cIcon.Font = Enum.Font.GothamBold
+	cIcon.TextSize = 26
+	cIcon.Text = char.Icon
+	cIcon.Parent = card
+	Instance.new("UICorner", cIcon).CornerRadius = UDim.new(0, 8)
+
+	-- Name
+	local cName = Instance.new("TextLabel")
+	cName.Size = UDim2.new(1, -74, 0, 20)
+	cName.Position = UDim2.new(0, 70, 0, 14)
+	cName.BackgroundTransparency = 1
+	cName.Font = Enum.Font.GothamBlack
+	cName.TextSize = 14
+	cName.TextColor3 = Color3.fromRGB(255, 255, 255)
+	cName.TextXAlignment = Enum.TextXAlignment.Left
+	cName.Text = char.Name
+	cName.Parent = card
+
+	-- Archetype Tag
+	local cTag = Instance.new("TextLabel")
+	cTag.Size = UDim2.new(0, 90, 0, 18)
+	cTag.Position = UDim2.new(0, 70, 0, 38)
+	cTag.BackgroundColor3 = char.PrimaryColor
+	cTag.BackgroundTransparency = 0.3
+	cTag.Font = Enum.Font.GothamBold
+	cTag.TextSize = 10
+	cTag.TextColor3 = Color3.fromRGB(255, 255, 255)
+	cTag.Text = string.upper(char.Archetype)
+	cTag.Parent = card
+	Instance.new("UICorner", cTag).CornerRadius = UDim.new(0, 4)
+
+	-- Click handler
+	card.MouseButton1Click:Connect(function()
+		playUiSound("volume_slider.ogg", 1.2)
+		updatePreview(charId)
+	end)
+end
+
+-- =========================================================
+-- CONFIRM SELECTION
+-- =========================================================
+local function selectCharacter(charId: string)
+	local char = CombatConfig.Characters[charId]
+	if not char then return end
+
+	currentSelectedId = charId
+	playUiSound("action_footsteps_plastic.mp3", 1.5)
+
+	-- Fire to server
+	evCharSelect:FireServer(charId)
+
+	-- Visual feedback
+	updatePreview(charId)
+
+	-- Close modal smoothly after short delay
+	task.delay(0.3, function()
+		screenGui.Enabled = false
+		isOpen = false
+	end)
+end
+
+selectBtn.MouseButton1Click:Connect(function()
+	selectCharacter(previewSelectedId)
+end)
+
+-- =========================================================
+-- MODAL TOGGLE & CONTROLS
+-- =========================================================
+local function toggleRoster(state: boolean?)
+	if state ~= nil then
+		isOpen = state
+	else
+		isOpen = not isOpen
+	end
+
+	screenGui.Enabled = isOpen
+	if isOpen then
+		playUiSound("volume_slider.ogg", 1.0)
+		local current = LocalPlayer:GetAttribute("SelectedCharacter") or "Naruto"
+		currentSelectedId = tostring(current)
+		updatePreview(currentSelectedId)
+
+		-- Animated Entrance
+		mainFrame.Position = UDim2.new(0.5, 0, 0.55, 0)
+		mainFrame.BackgroundTransparency = 1
+		TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+			BackgroundTransparency = 0.1,
+		}):Play()
+	end
+end
+
+closeBtn.MouseButton1Click:Connect(function()
+	toggleRoster(false)
+end)
+
+-- Keybind [B] to toggle roster
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.B then
+		toggleRoster()
+	end
+end)
+
+-- Listen to Lobby Pedestal remote trigger
+evOpenRoster.OnClientEvent:Connect(function()
+	toggleRoster(true)
+end)
+
+-- Listen to character changes replicated from server
+evCharSelect.OnClientEvent:Connect(function(player: Player, charId: string, charData: any)
+	if player == LocalPlayer then
+		currentSelectedId = charId
+		updatePreview(charId)
+	end
+end)
+
+-- Expose to global/other scripts via bindable if needed
+local bindable = Instance.new("BindableFunction")
+bindable.Name = "ToggleRosterUI"
+bindable.OnInvoke = function(state)
+	toggleRoster(state)
+	return isOpen
+end
+bindable.Parent = screenGui
+
+print("[StormCharacterSelectHUD] ✅ Shinobi Roster UI loaded. Press [B] or visit Lobby Pedestal.")
+]=====]
+    installScript('StormCharacterSelectHUD', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
 
 print('====================================================')

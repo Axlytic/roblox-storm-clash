@@ -16,6 +16,9 @@
       },
       "StormWeaponServer": {
         "$path": "src/server/StormWeaponServer.luau"
+      },
+      "LobbyManagerServer": {
+        "$path": "src/server/LobbyManagerServer.luau"
       }
     },
     "StarterPlayer": {
@@ -49,6 +52,9 @@
         },
         "PerformanceSettingsManager": {
           "$path": "src/client/PerformanceSettingsManager.luau"
+        },
+        "StormCharacterSelectHUD": {
+          "$path": "src/client/StormCharacterSelectHUD.luau"
         }
       }
     }

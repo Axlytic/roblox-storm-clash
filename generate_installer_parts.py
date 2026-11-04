@@ -31,6 +31,12 @@ parts = [
                 "parent": "game:GetService('ServerScriptService')",
                 "file": os.path.join(base_dir, "server", "StormWeaponServer.luau")
             },
+            {
+                "name": "LobbyManagerServer",
+                "type": "Script",
+                "parent": "game:GetService('ServerScriptService')",
+                "file": os.path.join(base_dir, "server", "LobbyManagerServer.luau")
+            },
         ]
     },
     {
@@ -101,6 +107,12 @@ parts = [
                 "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
                 "file": os.path.join(base_dir, "client", "PerformanceSettingsManager.luau")
             },
+            {
+                "name": "StormCharacterSelectHUD",
+                "type": "LocalScript",
+                "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
+                "file": os.path.join(base_dir, "client", "StormCharacterSelectHUD.luau")
+            },
         ]
     }
 ]
@@ -131,3 +143,4 @@ for idx, p in enumerate(parts):
         f.write("\n".join(out))
 
     print(f"Generated {p['file']} size: {os.path.getsize(p['file'])}")
+

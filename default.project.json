@@ -1,0 +1,38 @@
+{
+  "name": "HybridAnimeCombat",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "CombatConfig": {
+        "$path": "src/shared/CombatConfig.luau"
+      }
+    },
+    "ServerScriptService": {
+      "CombatServerMaster": {
+        "$path": "src/server/CombatServerMaster.luau"
+      },
+      "TrainingDummySpawner": {
+        "$path": "src/server/TrainingDummySpawner.luau"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "StormCameraController": {
+          "$path": "src/client/StormCameraController.luau"
+        },
+        "StormMovementController": {
+          "$path": "src/client/StormMovementController.luau"
+        },
+        "TekkenDefenseController": {
+          "$path": "src/client/TekkenDefenseController.luau"
+        },
+        "CombatComboController": {
+          "$path": "src/client/CombatComboController.luau"
+        },
+        "StormAssistController": {
+          "$path": "src/client/StormAssistController.luau"
+        }
+      }
+    }
+  }
+}

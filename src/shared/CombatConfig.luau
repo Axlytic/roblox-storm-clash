@@ -5,6 +5,22 @@
 local CombatConfig = {}
 
 -- =========================================================
+-- 0. NARUTO STORM KEYBOARD & CONTROLLER MAPPING
+-- =========================================================
+CombatConfig.Controls = {
+	MoveForward   = Enum.KeyCode.W,         -- Maju
+	MoveLeft      = Enum.KeyCode.A,         -- Kiri
+	MoveBackward  = Enum.KeyCode.S,         -- Mundur
+	MoveRight     = Enum.KeyCode.D,         -- Kanan
+	PunchMelee    = Enum.KeyCode.J,         -- Pukulan Biasa (4-Hit Attack Combo)
+	LowSweep      = Enum.KeyCode.K,         -- Serangan Bawah (Low Sweep Attack)
+	RangedJutsu   = Enum.KeyCode.L,         -- Serangan Jarak Jauh (Anime Ranged Projectile)
+	ChakraEnergy  = Enum.KeyCode.I,         -- Mengisi Energi / Hold untuk Ultimate Ougi
+	GuardDefense  = Enum.KeyCode.F,         -- Pertahanan / Tekken High & Low Guard
+	NinjaDash     = Enum.KeyCode.LeftShift, -- Ninja Dash (also Q / Double-tap Space)
+}
+
+-- =========================================================
 -- 1. CAMERA SETTINGS (Naruto Storm 4 Dual-Target Framing)
 -- =========================================================
 CombatConfig.Camera = {
@@ -239,6 +255,17 @@ CombatConfig.Characters = {
 		Stats = { Speed = 90, Power = 85, Defense = 75, Jutsu = 88 },
 		M1Name = "Shinobi Taijutsu Barrage",
 		SweepName = "Uzumaki Low Sweep",
+		RangedSkill = {
+			Name = "Wind Style: Rasen-Shuriken",
+			Damage = 20,
+			Speed = 110,
+			Cooldown = 1.6,
+			Lifetime = 2.2,
+			Color = Color3.fromRGB(0, 235, 255),
+			Shape = "Disc",
+			Sound = "rbxasset://sounds/action_whoosh.mp3",
+			Icon = "🌀",
+		},
 		AssistName = "Shadow Clone Rasengan",
 		UltimateName = "Wind Style: Rasenshuriken Blast",
 		Quote = "I never go back on my word! That's my ninja way!",
@@ -258,6 +285,17 @@ CombatConfig.Characters = {
 		Stats = { Speed = 85, Power = 88, Defense = 80, Jutsu = 96 },
 		M1Name = "Kusanagi Sword Flurry",
 		SweepName = "Chidori Stream Sweep",
+		RangedSkill = {
+			Name = "Fire Style: Fireball Jutsu (Goukakyuu)",
+			Damage = 22,
+			Speed = 95,
+			Cooldown = 1.8,
+			Lifetime = 2.5,
+			Color = Color3.fromRGB(255, 75, 20),
+			Shape = "Ball",
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Icon = "🔥",
+		},
 		AssistName = "Fireball Jutsu / Flame Bullet",
 		UltimateName = "Kirin: Heavenly Lightning Strike",
 		Quote = "My dream doesn't exist in the future. It lies in the past.",
@@ -277,6 +315,17 @@ CombatConfig.Characters = {
 		Stats = { Speed = 78, Power = 95, Defense = 98, Jutsu = 70 },
 		M1Name = "Gum-Gum Pistol Combo",
 		SweepName = "Gum-Gum Whip Sweep",
+		RangedSkill = {
+			Name = "Gum-Gum Pistol (Gomu Gomu no Pistol)",
+			Damage = 18,
+			Speed = 135,
+			Cooldown = 1.4,
+			Lifetime = 1.2,
+			Color = Color3.fromRGB(245, 185, 140),
+			Shape = "Fist",
+			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
+			Icon = "👊",
+		},
 		AssistName = "Gum-Gum Bazooka Striker",
 		UltimateName = "Gear Fourth: King Kong Gun",
 		Quote = "I'm gonna be King of the Pirates!",
@@ -296,6 +345,17 @@ CombatConfig.Characters = {
 		Stats = { Speed = 82, Power = 94, Defense = 88, Jutsu = 80 },
 		M1Name = "Three-Sword Style Onigiri",
 		SweepName = "Dragon Twister Sweep",
+		RangedSkill = {
+			Name = "36 Pound Phoenix (Flying Slash)",
+			Damage = 21,
+			Speed = 115,
+			Cooldown = 1.7,
+			Lifetime = 2.0,
+			Color = Color3.fromRGB(40, 255, 110),
+			Shape = "SlashBlade",
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Icon = "⚔️",
+		},
 		AssistName = "1080 Pound Ho Cannon",
 		UltimateName = "Billion-Fold World Trichiliocosm",
 		Quote = "Scars on the back are a swordsman's shame.",
@@ -315,6 +375,17 @@ CombatConfig.Characters = {
 		Stats = { Speed = 99, Power = 80, Defense = 70, Jutsu = 92 },
 		M1Name = "Assassin Claws & Palm Strike",
 		SweepName = "Rhythm Echo Sweep",
+		RangedSkill = {
+			Name = "Thunderbolt: Narukami Strike",
+			Damage = 20,
+			Speed = 145,
+			Cooldown = 1.5,
+			Lifetime = 1.4,
+			Color = Color3.fromRGB(150, 230, 255),
+			Shape = "Bolt",
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Icon = "⚡",
+		},
 		AssistName = "Thunderbolt Striker",
 		UltimateName = "Godspeed: Whirlwind Execution",
 		Quote = "If I don't defeat you right now... I can't protect anyone!",

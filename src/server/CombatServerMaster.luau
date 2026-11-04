@@ -14,6 +14,8 @@ local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
+local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+
 -- =========================================================
 -- 1. ENSURE COMBAT REMOTES
 -- =========================================================
@@ -41,6 +43,7 @@ local evParry      = ensureRemote("ParryEvent")
 local evAttack     = ensureRemote("AttackEvent")
 local evAssist     = ensureRemote("AssistEvent")
 local evLeaderSwap = ensureRemote("LeaderSwapEvent")
+local evRanged     = ensureRemote("RangedAttackEvent")
 
 -- =========================================================
 -- 2. PLAYER COMBAT STATE TRACKING
@@ -365,6 +368,156 @@ evUltimate.OnServerEvent:Connect(function(attacker: Player, targetModel: Model)
 	spawnFloatingText(tRoot.Position, string.format("⚡ ULTIMATE FINISH -%d!", ultDmg), Color3.fromRGB(255, 220, 50))
 	local hitDir = (tRoot.Position - aRoot.Position).Unit
 	tRoot.AssemblyLinearVelocity = hitDir * 75 + Vector3.new(0, 20, 0)
+end)
+
+-- =========================================================
+-- 8. AUTHENTIC ANIME RANGED ATTACK HANDLER ([L] Key)
+-- =========================================================
+evRanged.OnServerEvent:Connect(function(attacker: Player, aimDir: Vector3?, requestedCharId: string?)
+	local char = attacker.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or hum.Health <= 0 then return end
+
+	local charId = tostring(attacker:GetAttribute("SelectedCharacter") or requestedCharId or "Naruto")
+	local charData = CombatConfig.Characters[charId] or CombatConfig.Characters["Naruto"]
+	local skill = charData.RangedSkill or {
+		Name = "Chakra Projectile",
+		Damage = 18,
+		Speed = 110,
+		Lifetime = 2.0,
+		Color = Color3.fromRGB(0, 230, 255),
+	}
+
+	local finalAimDir = if typeof(aimDir) == "Vector3" and aimDir.Magnitude > 0.1 then aimDir.Unit else root.CFrame.LookVector
+	local startPos = root.Position + Vector3.new(0, 1.2, 0) + (finalAimDir * 2.5)
+
+	-- 1. Create Anime Themed Projectile Model / Part
+	local proj = Instance.new("Part")
+	proj.Name = "AnimeProjectile_" .. charId
+	proj.CanCollide = false
+	proj.Anchored = false
+	proj.Material = Enum.Material.Neon
+	proj.Color = skill.Color or Color3.fromRGB(0, 230, 255)
+
+	-- Distinct 3D mesh shaping per anime character:
+	if charId == "Naruto" then
+		-- Rasen-Shuriken: Aerodynamic Disc
+		proj.Shape = Enum.PartType.Cylinder
+		proj.Size = Vector3.new(0.4, 3.2, 3.2)
+		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir) * CFrame.Angles(0, 0, math.rad(90))
+	elseif charId == "Sasuke" then
+		-- Goukakyuu Fireball: Giant Blazing Sphere
+		proj.Shape = Enum.PartType.Ball
+		proj.Size = Vector3.new(3.0, 3.0, 3.0)
+		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
+	elseif charId == "Luffy" then
+		-- Gum-Gum Pistol: Elastic Fist Cylinder
+		proj.Shape = Enum.PartType.Cylinder
+		proj.Size = Vector3.new(3.2, 1.6, 1.6)
+		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir) * CFrame.Angles(0, math.rad(90), 0)
+	elseif charId == "Zoro" then
+		-- 36 Pound Phoenix: Vertical Flying Wind Blade
+		proj.Shape = Enum.PartType.Block
+		proj.Size = Vector3.new(0.3, 3.8, 2.4)
+		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
+	elseif charId == "Killua" then
+		-- Thunderbolt Narukami: Piercing Lightning Wedge
+		proj.Shape = Enum.PartType.Block
+		proj.Size = Vector3.new(0.8, 0.8, 3.2)
+		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
+	else
+		proj.Shape = Enum.PartType.Ball
+		proj.Size = Vector3.new(2, 2, 2)
+		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
+	end
+
+	-- 2. Anime Particle Emitter
+	local att = Instance.new("Attachment", proj)
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	pe.Color = ColorSequence.new(skill.Color or Color3.fromRGB(0, 255, 255), Color3.fromRGB(255, 255, 255))
+	pe.Size = NumberSequence.new(1.4, 0)
+	pe.Rate = 50
+	pe.Speed = NumberRange.new(3, 8)
+	pe.Lifetime = NumberRange.new(0.25, 0.45)
+	pe.Parent = att
+
+	-- 3. High-Speed Propulsion
+	local bv = Instance.new("BodyVelocity")
+	bv.Velocity = finalAimDir * (skill.Speed or 110)
+	bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+	bv.Parent = proj
+
+	proj.Parent = Workspace
+	Debris:AddItem(proj, skill.Lifetime or 2.2)
+
+	-- 4. Authoritative Collision & Damage
+	local hitProcessed = false
+	proj.Touched:Connect(function(hit)
+		if hitProcessed then return end
+		local targetModel = hit:FindFirstAncestorOfClass("Model")
+		if not targetModel or targetModel == char or targetModel.Name:find("AssistStriker") then
+			return
+		end
+
+		local tHum = targetModel:FindFirstChildOfClass("Humanoid")
+		local tRoot = targetModel:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not tHum or not tRoot or tHum.Health <= 0 then
+			return
+		end
+
+		hitProcessed = true
+
+		-- Guard Check for Defender
+		local targetPlayer = Players:GetPlayerFromCharacter(targetModel)
+		local targetState = targetPlayer and playerCombatStates[targetPlayer.UserId]
+		local isGuarding = false
+		if targetState then
+			isGuarding = targetState.isBlocking and targetState.blockType == "High"
+		elseif targetModel:GetAttribute("DummyGuardMode") == "High" then
+			isGuarding = true
+		end
+
+		local isAwakening = attacker:GetAttribute("IsAwakening") == true
+		local baseDmg = skill.Damage or 20
+		local finalDmg = if isAwakening then math.floor(baseDmg * 1.25) else baseDmg
+
+		if isGuarding then
+			-- Projectile Guarded! Reduced chip damage
+			local chipDmg = math.max(2, math.floor(finalDmg * 0.25))
+			tHum:TakeDamage(chipDmg)
+			spawnFloatingText(tRoot.Position, string.format("🛡️ BLOCKED (-%d)", chipDmg), Color3.fromRGB(0, 220, 255))
+			tRoot.AssemblyLinearVelocity = finalAimDir * 12
+		else
+			-- Clean Anime Jutsu Hit!
+			tHum:TakeDamage(finalDmg)
+			local hitColor = skill.Color or Color3.fromRGB(255, 120, 30)
+			spawnFloatingText(tRoot.Position, string.format("💥 %s -%d!", skill.Name, finalDmg), hitColor)
+			tRoot.AssemblyLinearVelocity = finalAimDir * 42 + Vector3.new(0, 8, 0)
+		end
+
+		-- Hit burst particle
+		pcall(function()
+			local burst = Instance.new("Part")
+			burst.Shape = Enum.PartType.Ball
+			burst.Size = Vector3.new(3, 3, 3)
+			burst.Position = proj.Position
+			burst.Material = Enum.Material.Neon
+			burst.Color = skill.Color or Color3.fromRGB(255, 200, 50)
+			burst.Anchored = true
+			burst.CanCollide = false
+			burst.Parent = Workspace
+			TweenService:Create(burst, TweenInfo.new(0.22), {
+				Size = Vector3.new(5, 5, 5),
+				Transparency = 1,
+			}):Play()
+			Debris:AddItem(burst, 0.25)
+		end)
+
+		proj:Destroy()
+	end)
 end)
 
 print("[CombatServerMaster] ✅ Authoritative Combat Server Master fully initialized.")

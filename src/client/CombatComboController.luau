@@ -118,9 +118,9 @@ local function findHitTarget(myRoot: BasePart): Model?
 end
 
 -- =========================================================
--- EXECUTE ATTACK (J / Left Click / Mobile / Gamepad)
+-- EXECUTE ATTACK: [J] Pukulan Biasa / [K] Serangan Bawah
 -- =========================================================
-local function executeAttack()
+local function executeAttack(forceLow: boolean?)
 	if isAttacking or isStaggered then return end
 	local char = LocalPlayer.Character
 	if not char then return end
@@ -138,14 +138,14 @@ local function executeAttack()
 		currentComboIndex = 0
 	end
 
-	-- Low Sweep check: S key (retreating/crouch in fighting games) OR Ctrl / C
-	local isSHeld = UserInputService:IsKeyDown(Enum.KeyCode.S)
-	local isCtrlHeld = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C)
-	local isLowSweep = isSHeld or isCtrlHeld
+	-- Naruto Storm Attack Standard:
+	-- [J]: 4-Hit Normal Taijutsu Punch Combo String
+	-- [K]: Dedicated Low Shinobi Sweep (Bypasses High Guard)
+	local isLowSweep = (forceLow == true)
 	local isHeavyFinisher = false
 
 	if isLowSweep then
-		-- Low Shinobi Sweep
+		-- Dedicated Low Shinobi Sweep
 		currentComboIndex = 1
 	else
 		currentComboIndex = (currentComboIndex % 4) + 1
@@ -165,7 +165,7 @@ local function executeAttack()
 
 	-- Storm 4 Forward Lunge
 	local forwardDir = root.CFrame.LookVector
-	local lungeSpeed = if isHeavyFinisher then 40 else LUNGE_FORCE
+	local lungeSpeed = if isHeavyFinisher then 40 else (if isLowSweep then 22 else LUNGE_FORCE)
 	root.AssemblyLinearVelocity = Vector3.new(forwardDir.X * lungeSpeed, root.AssemblyLinearVelocity.Y, forwardDir.Z * lungeSpeed)
 
 	-- Visual & Sound
@@ -237,20 +237,30 @@ end
 -- =========================================================
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
-	-- 1. Keyboard [J] or Left-Click
-	if input.KeyCode == Enum.KeyCode.J or input.UserInputType == Enum.UserInputType.MouseButton1 then
-		executeAttack()
-	-- 2. Gamepad Controller (Square on PS, X on Xbox)
-	elseif input.KeyCode == Enum.KeyCode.ButtonX then
-		executeAttack()
+	-- 1. Keyboard [J] (Pukulan Biasa) or Left-Click or Gamepad (Square / X)
+	if input.KeyCode == Enum.KeyCode.J or input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonX then
+		executeAttack(false)
+	-- 2. Keyboard [K] (Serangan Bawah / Low Sweep) or Gamepad DPadDown
+	elseif input.KeyCode == Enum.KeyCode.K or input.KeyCode == Enum.KeyCode.DPadDown then
+		executeAttack(true)
 	end
 end)
 
 -- Mobile Touch Integration
 if evMobileAttack then
-	evMobileAttack.Event:Connect(function()
-		executeAttack()
+	evMobileAttack.Event:Connect(function(isLow: any)
+		executeAttack(isLow == true)
 	end)
 end
 
-print("[CombatComboController] ✅ Loaded — Attack [J] / Left-Click / Gamepad (Square/X), Low Sweep [S+J].")
+local evMobileLow = ReplicatedStorage:FindFirstChild("MobileLowAttackAction") :: BindableEvent?
+if not evMobileLow then
+	evMobileLow = Instance.new("BindableEvent")
+	evMobileLow.Name = "MobileLowAttackAction"
+	evMobileLow.Parent = ReplicatedStorage
+end
+evMobileLow.Event:Connect(function()
+	executeAttack(true)
+end)
+
+print("[CombatComboController] ✅ Loaded — Pukulan Biasa [J], Serangan Bawah [K], Gamepad (Square=Punch / DPadDown=Low).")

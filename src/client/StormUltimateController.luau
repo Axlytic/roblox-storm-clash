@@ -433,12 +433,36 @@ end
 LocalPlayer.CharacterAdded:Connect(monitorCharacter)
 
 -- =========================================================
--- INPUT LISTENERS (Key [O] for Ultimate, Key [C] for Chakra)
+-- INPUT LISTENERS: [I] Mengisi Energi / Hold untuk Ultimate
 -- =========================================================
+local isHoldingI = false
+local iPressStartTime = 0
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 
-	if input.KeyCode == Enum.KeyCode.O then
+	-- Primary Key: [I] (Naruto Storm: Energy Charge & Hold for Ultimate)
+	if input.KeyCode == Enum.KeyCode.I then
+		isHoldingI = true
+		iPressStartTime = os.clock()
+		startChakraCharge()
+
+		-- Hold watcher: If held >= 0.60s and Chakra is full (100%), unleash Ultimate!
+		task.spawn(function()
+			while isHoldingI do
+				task.wait(0.05)
+				local heldDuration = os.clock() - iPressStartTime
+				if isHoldingI and chakra >= 100 and heldDuration >= 0.60 and not isExecutingUltimate then
+					print(">> [StormUltimate] [I] Key Hold threshold reached with 100% Chakra! Unleashing Ultimate! <<")
+					stopChakraCharge()
+					executeUltimateJutsu()
+					break
+				end
+			end
+		end)
+
+	-- Secondary/Fallback keys
+	elseif input.KeyCode == Enum.KeyCode.O then
 		executeUltimateJutsu()
 	elseif input.KeyCode == Enum.KeyCode.C then
 		startChakraCharge()
@@ -446,7 +470,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 UserInputService.InputEnded:Connect(function(input, processed)
-	if input.KeyCode == Enum.KeyCode.C then
+	if input.KeyCode == Enum.KeyCode.I then
+		isHoldingI = false
+		stopChakraCharge()
+	elseif input.KeyCode == Enum.KeyCode.C then
 		stopChakraCharge()
 	end
 end)
@@ -461,4 +488,4 @@ evMobileChakra.Event:Connect(function(isDown: boolean)
 	end
 end)
 
-print("[StormUltimateController] ✅ Ultimate Secret Technique & Tekken Awakening active.")
+print("[StormUltimateController] ✅ Ultimate Secret Technique & Tekken Awakening active — [I] Charge / Hold for Ultimate.")

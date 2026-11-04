@@ -32,6 +32,8 @@ local function getOrMakeBindable(name: string): BindableEvent
 end
 
 local evMobileAttack   = getOrMakeBindable("MobileAttackAction")
+local evMobileLow      = getOrMakeBindable("MobileLowAttackAction")
+local evMobileRanged   = getOrMakeBindable("MobileRangedAction")
 local evMobileGuard    = getOrMakeBindable("MobileGuardAction")
 local evMobileDash     = getOrMakeBindable("MobileDashAction")
 local evMobileAssist   = getOrMakeBindable("MobileAssistAction")
@@ -125,20 +127,39 @@ local function createActionButton(
 end
 
 -- =========================================================
--- CREATE COMBAT BUTTONS
 -- =========================================================
--- 1. ATTACK [J] (Big Central Action Button)
+-- CREATE COMBAT BUTTONS (Naruto Storm Mobile Layout)
+-- =========================================================
+-- 1. PUNCH [J] (Primary Combo Strike)
 local btnAttack = createActionButton(
-	"BtnAttack", "⚔️", "ATTACK [J]", Color3.fromRGB(0, 240, 255),
+	"BtnAttack", "⚔️", "PUNCH [J]", Color3.fromRGB(0, 240, 255),
 	UDim2.new(0.65, 0, 0.65, 0), UDim2.new(0, 78, 0, 78)
 )
 btnAttack.MouseButton1Click:Connect(function()
-	evMobileAttack:Fire()
+	evMobileAttack:Fire(false)
 end)
 
--- 2. GUARD [K] (Right side button with hold support)
+-- 2. LOW SWEEP [K] (Serangan Bawah)
+local btnLow = createActionButton(
+	"BtnLow", "⚡", "LOW [K]", Color3.fromRGB(255, 180, 20),
+	UDim2.new(0.88, 0, 0.65, 0), UDim2.new(0, 56, 0, 56)
+)
+btnLow.MouseButton1Click:Connect(function()
+	evMobileLow:Fire()
+end)
+
+-- 3. RANGED JUTSU [L] (Serangan Jarak Jauh)
+local btnRanged = createActionButton(
+	"BtnRanged", "🌀", "RANGED [L]", Color3.fromRGB(80, 220, 255),
+	UDim2.new(0.65, 0, 0.32, 0), UDim2.new(0, 56, 0, 56)
+)
+btnRanged.MouseButton1Click:Connect(function()
+	evMobileRanged:Fire()
+end)
+
+-- 4. GUARD [F] (Hold to Block)
 local btnGuard = createActionButton(
-	"BtnGuard", "🛡️", "GUARD [K]", Color3.fromRGB(255, 215, 0),
+	"BtnGuard", "🛡️", "GUARD [F]", Color3.fromRGB(255, 215, 0),
 	UDim2.new(0.88, 0, 0.32, 0), UDim2.new(0, 56, 0, 56)
 )
 btnGuard.InputBegan:Connect(function(input)
@@ -152,56 +173,55 @@ btnGuard.InputEnded:Connect(function(input)
 	end
 end)
 
--- 3. DASH [L] (Left bottom button)
+-- 5. DASH [SHIFT] (Homing Ninja Dash)
 local btnDash = createActionButton(
-	"BtnDash", "💨", "DASH [L]", Color3.fromRGB(0, 255, 170),
-	UDim2.new(0.28, 0, 0.82, 0), UDim2.new(0, 58, 0, 58)
+	"BtnDash", "💨", "DASH [SHIFT]", Color3.fromRGB(0, 255, 170),
+	UDim2.new(0.38, 0, 0.82, 0), UDim2.new(0, 56, 0, 56)
 )
 btnDash.MouseButton1Click:Connect(function()
 	evMobileDash:Fire()
 end)
 
--- 4. ASSIST [I] (Top mid button)
-local btnAssist = createActionButton(
-	"BtnAssist", "⚡", "ASSIST [I]", Color3.fromRGB(255, 100, 50),
-	UDim2.new(0.48, 0, 0.22, 0), UDim2.new(0, 52, 0, 52)
-)
-btnAssist.MouseButton1Click:Connect(function()
-	evMobileAssist:Fire()
-end)
-
--- 5. LEADER SWAP [U] (Left button)
-local btnSwap = createActionButton(
-	"BtnSwap", "🔄", "SWAP [U]", Color3.fromRGB(200, 100, 255),
-	UDim2.new(0.18, 0, 0.40, 0), UDim2.new(0, 48, 0, 48)
-)
-btnSwap.MouseButton1Click:Connect(function()
-	evMobileSwap:Fire()
-end)
-
--- 6. ULTIMATE JUTSU [O] (Top-right special finisher button)
-local btnUltimate = createActionButton(
-	"BtnUltimate", "🔥", "ULT [O]", Color3.fromRGB(255, 60, 40),
-	UDim2.new(0.85, 0, 0.12, 0), UDim2.new(0, 56, 0, 56)
-)
-btnUltimate.MouseButton1Click:Connect(function()
-	evMobileUltimate:Fire()
-end)
-
--- 7. CHAKRA CHARGE [C] (Far left charge button)
+-- 6. CHAKRA ENERGY & ULTIMATE [I] (Hold for Ultimate!)
 local btnChakra = createActionButton(
-	"BtnChakra", "🌀", "CHAKRA [C]", Color3.fromRGB(0, 190, 255),
-	UDim2.new(0.08, 0, 0.65, 0), UDim2.new(0, 52, 0, 52)
+	"BtnChakra", "🔥", "CHAKRA/ULT [I]", Color3.fromRGB(255, 80, 40),
+	UDim2.new(0.12, 0, 0.65, 0), UDim2.new(0, 58, 0, 58)
 )
+local isMobileHoldingChakra = false
+local mobileChakraStart = 0
 btnChakra.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		isMobileHoldingChakra = true
+		mobileChakraStart = os.clock()
 		evMobileChakra:Fire(true)
+		task.spawn(function()
+			while isMobileHoldingChakra do
+				task.wait(0.05)
+				local held = os.clock() - mobileChakraStart
+				local curChakra = LocalPlayer:GetAttribute("ChakraValue") or 0
+				if isMobileHoldingChakra and curChakra >= 100 and held >= 0.60 then
+					evMobileChakra:Fire(false)
+					evMobileUltimate:Fire()
+					break
+				end
+			end
+		end)
 	end
 end)
 btnChakra.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		isMobileHoldingChakra = false
 		evMobileChakra:Fire(false)
 	end
+end)
+
+-- 7. LEADER SWAP [U]
+local btnSwap = createActionButton(
+	"BtnSwap", "🔄", "SWAP [U]", Color3.fromRGB(200, 100, 255),
+	UDim2.new(0.20, 0, 0.38, 0), UDim2.new(0, 48, 0, 48)
+)
+btnSwap.MouseButton1Click:Connect(function()
+	evMobileSwap:Fire()
 end)
 
 -- =========================================================

@@ -2,10 +2,10 @@
 -- StormAssistController.luau
 -- CLIENT SCRIPT: Naruto Storm 4 Assist Striker Summon & Leader Swap
 -- Features:
---   • WASD Movement + IJKL Assist System:
---       [I] Key or [T]: Summon Assist Partner (Flame Bullet / Lightning Jutsu)
---       [U] Key or [G]: Leader Swap (Tag-out partner combo continuation)
---   • Full Controller Support: Gamepad L1 (Assist) & L2 (Leader Swap)
+--   • Assist System:
+--       [T] Key or Gamepad L1: Summon Assist Partner (Flame Bullet / Lightning Jutsu)
+--       [U] Key or [G] or Gamepad L2: Leader Swap (Tag-out partner combo continuation)
+--   • Note: [I] is strictly reserved for Chakra Charge & Ultimate Jutsu!
 --   • Mobile Touch Support via Custom BindableEvent
 --   • Assist Gauge HUD with real-time countdown & speedline flash on tag
 
@@ -88,7 +88,7 @@ local nameLabel = Instance.new("TextLabel")
 nameLabel.Size = UDim2.new(1, -55, 0, 18)
 nameLabel.Position = UDim2.new(0, 52, 0, 6)
 nameLabel.BackgroundTransparency = 1
-nameLabel.Text = "ASSIST [I / T]: SHADOW STRIKER"
+nameLabel.Text = "ASSIST [T / L1]: SHADOW STRIKER"
 nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 nameLabel.Font = Enum.Font.GothamBold
 nameLabel.TextSize = 9.5
@@ -228,8 +228,8 @@ end
 -- =========================================================
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
-	-- 1. Assist Summon with [I] or [T] or Gamepad ButtonL1
-	if input.KeyCode == Enum.KeyCode.I or input.KeyCode == Enum.KeyCode.T or input.KeyCode == Enum.KeyCode.ButtonL1 then
+	-- 1. Assist Summon with [T] or Gamepad ButtonL1 (Note: [I] is reserved for Chakra/Ult)
+	if input.KeyCode == Enum.KeyCode.T or input.KeyCode == Enum.KeyCode.ButtonL1 then
 		callAssistStriker()
 	-- 2. Leader Swap with [U] or [G] or Gamepad ButtonL2
 	elseif input.KeyCode == Enum.KeyCode.U or input.KeyCode == Enum.KeyCode.G or input.KeyCode == Enum.KeyCode.ButtonL2 then
@@ -250,4 +250,4 @@ if evMobileSwap then
 	end)
 end
 
-print("[StormAssistController] ✅ Loaded — Assist [I] / [T] / Gamepad (L1), Leader Swap [U] / [G] / Gamepad (L2).")
+print("[StormAssistController] ✅ Loaded — Assist [T] / Gamepad (L1), Leader Swap [U] / [G] / Gamepad (L2).")

@@ -12,8 +12,10 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+local StormCharacterMorphServer = require(ServerScriptService:WaitForChild("StormCharacterMorphServer")) :: any
 
 -- Positions
 local LOBBY_CENTER = Vector3.new(0, 50, -160)
@@ -35,6 +37,158 @@ end
 local evCharSelect   = ensureRemote("CharacterSelectEvent")
 local evOpenRoster   = ensureRemote("OpenRosterEvent")
 local evTeleportGate = ensureRemote("TeleportGateEvent")
+
+-- Forward declaration
+local applyCharacter: (player: Player, charId: string) -> ()
+
+-- =========================================================
+-- CREATE 3D ANIME DISPLAY MANNEQUIN
+-- =========================================================
+local function createAnimeMannequin(parent: Instance, pos: Vector3, charId: string)
+	local charData = CombatConfig.Characters[charId]
+	if not charData then return end
+
+	-- Pedestal
+	local ped = Instance.new("Part")
+	ped.Name = "Pedestal_" .. charId
+	ped.Shape = Enum.PartType.Cylinder
+	ped.Size = Vector3.new(0.8, 5, 5)
+	ped.CFrame = CFrame.new(pos + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	ped.Color = charData.PrimaryColor
+	ped.Material = Enum.Material.Neon
+	ped.Transparency = 0.35
+	ped.Anchored = true
+	ped.CanCollide = true
+	ped.Parent = parent
+
+	-- Mannequin Model
+	local man = Instance.new("Model")
+	man.Name = "Mannequin_" .. charId
+
+	local root = Instance.new("Part")
+	root.Name = "HumanoidRootPart"
+	root.Size = Vector3.new(2, 2, 1)
+	root.CFrame = CFrame.new(pos + Vector3.new(0, 3.2, 0)) * CFrame.Angles(0, math.rad(180), 0)
+	root.Transparency = 1
+	root.Anchored = true
+	root.CanCollide = false
+	root.Parent = man
+	man.PrimaryPart = root
+
+	local upperTorso = Instance.new("Part")
+	upperTorso.Name = "UpperTorso"
+	upperTorso.Size = Vector3.new(1.8, 1.4, 1.0)
+	upperTorso.CFrame = root.CFrame * CFrame.new(0, 0.4, 0)
+	upperTorso.Color = Color3.fromRGB(240, 210, 180)
+	upperTorso.Anchored = true
+	upperTorso.CanCollide = false
+	upperTorso.Parent = man
+
+	local lowerTorso = Instance.new("Part")
+	lowerTorso.Name = "LowerTorso"
+	lowerTorso.Size = Vector3.new(1.7, 0.8, 0.9)
+	lowerTorso.CFrame = root.CFrame * CFrame.new(0, -0.6, 0)
+	lowerTorso.Color = Color3.fromRGB(30, 35, 45)
+	lowerTorso.Anchored = true
+	lowerTorso.CanCollide = false
+	lowerTorso.Parent = man
+
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Size = Vector3.new(1.2, 1.2, 1.2)
+	head.CFrame = root.CFrame * CFrame.new(0, 1.6, 0)
+	head.Color = Color3.fromRGB(240, 210, 180)
+	head.Anchored = true
+	head.CanCollide = false
+	head.Parent = man
+
+	local leftArm = Instance.new("Part")
+	leftArm.Name = "LeftUpperArm"
+	leftArm.Size = Vector3.new(0.8, 1.4, 0.8)
+	leftArm.CFrame = root.CFrame * CFrame.new(-1.3, 0.3, 0)
+	leftArm.Color = Color3.fromRGB(240, 210, 180)
+	leftArm.Anchored = true
+	leftArm.CanCollide = false
+	leftArm.Parent = man
+
+	local rightArm = Instance.new("Part")
+	rightArm.Name = "RightUpperArm"
+	rightArm.Size = Vector3.new(0.8, 1.4, 0.8)
+	rightArm.CFrame = root.CFrame * CFrame.new(1.3, 0.3, 0)
+	rightArm.Color = Color3.fromRGB(240, 210, 180)
+	rightArm.Anchored = true
+	rightArm.CanCollide = false
+	rightArm.Parent = man
+
+	local leftLeg = Instance.new("Part")
+	leftLeg.Name = "LeftLowerLeg"
+	leftLeg.Size = Vector3.new(0.8, 1.5, 0.8)
+	leftLeg.CFrame = root.CFrame * CFrame.new(-0.5, -1.5, 0)
+	leftLeg.Color = Color3.fromRGB(35, 40, 50)
+	leftLeg.Anchored = true
+	leftLeg.CanCollide = false
+	leftLeg.Parent = man
+
+	local rightLeg = Instance.new("Part")
+	rightLeg.Name = "RightLowerLeg"
+	rightLeg.Size = Vector3.new(0.8, 1.5, 0.8)
+	rightLeg.CFrame = root.CFrame * CFrame.new(0.5, -1.5, 0)
+	rightLeg.Color = Color3.fromRGB(35, 40, 50)
+	rightLeg.Anchored = true
+	rightLeg.CanCollide = false
+	rightLeg.Parent = man
+
+	local hum = Instance.new("Humanoid")
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	hum.Parent = man
+
+	-- Morph into authentic 3D Anime Fighter
+	pcall(function()
+		StormCharacterMorphServer.applyMorph(man, charId)
+	end)
+
+	-- Overhead Billboard
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.new(0, 180, 0, 50)
+	bb.StudsOffset = Vector3.new(0, 2.8, 0)
+	bb.AlwaysOnTop = true
+	bb.Parent = head
+
+	local nameLbl = Instance.new("TextLabel")
+	nameLbl.Size = UDim2.fromScale(1, 0.5)
+	nameLbl.BackgroundTransparency = 1
+	nameLbl.Text = string.format("%s %s", charData.Icon, charData.Name)
+	nameLbl.TextColor3 = charData.PrimaryColor
+	nameLbl.Font = Enum.Font.GothamBlack
+	nameLbl.TextScaled = true
+	nameLbl.Parent = bb
+
+	local subLbl = Instance.new("TextLabel")
+	subLbl.Size = UDim2.fromScale(1, 0.45)
+	subLbl.Position = UDim2.new(0, 0, 0.5, 0)
+	subLbl.BackgroundTransparency = 1
+	subLbl.Text = string.format("%s • %s", charData.Title, charData.Archetype)
+	subLbl.TextColor3 = Color3.fromRGB(220, 220, 230)
+	subLbl.Font = Enum.Font.GothamBold
+	subLbl.TextScaled = true
+	subLbl.Parent = bb
+
+	-- Instant Select Proximity Prompt
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Pilih " .. charData.Name
+	prompt.ObjectText = "⚡ ROSTER"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 10
+	prompt.Parent = root
+
+	prompt.Triggered:Connect(function(player)
+		if applyCharacter then
+			applyCharacter(player, charId)
+		end
+	end)
+
+	man.Parent = parent
+end
 
 -- =========================================================
 -- BUILD PROCEDURAL SHINOBI LOBBY
@@ -210,14 +364,27 @@ local function buildLobby()
 		end
 	end)
 
+	-- 7. 5 3D Anime Character Mannequins standing in the Shinobi Lobby Courtyard
+	local rosterList = {
+		{ Id = "Naruto", Pos = LOBBY_CENTER + Vector3.new(0, 0, -22) },
+		{ Id = "Sasuke", Pos = LOBBY_CENTER + Vector3.new(-12, 0, -18) },
+		{ Id = "Luffy",  Pos = LOBBY_CENTER + Vector3.new(12, 0, -18) },
+		{ Id = "Zoro",   Pos = LOBBY_CENTER + Vector3.new(-22, 0, -10) },
+		{ Id = "Killua", Pos = LOBBY_CENTER + Vector3.new(22, 0, -10) },
+	}
+
+	for _, entry in ipairs(rosterList) do
+		createAnimeMannequin(lobbyModel, entry.Pos, entry.Id)
+	end
+
 	lobbyModel.Parent = Workspace
-	print(">> [LobbyManager] Shinobi Lobby Courtyard & Gateways built successfully! <<")
+	print(">> [LobbyManager] Shinobi Lobby Courtyard, Anime Mannequins & Gateways built successfully! <<")
 end
 
 -- =========================================================
 -- CHARACTER SELECTION & APPLICATION
 -- =========================================================
-local function applyCharacter(player: Player, charId: string)
+applyCharacter = function(player: Player, charId: string)
 	local charData = CombatConfig.Characters[charId]
 	if not charData then return end
 
@@ -259,9 +426,14 @@ local function applyCharacter(player: Player, charId: string)
 		end
 	end
 
-	-- 4. Replicate to all clients
+	-- 4. Apply 3D Anime Character Visual Morph (Naruto / Sasuke / Luffy / Zoro / Killua)
+	pcall(function()
+		StormCharacterMorphServer.applyMorph(char, charId)
+	end)
+
+	-- 5. Replicate to all clients
 	evCharSelect:FireAllClients(player, charId, charData)
-	print(string.format(">> [Roster] %s chose: %s [%s]! <<", player.Name, charData.Name, charData.Archetype))
+	print(string.format(">> [Roster] %s chose & morphed into: %s [%s]! <<", player.Name, charData.Name, charData.Archetype))
 end
 
 evCharSelect.OnServerEvent:Connect(function(player: Player, charId: string)

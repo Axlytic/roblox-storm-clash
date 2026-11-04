@@ -187,8 +187,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	local now = os.clock()
 
-	-- 1. Direct Ninja Dash with [L] Key or Gamepad ButtonB (Circle / B)
-	if input.KeyCode == Enum.KeyCode.L or input.KeyCode == Enum.KeyCode.ButtonB then
+	-- 1. Direct Ninja Dash with [LeftShift], [Q], or Gamepad ButtonB (Circle / B)
+	if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.Q or input.KeyCode == Enum.KeyCode.ButtonB then
 		executeNinjaDash()
 
 	-- 2. Sidestep detection (Double tap A or D)
@@ -251,4 +251,4 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
-print("[StormMovementController] ✅ Loaded — Movement [WASD], Sidestep [A/D x2], Ninja Dash [L] / [Space x2] / Gamepad (B).")
+print("[StormMovementController] ✅ Loaded — Movement [WASD], Sidestep [A/D x2], Ninja Dash [Shift/Q] / [Space x2] / Gamepad (B).")

@@ -1306,12 +1306,36 @@ end
 LocalPlayer.CharacterAdded:Connect(monitorCharacter)
 
 -- =========================================================
--- INPUT LISTENERS (Key [O] for Ultimate, Key [C] for Chakra)
+-- INPUT LISTENERS: [I] Mengisi Energi / Hold untuk Ultimate
 -- =========================================================
+local isHoldingI = false
+local iPressStartTime = 0
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 
-	if input.KeyCode == Enum.KeyCode.O then
+	-- Primary Key: [I] (Naruto Storm: Energy Charge & Hold for Ultimate)
+	if input.KeyCode == Enum.KeyCode.I then
+		isHoldingI = true
+		iPressStartTime = os.clock()
+		startChakraCharge()
+
+		-- Hold watcher: If held >= 0.60s and Chakra is full (100%), unleash Ultimate!
+		task.spawn(function()
+			while isHoldingI do
+				task.wait(0.05)
+				local heldDuration = os.clock() - iPressStartTime
+				if isHoldingI and chakra >= 100 and heldDuration >= 0.60 and not isExecutingUltimate then
+					print(">> [StormUltimate] [I] Key Hold threshold reached with 100% Chakra! Unleashing Ultimate! <<")
+					stopChakraCharge()
+					executeUltimateJutsu()
+					break
+				end
+			end
+		end)
+
+	-- Secondary/Fallback keys
+	elseif input.KeyCode == Enum.KeyCode.O then
 		executeUltimateJutsu()
 	elseif input.KeyCode == Enum.KeyCode.C then
 		startChakraCharge()
@@ -1319,7 +1343,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 UserInputService.InputEnded:Connect(function(input, processed)
-	if input.KeyCode == Enum.KeyCode.C then
+	if input.KeyCode == Enum.KeyCode.I then
+		isHoldingI = false
+		stopChakraCharge()
+	elseif input.KeyCode == Enum.KeyCode.C then
 		stopChakraCharge()
 	end
 end)
@@ -1334,7 +1361,7 @@ evMobileChakra.Event:Connect(function(isDown: boolean)
 	end
 end)
 
-print("[StormUltimateController] ✅ Ultimate Secret Technique & Tekken Awakening active.")
+print("[StormUltimateController] ✅ Ultimate Secret Technique & Tekken Awakening active — [I] Charge / Hold for Ultimate.")
 ]=====]
     installScript('StormUltimateController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
@@ -1374,6 +1401,8 @@ local function getOrMakeBindable(name: string): BindableEvent
 end
 
 local evMobileAttack   = getOrMakeBindable("MobileAttackAction")
+local evMobileLow      = getOrMakeBindable("MobileLowAttackAction")
+local evMobileRanged   = getOrMakeBindable("MobileRangedAction")
 local evMobileGuard    = getOrMakeBindable("MobileGuardAction")
 local evMobileDash     = getOrMakeBindable("MobileDashAction")
 local evMobileAssist   = getOrMakeBindable("MobileAssistAction")
@@ -1467,20 +1496,39 @@ local function createActionButton(
 end
 
 -- =========================================================
--- CREATE COMBAT BUTTONS
 -- =========================================================
--- 1. ATTACK [J] (Big Central Action Button)
+-- CREATE COMBAT BUTTONS (Naruto Storm Mobile Layout)
+-- =========================================================
+-- 1. PUNCH [J] (Primary Combo Strike)
 local btnAttack = createActionButton(
-	"BtnAttack", "⚔️", "ATTACK [J]", Color3.fromRGB(0, 240, 255),
+	"BtnAttack", "⚔️", "PUNCH [J]", Color3.fromRGB(0, 240, 255),
 	UDim2.new(0.65, 0, 0.65, 0), UDim2.new(0, 78, 0, 78)
 )
 btnAttack.MouseButton1Click:Connect(function()
-	evMobileAttack:Fire()
+	evMobileAttack:Fire(false)
 end)
 
--- 2. GUARD [K] (Right side button with hold support)
+-- 2. LOW SWEEP [K] (Serangan Bawah)
+local btnLow = createActionButton(
+	"BtnLow", "⚡", "LOW [K]", Color3.fromRGB(255, 180, 20),
+	UDim2.new(0.88, 0, 0.65, 0), UDim2.new(0, 56, 0, 56)
+)
+btnLow.MouseButton1Click:Connect(function()
+	evMobileLow:Fire()
+end)
+
+-- 3. RANGED JUTSU [L] (Serangan Jarak Jauh)
+local btnRanged = createActionButton(
+	"BtnRanged", "🌀", "RANGED [L]", Color3.fromRGB(80, 220, 255),
+	UDim2.new(0.65, 0, 0.32, 0), UDim2.new(0, 56, 0, 56)
+)
+btnRanged.MouseButton1Click:Connect(function()
+	evMobileRanged:Fire()
+end)
+
+-- 4. GUARD [F] (Hold to Block)
 local btnGuard = createActionButton(
-	"BtnGuard", "🛡️", "GUARD [K]", Color3.fromRGB(255, 215, 0),
+	"BtnGuard", "🛡️", "GUARD [F]", Color3.fromRGB(255, 215, 0),
 	UDim2.new(0.88, 0, 0.32, 0), UDim2.new(0, 56, 0, 56)
 )
 btnGuard.InputBegan:Connect(function(input)
@@ -1494,56 +1542,55 @@ btnGuard.InputEnded:Connect(function(input)
 	end
 end)
 
--- 3. DASH [L] (Left bottom button)
+-- 5. DASH [SHIFT] (Homing Ninja Dash)
 local btnDash = createActionButton(
-	"BtnDash", "💨", "DASH [L]", Color3.fromRGB(0, 255, 170),
-	UDim2.new(0.28, 0, 0.82, 0), UDim2.new(0, 58, 0, 58)
+	"BtnDash", "💨", "DASH [SHIFT]", Color3.fromRGB(0, 255, 170),
+	UDim2.new(0.38, 0, 0.82, 0), UDim2.new(0, 56, 0, 56)
 )
 btnDash.MouseButton1Click:Connect(function()
 	evMobileDash:Fire()
 end)
 
--- 4. ASSIST [I] (Top mid button)
-local btnAssist = createActionButton(
-	"BtnAssist", "⚡", "ASSIST [I]", Color3.fromRGB(255, 100, 50),
-	UDim2.new(0.48, 0, 0.22, 0), UDim2.new(0, 52, 0, 52)
-)
-btnAssist.MouseButton1Click:Connect(function()
-	evMobileAssist:Fire()
-end)
-
--- 5. LEADER SWAP [U] (Left button)
-local btnSwap = createActionButton(
-	"BtnSwap", "🔄", "SWAP [U]", Color3.fromRGB(200, 100, 255),
-	UDim2.new(0.18, 0, 0.40, 0), UDim2.new(0, 48, 0, 48)
-)
-btnSwap.MouseButton1Click:Connect(function()
-	evMobileSwap:Fire()
-end)
-
--- 6. ULTIMATE JUTSU [O] (Top-right special finisher button)
-local btnUltimate = createActionButton(
-	"BtnUltimate", "🔥", "ULT [O]", Color3.fromRGB(255, 60, 40),
-	UDim2.new(0.85, 0, 0.12, 0), UDim2.new(0, 56, 0, 56)
-)
-btnUltimate.MouseButton1Click:Connect(function()
-	evMobileUltimate:Fire()
-end)
-
--- 7. CHAKRA CHARGE [C] (Far left charge button)
+-- 6. CHAKRA ENERGY & ULTIMATE [I] (Hold for Ultimate!)
 local btnChakra = createActionButton(
-	"BtnChakra", "🌀", "CHAKRA [C]", Color3.fromRGB(0, 190, 255),
-	UDim2.new(0.08, 0, 0.65, 0), UDim2.new(0, 52, 0, 52)
+	"BtnChakra", "🔥", "CHAKRA/ULT [I]", Color3.fromRGB(255, 80, 40),
+	UDim2.new(0.12, 0, 0.65, 0), UDim2.new(0, 58, 0, 58)
 )
+local isMobileHoldingChakra = false
+local mobileChakraStart = 0
 btnChakra.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		isMobileHoldingChakra = true
+		mobileChakraStart = os.clock()
 		evMobileChakra:Fire(true)
+		task.spawn(function()
+			while isMobileHoldingChakra do
+				task.wait(0.05)
+				local held = os.clock() - mobileChakraStart
+				local curChakra = LocalPlayer:GetAttribute("ChakraValue") or 0
+				if isMobileHoldingChakra and curChakra >= 100 and held >= 0.60 then
+					evMobileChakra:Fire(false)
+					evMobileUltimate:Fire()
+					break
+				end
+			end
+		end)
 	end
 end)
 btnChakra.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		isMobileHoldingChakra = false
 		evMobileChakra:Fire(false)
 	end
+end)
+
+-- 7. LEADER SWAP [U]
+local btnSwap = createActionButton(
+	"BtnSwap", "🔄", "SWAP [U]", Color3.fromRGB(200, 100, 255),
+	UDim2.new(0.20, 0, 0.38, 0), UDim2.new(0, 48, 0, 48)
+)
+btnSwap.MouseButton1Click:Connect(function()
+	evMobileSwap:Fire()
 end)
 
 -- =========================================================
@@ -1828,6 +1875,17 @@ previewStroke.Color = Color3.fromRGB(40, 50, 70)
 previewStroke.Thickness = 1.5
 previewStroke.Parent = previewPanel
 
+-- Scroll container for preview details
+local previewScroll = Instance.new("ScrollingFrame")
+previewScroll.Name = "PreviewScroll"
+previewScroll.Size = UDim2.new(1, 0, 1, -54)
+previewScroll.Position = UDim2.new(0, 0, 0, 0)
+previewScroll.BackgroundTransparency = 1
+previewScroll.ScrollBarThickness = 4
+previewScroll.ScrollBarImageColor3 = Color3.fromRGB(0, 240, 255)
+previewScroll.CanvasSize = UDim2.new(0, 0, 0, 360)
+previewScroll.Parent = previewPanel
+
 -- Top Info: Large Icon + Name + Title
 local pIcon = Instance.new("TextLabel")
 pIcon.Name = "PreviewIcon"
@@ -1837,7 +1895,7 @@ pIcon.BackgroundColor3 = Color3.fromRGB(20, 26, 38)
 pIcon.Font = Enum.Font.GothamBold
 pIcon.TextSize = 36
 pIcon.Text = "🦊"
-pIcon.Parent = previewPanel
+pIcon.Parent = previewScroll
 Instance.new("UICorner", pIcon).CornerRadius = UDim.new(0, 10)
 local pIconStroke = Instance.new("UIStroke")
 pIconStroke.Color = Color3.fromRGB(255, 130, 20)
@@ -1854,7 +1912,7 @@ pName.TextSize = 20
 pName.TextColor3 = Color3.fromRGB(255, 255, 255)
 pName.TextXAlignment = Enum.TextXAlignment.Left
 pName.Text = "NARUTO UZUMAKI"
-pName.Parent = previewPanel
+pName.Parent = previewScroll
 
 local pTitle = Instance.new("TextLabel")
 pTitle.Name = "PreviewTitle"
@@ -1866,7 +1924,7 @@ pTitle.TextSize = 12
 pTitle.TextColor3 = Color3.fromRGB(0, 240, 255)
 pTitle.TextXAlignment = Enum.TextXAlignment.Left
 pTitle.Text = "Hero of the Hidden Leaf • RUSHDOWN"
-pTitle.Parent = previewPanel
+pTitle.Parent = previewScroll
 
 local pQuote = Instance.new("TextLabel")
 pQuote.Name = "PreviewQuote"
@@ -1874,12 +1932,13 @@ pQuote.Size = UDim2.new(1, -32, 0, 32)
 pQuote.Position = UDim2.new(0, 16, 0, 92)
 pQuote.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
 pQuote.BackgroundTransparency = 0.5
-pQuote.Font = Enum.Font.GothamItalic
+pQuote.Font = Enum.Font.GothamMedium
 pQuote.TextSize = 12
+pQuote.RichText = true
 pQuote.TextColor3 = Color3.fromRGB(220, 220, 230)
 pQuote.TextWrapped = true
 pQuote.Text = '"I never go back on my word! That\'s my ninja way!"'
-pQuote.Parent = previewPanel
+pQuote.Parent = previewScroll
 Instance.new("UICorner", pQuote).CornerRadius = UDim.new(0, 6)
 
 -- STATS SECTION (4 Horizontal Bars)
@@ -1888,7 +1947,7 @@ statsContainer.Name = "StatsContainer"
 statsContainer.Size = UDim2.new(1, -32, 0, 110)
 statsContainer.Position = UDim2.new(0, 16, 0, 132)
 statsContainer.BackgroundTransparency = 1
-statsContainer.Parent = previewPanel
+statsContainer.Parent = previewScroll
 
 local statFills: { [string]: Frame } = {}
 local statLabels: { [string]: TextLabel } = {}
@@ -1953,7 +2012,7 @@ skillsBox.Size = UDim2.new(1, -32, 0, 84)
 skillsBox.Position = UDim2.new(0, 16, 0, 248)
 skillsBox.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
 skillsBox.BackgroundTransparency = 0.4
-skillsBox.Parent = previewPanel
+skillsBox.Parent = previewScroll
 Instance.new("UICorner", skillsBox).CornerRadius = UDim.new(0, 8)
 
 local sListLayout = Instance.new("UIListLayout")
@@ -1978,14 +2037,14 @@ local sweepSkillLbl = createSkillRow("⚡ Sweep", "Uzumaki Low Sweep")
 local assistSkillLbl = createSkillRow("👥 Assist", "Shadow Clone Rasengan")
 local ultSkillLbl  = createSkillRow("💥 Ultimate", "Wind Style: Rasenshuriken")
 
--- BOTTOM ACTION BUTTON
+-- BOTTOM ACTION BUTTON (Docked at base of PreviewPanel)
 local selectBtn = Instance.new("TextButton")
 selectBtn.Name = "SelectFighterButton"
-selectBtn.Size = UDim2.new(1, -32, 0, 44)
-selectBtn.Position = UDim2.new(0, 16, 1, -56)
+selectBtn.Size = UDim2.new(1, -32, 0, 42)
+selectBtn.Position = UDim2.new(0, 16, 1, -48)
 selectBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 140)
 selectBtn.Font = Enum.Font.GothamBlack
-selectBtn.TextSize = 15
+selectBtn.TextSize = 14
 selectBtn.TextColor3 = Color3.fromRGB(12, 18, 24)
 selectBtn.Text = "⚔️ PILIH KARAKTER SHINOBI (SELECT)"
 selectBtn.Parent = previewPanel

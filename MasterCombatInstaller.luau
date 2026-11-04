@@ -50,6 +50,22 @@ do
 local CombatConfig = {}
 
 -- =========================================================
+-- 0. NARUTO STORM KEYBOARD & CONTROLLER MAPPING
+-- =========================================================
+CombatConfig.Controls = {
+	MoveForward   = Enum.KeyCode.W,         -- Maju
+	MoveLeft      = Enum.KeyCode.A,         -- Kiri
+	MoveBackward  = Enum.KeyCode.S,         -- Mundur
+	MoveRight     = Enum.KeyCode.D,         -- Kanan
+	PunchMelee    = Enum.KeyCode.J,         -- Pukulan Biasa (4-Hit Attack Combo)
+	LowSweep      = Enum.KeyCode.K,         -- Serangan Bawah (Low Sweep Attack)
+	RangedJutsu   = Enum.KeyCode.L,         -- Serangan Jarak Jauh (Anime Ranged Projectile)
+	ChakraEnergy  = Enum.KeyCode.I,         -- Mengisi Energi / Hold untuk Ultimate Ougi
+	GuardDefense  = Enum.KeyCode.F,         -- Pertahanan / Tekken High & Low Guard
+	NinjaDash     = Enum.KeyCode.LeftShift, -- Ninja Dash (also Q / Double-tap Space)
+}
+
+-- =========================================================
 -- 1. CAMERA SETTINGS (Naruto Storm 4 Dual-Target Framing)
 -- =========================================================
 CombatConfig.Camera = {
@@ -284,6 +300,17 @@ CombatConfig.Characters = {
 		Stats = { Speed = 90, Power = 85, Defense = 75, Jutsu = 88 },
 		M1Name = "Shinobi Taijutsu Barrage",
 		SweepName = "Uzumaki Low Sweep",
+		RangedSkill = {
+			Name = "Wind Style: Rasen-Shuriken",
+			Damage = 20,
+			Speed = 110,
+			Cooldown = 1.6,
+			Lifetime = 2.2,
+			Color = Color3.fromRGB(0, 235, 255),
+			Shape = "Disc",
+			Sound = "rbxasset://sounds/action_whoosh.mp3",
+			Icon = "🌀",
+		},
 		AssistName = "Shadow Clone Rasengan",
 		UltimateName = "Wind Style: Rasenshuriken Blast",
 		Quote = "I never go back on my word! That's my ninja way!",
@@ -303,6 +330,17 @@ CombatConfig.Characters = {
 		Stats = { Speed = 85, Power = 88, Defense = 80, Jutsu = 96 },
 		M1Name = "Kusanagi Sword Flurry",
 		SweepName = "Chidori Stream Sweep",
+		RangedSkill = {
+			Name = "Fire Style: Fireball Jutsu (Goukakyuu)",
+			Damage = 22,
+			Speed = 95,
+			Cooldown = 1.8,
+			Lifetime = 2.5,
+			Color = Color3.fromRGB(255, 75, 20),
+			Shape = "Ball",
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Icon = "🔥",
+		},
 		AssistName = "Fireball Jutsu / Flame Bullet",
 		UltimateName = "Kirin: Heavenly Lightning Strike",
 		Quote = "My dream doesn't exist in the future. It lies in the past.",
@@ -322,6 +360,17 @@ CombatConfig.Characters = {
 		Stats = { Speed = 78, Power = 95, Defense = 98, Jutsu = 70 },
 		M1Name = "Gum-Gum Pistol Combo",
 		SweepName = "Gum-Gum Whip Sweep",
+		RangedSkill = {
+			Name = "Gum-Gum Pistol (Gomu Gomu no Pistol)",
+			Damage = 18,
+			Speed = 135,
+			Cooldown = 1.4,
+			Lifetime = 1.2,
+			Color = Color3.fromRGB(245, 185, 140),
+			Shape = "Fist",
+			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
+			Icon = "👊",
+		},
 		AssistName = "Gum-Gum Bazooka Striker",
 		UltimateName = "Gear Fourth: King Kong Gun",
 		Quote = "I'm gonna be King of the Pirates!",
@@ -341,6 +390,17 @@ CombatConfig.Characters = {
 		Stats = { Speed = 82, Power = 94, Defense = 88, Jutsu = 80 },
 		M1Name = "Three-Sword Style Onigiri",
 		SweepName = "Dragon Twister Sweep",
+		RangedSkill = {
+			Name = "36 Pound Phoenix (Flying Slash)",
+			Damage = 21,
+			Speed = 115,
+			Cooldown = 1.7,
+			Lifetime = 2.0,
+			Color = Color3.fromRGB(40, 255, 110),
+			Shape = "SlashBlade",
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Icon = "⚔️",
+		},
 		AssistName = "1080 Pound Ho Cannon",
 		UltimateName = "Billion-Fold World Trichiliocosm",
 		Quote = "Scars on the back are a swordsman's shame.",
@@ -360,6 +420,17 @@ CombatConfig.Characters = {
 		Stats = { Speed = 99, Power = 80, Defense = 70, Jutsu = 92 },
 		M1Name = "Assassin Claws & Palm Strike",
 		SweepName = "Rhythm Echo Sweep",
+		RangedSkill = {
+			Name = "Thunderbolt: Narukami Strike",
+			Damage = 20,
+			Speed = 145,
+			Cooldown = 1.5,
+			Lifetime = 1.4,
+			Color = Color3.fromRGB(150, 230, 255),
+			Shape = "Bolt",
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Icon = "⚡",
+		},
 		AssistName = "Thunderbolt Striker",
 		UltimateName = "Godspeed: Whirlwind Execution",
 		Quote = "If I don't defeat you right now... I can't protect anyone!",
@@ -391,6 +462,8 @@ local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
+local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+
 -- =========================================================
 -- 1. ENSURE COMBAT REMOTES
 -- =========================================================
@@ -418,6 +491,7 @@ local evParry      = ensureRemote("ParryEvent")
 local evAttack     = ensureRemote("AttackEvent")
 local evAssist     = ensureRemote("AssistEvent")
 local evLeaderSwap = ensureRemote("LeaderSwapEvent")
+local evRanged     = ensureRemote("RangedAttackEvent")
 
 -- =========================================================
 -- 2. PLAYER COMBAT STATE TRACKING
@@ -742,6 +816,156 @@ evUltimate.OnServerEvent:Connect(function(attacker: Player, targetModel: Model)
 	spawnFloatingText(tRoot.Position, string.format("⚡ ULTIMATE FINISH -%d!", ultDmg), Color3.fromRGB(255, 220, 50))
 	local hitDir = (tRoot.Position - aRoot.Position).Unit
 	tRoot.AssemblyLinearVelocity = hitDir * 75 + Vector3.new(0, 20, 0)
+end)
+
+-- =========================================================
+-- 8. AUTHENTIC ANIME RANGED ATTACK HANDLER ([L] Key)
+-- =========================================================
+evRanged.OnServerEvent:Connect(function(attacker: Player, aimDir: Vector3?, requestedCharId: string?)
+	local char = attacker.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or hum.Health <= 0 then return end
+
+	local charId = tostring(attacker:GetAttribute("SelectedCharacter") or requestedCharId or "Naruto")
+	local charData = CombatConfig.Characters[charId] or CombatConfig.Characters["Naruto"]
+	local skill = charData.RangedSkill or {
+		Name = "Chakra Projectile",
+		Damage = 18,
+		Speed = 110,
+		Lifetime = 2.0,
+		Color = Color3.fromRGB(0, 230, 255),
+	}
+
+	local finalAimDir = if typeof(aimDir) == "Vector3" and aimDir.Magnitude > 0.1 then aimDir.Unit else root.CFrame.LookVector
+	local startPos = root.Position + Vector3.new(0, 1.2, 0) + (finalAimDir * 2.5)
+
+	-- 1. Create Anime Themed Projectile Model / Part
+	local proj = Instance.new("Part")
+	proj.Name = "AnimeProjectile_" .. charId
+	proj.CanCollide = false
+	proj.Anchored = false
+	proj.Material = Enum.Material.Neon
+	proj.Color = skill.Color or Color3.fromRGB(0, 230, 255)
+
+	-- Distinct 3D mesh shaping per anime character:
+	if charId == "Naruto" then
+		-- Rasen-Shuriken: Aerodynamic Disc
+		proj.Shape = Enum.PartType.Cylinder
+		proj.Size = Vector3.new(0.4, 3.2, 3.2)
+		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir) * CFrame.Angles(0, 0, math.rad(90))
+	elseif charId == "Sasuke" then
+		-- Goukakyuu Fireball: Giant Blazing Sphere
+		proj.Shape = Enum.PartType.Ball
+		proj.Size = Vector3.new(3.0, 3.0, 3.0)
+		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
+	elseif charId == "Luffy" then
+		-- Gum-Gum Pistol: Elastic Fist Cylinder
+		proj.Shape = Enum.PartType.Cylinder
+		proj.Size = Vector3.new(3.2, 1.6, 1.6)
+		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir) * CFrame.Angles(0, math.rad(90), 0)
+	elseif charId == "Zoro" then
+		-- 36 Pound Phoenix: Vertical Flying Wind Blade
+		proj.Shape = Enum.PartType.Block
+		proj.Size = Vector3.new(0.3, 3.8, 2.4)
+		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
+	elseif charId == "Killua" then
+		-- Thunderbolt Narukami: Piercing Lightning Wedge
+		proj.Shape = Enum.PartType.Block
+		proj.Size = Vector3.new(0.8, 0.8, 3.2)
+		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
+	else
+		proj.Shape = Enum.PartType.Ball
+		proj.Size = Vector3.new(2, 2, 2)
+		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
+	end
+
+	-- 2. Anime Particle Emitter
+	local att = Instance.new("Attachment", proj)
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	pe.Color = ColorSequence.new(skill.Color or Color3.fromRGB(0, 255, 255), Color3.fromRGB(255, 255, 255))
+	pe.Size = NumberSequence.new(1.4, 0)
+	pe.Rate = 50
+	pe.Speed = NumberRange.new(3, 8)
+	pe.Lifetime = NumberRange.new(0.25, 0.45)
+	pe.Parent = att
+
+	-- 3. High-Speed Propulsion
+	local bv = Instance.new("BodyVelocity")
+	bv.Velocity = finalAimDir * (skill.Speed or 110)
+	bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+	bv.Parent = proj
+
+	proj.Parent = Workspace
+	Debris:AddItem(proj, skill.Lifetime or 2.2)
+
+	-- 4. Authoritative Collision & Damage
+	local hitProcessed = false
+	proj.Touched:Connect(function(hit)
+		if hitProcessed then return end
+		local targetModel = hit:FindFirstAncestorOfClass("Model")
+		if not targetModel or targetModel == char or targetModel.Name:find("AssistStriker") then
+			return
+		end
+
+		local tHum = targetModel:FindFirstChildOfClass("Humanoid")
+		local tRoot = targetModel:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not tHum or not tRoot or tHum.Health <= 0 then
+			return
+		end
+
+		hitProcessed = true
+
+		-- Guard Check for Defender
+		local targetPlayer = Players:GetPlayerFromCharacter(targetModel)
+		local targetState = targetPlayer and playerCombatStates[targetPlayer.UserId]
+		local isGuarding = false
+		if targetState then
+			isGuarding = targetState.isBlocking and targetState.blockType == "High"
+		elseif targetModel:GetAttribute("DummyGuardMode") == "High" then
+			isGuarding = true
+		end
+
+		local isAwakening = attacker:GetAttribute("IsAwakening") == true
+		local baseDmg = skill.Damage or 20
+		local finalDmg = if isAwakening then math.floor(baseDmg * 1.25) else baseDmg
+
+		if isGuarding then
+			-- Projectile Guarded! Reduced chip damage
+			local chipDmg = math.max(2, math.floor(finalDmg * 0.25))
+			tHum:TakeDamage(chipDmg)
+			spawnFloatingText(tRoot.Position, string.format("🛡️ BLOCKED (-%d)", chipDmg), Color3.fromRGB(0, 220, 255))
+			tRoot.AssemblyLinearVelocity = finalAimDir * 12
+		else
+			-- Clean Anime Jutsu Hit!
+			tHum:TakeDamage(finalDmg)
+			local hitColor = skill.Color or Color3.fromRGB(255, 120, 30)
+			spawnFloatingText(tRoot.Position, string.format("💥 %s -%d!", skill.Name, finalDmg), hitColor)
+			tRoot.AssemblyLinearVelocity = finalAimDir * 42 + Vector3.new(0, 8, 0)
+		end
+
+		-- Hit burst particle
+		pcall(function()
+			local burst = Instance.new("Part")
+			burst.Shape = Enum.PartType.Ball
+			burst.Size = Vector3.new(3, 3, 3)
+			burst.Position = proj.Position
+			burst.Material = Enum.Material.Neon
+			burst.Color = skill.Color or Color3.fromRGB(255, 200, 50)
+			burst.Anchored = true
+			burst.CanCollide = false
+			burst.Parent = Workspace
+			TweenService:Create(burst, TweenInfo.new(0.22), {
+				Size = Vector3.new(5, 5, 5),
+				Transparency = 1,
+			}):Play()
+			Debris:AddItem(burst, 0.25)
+		end)
+
+		proj:Destroy()
+	end)
 end)
 
 print("[CombatServerMaster] ✅ Authoritative Combat Server Master fully initialized.")
@@ -1119,6 +1343,376 @@ print("[StormWeaponServer] ✅ Anime Katana & Slash Trail System active.")
 end
 
 -- ============================================================
+-- INSTALL: StormCharacterMorphServer (ModuleScript)
+-- ============================================================
+do
+    local src = [=====[--!strict
+-- StormCharacterMorphServer.luau
+-- SERVER MODULE: 3D Anime Character Visual Morph & Cosmetic Engine
+-- Transforms standard R15 characters into unmistakable anime fighters:
+--   • Naruto Uzumaki: Spiky Yellow Hair + Leaf Shinobi Headband + Orange Jumpsuit + Cheek Whiskers
+--   • Sasuke Uchiha: Spiky Dark Hair & Bangs + High Collar + Purple Shimenawa Rope + Sharingan Eyes
+--   • Monkey D. Luffy: 3D Straw Hat (Mugiwara) + Red Open Vest + Chest X-Scar + Blue Denim Shorts
+--   • Roronoa Zoro: Green Crop Hair + Arm Bandana + Emerald Haramaki + Santoryu (3 Hip Katanas)
+--   • Killua Zoldyck: Silver-White Wild Hair + Navy Turtle-Neck & White V-Neck + Electric Godspeed Aura
+
+local StormCharacterMorphServer = {}
+
+local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
+
+-- Helper: Create a welded accessory part
+local function addMorphPart(parent: Model, part0: BasePart, offset: CFrame, size: Vector3, color: Color3, material: Enum.Material, partType: Enum.PartType?): Part
+	local p = Instance.new("Part")
+	p.Name = "MorphPart"
+	p.Size = size
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.Shape = partType or Enum.PartType.Block
+	p.CanCollide = false
+	p.Massless = true
+	p.CastShadow = false
+
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = part0
+	w.Part1 = p
+	w.Parent = p
+
+	p.CFrame = part0.CFrame * offset
+	p.Parent = parent
+	return p
+end
+
+-- Helper: Create a wedge part
+local function addMorphWedge(parent: Model, part0: BasePart, offset: CFrame, size: Vector3, color: Color3): WedgePart
+	local wPart = Instance.new("WedgePart")
+	wPart.Name = "MorphWedge"
+	wPart.Size = size
+	wPart.Color = color
+	wPart.Material = Enum.Material.SmoothPlastic
+	wPart.CanCollide = false
+	wPart.Massless = true
+	wPart.CastShadow = false
+
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = part0
+	w.Part1 = wPart
+	w.Parent = wPart
+
+	wPart.CFrame = part0.CFrame * offset
+	wPart.Parent = parent
+	return wPart
+end
+
+-- =========================================================
+-- 1. NARUTO UZUMAKI VISUAL MORPH
+-- =========================================================
+local function morphNaruto(char: Model, morphModel: Model)
+	local head = char:FindFirstChild("Head") :: BasePart?
+	local upperTorso = (char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")) :: BasePart?
+	local lowerTorso = (char:FindFirstChild("LowerTorso") or upperTorso) :: BasePart?
+	local leftLeg = (char:FindFirstChild("LeftLowerLeg") or char:FindFirstChild("Left Leg")) :: BasePart?
+	local rightLeg = (char:FindFirstChild("RightLowerLeg") or char:FindFirstChild("Right Leg")) :: BasePart?
+	if not head or not upperTorso then return end
+
+	local hairColor = Color3.fromRGB(255, 215, 0) -- Blonde/Yellow
+	local headbandBlue = Color3.fromRGB(22, 42, 92)
+	local plateSilver = Color3.fromRGB(215, 220, 230)
+	local jumpsuitOrange = Color3.fromRGB(245, 115, 15)
+
+	-- 1. Spiky Anime Hair Cluster
+	-- Center Top Spike
+	addMorphWedge(morphModel, head, CFrame.new(0, 0.85, -0.1) * CFrame.Angles(math.rad(15), 0, 0), Vector3.new(0.6, 0.85, 0.7), hairColor)
+	-- Left & Right Upper Spikes
+	addMorphWedge(morphModel, head, CFrame.new(-0.4, 0.75, 0) * CFrame.Angles(math.rad(20), math.rad(-25), math.rad(25)), Vector3.new(0.5, 0.75, 0.6), hairColor)
+	addMorphWedge(morphModel, head, CFrame.new(0.4, 0.75, 0) * CFrame.Angles(math.rad(20), math.rad(25), math.rad(-25)), Vector3.new(0.5, 0.75, 0.6), hairColor)
+	-- Back Spikes
+	addMorphWedge(morphModel, head, CFrame.new(0, 0.65, 0.5) * CFrame.Angles(math.rad(-30), math.rad(180), 0), Vector3.new(0.8, 0.75, 0.6), hairColor)
+	-- Sideburns
+	addMorphPart(morphModel, head, CFrame.new(-0.62, 0.1, -0.2), Vector3.new(0.18, 0.5, 0.4), hairColor, Enum.Material.SmoothPlastic)
+	addMorphPart(morphModel, head, CFrame.new(0.62, 0.1, -0.2), Vector3.new(0.18, 0.5, 0.4), hairColor, Enum.Material.SmoothPlastic)
+
+	-- 2. Konoha Forehead Protector Headband
+	addMorphPart(morphModel, head, CFrame.new(0, 0.28, -0.56), Vector3.new(1.25, 0.38, 0.12), headbandBlue, Enum.Material.Fabric)
+	-- Metal Plate
+	local plate = addMorphPart(morphModel, head, CFrame.new(0, 0.28, -0.63), Vector3.new(0.72, 0.28, 0.05), plateSilver, Enum.Material.Metal)
+	-- Engraved Spiral Emblem
+	local emblem = Instance.new("SurfaceGui")
+	emblem.Face = Enum.NormalId.Front
+	local symLbl = Instance.new("TextLabel")
+	symLbl.Size = UDim2.fromScale(1, 1)
+	symLbl.BackgroundTransparency = 1
+	symLbl.Font = Enum.Font.GothamBlack
+	symLbl.TextSize = 14
+	symLbl.TextColor3 = Color3.fromRGB(40, 45, 55)
+	symLbl.Text = "🌀"
+	symLbl.Parent = emblem
+	emblem.Parent = plate
+
+	-- 3. Orange Track Jacket with Blue Collar
+	addMorphPart(morphModel, upperTorso, CFrame.new(0, 0.75, 0), Vector3.new(1.85, 0.35, 1.15), headbandBlue, Enum.Material.SmoothPlastic) -- Collar
+	addMorphPart(morphModel, upperTorso, CFrame.new(0, 0, 0), Vector3.new(2.05, 1.4, 1.05), jumpsuitOrange, Enum.Material.SmoothPlastic)
+
+	-- 4. Thigh Bandage & Ninja Pouch
+	if rightLeg then
+		addMorphPart(morphModel, rightLeg, CFrame.new(0, 0.3, 0), Vector3.new(1.05, 0.5, 1.05), Color3.fromRGB(240, 240, 245), Enum.Material.Fabric) -- White bandage
+		addMorphPart(morphModel, rightLeg, CFrame.new(0.55, 0.3, 0), Vector3.new(0.2, 0.35, 0.35), Color3.fromRGB(40, 30, 25), Enum.Material.Leather) -- Holster pouch
+	end
+end
+
+-- =========================================================
+-- 2. SASUKE UCHIHA VISUAL MORPH
+-- =========================================================
+local function morphSasuke(char: Model, morphModel: Model)
+	local head = char:FindFirstChild("Head") :: BasePart?
+	local upperTorso = (char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")) :: BasePart?
+	local lowerTorso = (char:FindFirstChild("LowerTorso") or upperTorso) :: BasePart?
+	if not head or not upperTorso then return end
+
+	local hairDark = Color3.fromRGB(18, 22, 32)
+	local tunicWhite = Color3.fromRGB(235, 238, 245)
+	local ropePurple = Color3.fromRGB(145, 65, 215)
+	local sashBlue = Color3.fromRGB(30, 45, 80)
+
+	-- 1. Winged Spiky Dark Hair & Long Front Bangs
+	addMorphWedge(morphModel, head, CFrame.new(0, 0.85, 0.1) * CFrame.Angles(math.rad(-20), math.rad(180), 0), Vector3.new(0.9, 0.85, 0.8), hairDark)
+	-- Winged Side Spikes
+	addMorphWedge(morphModel, head, CFrame.new(-0.55, 0.65, 0.2) * CFrame.Angles(math.rad(-15), math.rad(-150), math.rad(30)), Vector3.new(0.6, 0.8, 0.6), hairDark)
+	addMorphWedge(morphModel, head, CFrame.new(0.55, 0.65, 0.2) * CFrame.Angles(math.rad(-15), math.rad(150), math.rad(-30)), Vector3.new(0.6, 0.8, 0.6), hairDark)
+	-- Front Bangs framing cheeks
+	addMorphPart(morphModel, head, CFrame.new(-0.5, -0.15, -0.55) * CFrame.Angles(0, 0, math.rad(-10)), Vector3.new(0.2, 0.75, 0.15), hairDark, Enum.Material.SmoothPlastic)
+	addMorphPart(morphModel, head, CFrame.new(0.5, -0.15, -0.55) * CFrame.Angles(0, 0, math.rad(10)), Vector3.new(0.2, 0.75, 0.15), hairDark, Enum.Material.SmoothPlastic)
+
+	-- 2. High Stand-Up Collar
+	addMorphPart(morphModel, upperTorso, CFrame.new(-0.75, 0.75, 0) * CFrame.Angles(0, 0, math.rad(15)), Vector3.new(0.18, 0.65, 0.9), tunicWhite, Enum.Material.Fabric)
+	addMorphPart(morphModel, upperTorso, CFrame.new(0.75, 0.75, 0) * CFrame.Angles(0, 0, math.rad(-15)), Vector3.new(0.18, 0.65, 0.9), tunicWhite, Enum.Material.Fabric)
+	addMorphPart(morphModel, upperTorso, CFrame.new(0, 0.75, 0.45) * CFrame.Angles(math.rad(12), 0, 0), Vector3.new(1.5, 0.65, 0.15), tunicWhite, Enum.Material.Fabric)
+
+	-- 3. Purple Shimenawa Knotted Rope Belt & Blue Apron Sash
+	if lowerTorso then
+		-- Blue Apron Sash
+		addMorphPart(morphModel, lowerTorso, CFrame.new(0, -0.3, 0), Vector3.new(2.1, 0.85, 1.15), sashBlue, Enum.Material.Fabric)
+		-- Thick Purple Rope Ring
+		local rope = addMorphPart(morphModel, lowerTorso, CFrame.new(0, 0.1, 0), Vector3.new(2.25, 0.35, 1.25), ropePurple, Enum.Material.Fabric)
+		-- Rope Bow Knot at back
+		addMorphPart(morphModel, lowerTorso, CFrame.new(0, 0.1, 0.7), Vector3.new(0.8, 0.5, 0.4), ropePurple, Enum.Material.Fabric)
+	end
+
+	-- 4. Sharingan Eye Aura Particles
+	local eyeAura = Instance.new("ParticleEmitter")
+	eyeAura.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	eyeAura.Color = ColorSequence.new(Color3.fromRGB(255, 30, 30), Color3.fromRGB(180, 0, 0))
+	eyeAura.Size = NumberSequence.new(0.25, 0)
+	eyeAura.Rate = 12
+	eyeAura.Speed = NumberRange.new(0.5, 1.5)
+	eyeAura.Lifetime = NumberRange.new(0.4, 0.7)
+	eyeAura.Parent = head
+	eyeAura.Name = "SharinganAura"
+end
+
+-- =========================================================
+-- 3. MONKEY D. LUFFY VISUAL MORPH
+-- =========================================================
+local function morphLuffy(char: Model, morphModel: Model)
+	local head = char:FindFirstChild("Head") :: BasePart?
+	local upperTorso = (char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")) :: BasePart?
+	local lowerTorso = (char:FindFirstChild("LowerTorso") or upperTorso) :: BasePart?
+	local leftLeg = (char:FindFirstChild("LeftLowerLeg") or char:FindFirstChild("Left Leg")) :: BasePart?
+	local rightLeg = (char:FindFirstChild("RightLowerLeg") or char:FindFirstChild("Right Leg")) :: BasePart?
+	if not head or not upperTorso then return end
+
+	local strawYellow = Color3.fromRGB(230, 190, 95)
+	local ribbonRed = Color3.fromRGB(220, 25, 25)
+	local vestRed = Color3.fromRGB(225, 30, 30)
+	local denimBlue = Color3.fromRGB(45, 90, 175)
+	local furWhite = Color3.fromRGB(250, 250, 255)
+	local skinTone = Color3.fromRGB(255, 220, 185)
+
+	-- 1. Authentic 3D Straw Hat (Mugiwara)
+	-- Wide Brim (Cylinder)
+	local brim = addMorphPart(morphModel, head, CFrame.new(0, 0.65, 0) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.08, 3.2, 3.2), strawYellow, Enum.Material.Wood, Enum.PartType.Cylinder)
+	-- Red Ribbon Band
+	local ribbon = addMorphPart(morphModel, head, CFrame.new(0, 0.75, 0) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.18, 1.85, 1.85), ribbonRed, Enum.Material.Fabric, Enum.PartType.Cylinder)
+	-- Dome Crown
+	local dome = addMorphPart(morphModel, head, CFrame.new(0, 0.9, 0) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.4, 1.8, 1.8), strawYellow, Enum.Material.Wood, Enum.PartType.Cylinder)
+
+	-- 2. Messy Black Anime Hair beneath hat
+	addMorphWedge(morphModel, head, CFrame.new(-0.4, 0.45, -0.4) * CFrame.Angles(math.rad(25), math.rad(-20), 0), Vector3.new(0.3, 0.4, 0.3), Color3.fromRGB(15, 15, 18))
+	addMorphWedge(morphModel, head, CFrame.new(0.4, 0.45, -0.4) * CFrame.Angles(math.rad(25), math.rad(20), 0), Vector3.new(0.3, 0.4, 0.3), Color3.fromRGB(15, 15, 18))
+
+	-- 3. Open Red Sleeveless Vest
+	-- Left & Right Vest panels (leaving center chest exposed)
+	addMorphPart(morphModel, upperTorso, CFrame.new(-0.7, 0, 0), Vector3.new(0.7, 1.45, 1.1), vestRed, Enum.Material.Fabric)
+	addMorphPart(morphModel, upperTorso, CFrame.new(0.7, 0, 0), Vector3.new(0.7, 1.45, 1.1), vestRed, Enum.Material.Fabric)
+	addMorphPart(morphModel, upperTorso, CFrame.new(0, 0, 0.52), Vector3.new(1.8, 1.45, 0.15), vestRed, Enum.Material.Fabric) -- Back of vest
+
+	-- 4. Iconic Chest X-Scar
+	local scar1 = addMorphPart(morphModel, upperTorso, CFrame.new(0, 0.15, -0.53) * CFrame.Angles(0, 0, math.rad(40)), Vector3.new(0.12, 0.95, 0.05), Color3.fromRGB(60, 30, 30), Enum.Material.SmoothPlastic)
+	local scar2 = addMorphPart(morphModel, upperTorso, CFrame.new(0, 0.15, -0.53) * CFrame.Angles(0, 0, math.rad(-40)), Vector3.new(0.12, 0.95, 0.05), Color3.fromRGB(60, 30, 30), Enum.Material.SmoothPlastic)
+
+	-- 5. Denim Shorts with White Fur Cuffs & Yellow Sash
+	if lowerTorso then
+		addMorphPart(morphModel, lowerTorso, CFrame.new(0, 0.25, 0), Vector3.new(2.15, 0.3, 1.2), Color3.fromRGB(245, 205, 30), Enum.Material.Fabric) -- Yellow Sash
+	end
+	if leftLeg then
+		addMorphPart(morphModel, leftLeg, CFrame.new(0, 0.4, 0), Vector3.new(1.1, 0.25, 1.1), furWhite, Enum.Material.Fabric)
+	end
+	if rightLeg then
+		addMorphPart(morphModel, rightLeg, CFrame.new(0, 0.4, 0), Vector3.new(1.1, 0.25, 1.1), furWhite, Enum.Material.Fabric)
+	end
+end
+
+-- =========================================================
+-- 4. RORONOA ZORO VISUAL MORPH
+-- =========================================================
+local function morphZoro(char: Model, morphModel: Model)
+	local head = char:FindFirstChild("Head") :: BasePart?
+	local upperTorso = (char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")) :: BasePart?
+	local lowerTorso = (char:FindFirstChild("LowerTorso") or upperTorso) :: BasePart?
+	local leftArm = (char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm")) :: BasePart?
+	if not head or not upperTorso then return end
+
+	local marimoGreen = Color3.fromRGB(45, 175, 75)
+	local haramakiGreen = Color3.fromRGB(25, 95, 45)
+	local coatGreen = Color3.fromRGB(18, 60, 32)
+	local bandanaBlack = Color3.fromRGB(20, 22, 26)
+
+	-- 1. Emerald Green Crop Hair (Marimo)
+	addMorphPart(morphModel, head, CFrame.new(0, 0.65, 0), Vector3.new(1.35, 0.45, 1.35), marimoGreen, Enum.Material.Grass)
+	addMorphWedge(morphModel, head, CFrame.new(0, 0.8, -0.15) * CFrame.Angles(math.rad(15), 0, 0), Vector3.new(0.8, 0.4, 0.8), marimoGreen)
+
+	-- 2. Black Pirate Bandana tied around Left Bicep
+	if leftArm then
+		addMorphPart(morphModel, leftArm, CFrame.new(0, 0.2, 0), Vector3.new(1.15, 0.4, 1.15), bandanaBlack, Enum.Material.Fabric)
+		-- Knot tail
+		addMorphPart(morphModel, leftArm, CFrame.new(-0.6, 0.1, 0), Vector3.new(0.2, 0.5, 0.3), bandanaBlack, Enum.Material.Fabric)
+	end
+
+	-- 3. Emerald Green Haramaki (Belly Warmer)
+	if lowerTorso then
+		addMorphPart(morphModel, lowerTorso, CFrame.new(0, 0, 0), Vector3.new(2.1, 0.95, 1.15), haramakiGreen, Enum.Material.Fabric)
+	end
+
+	-- 4. Santoryu (3 Katana Sheaths on Right Hip)
+	-- Sword 1: Wado Ichimonji (White)
+	local s1 = addMorphPart(morphModel, upperTorso, CFrame.new(1.1, -0.6, 0.2) * CFrame.Angles(0, 0, math.rad(-135)), Vector3.new(0.18, 3.6, 0.28), Color3.fromRGB(245, 245, 250), Enum.Material.SmoothPlastic)
+	-- Sword 2: Sandai Kitetsu (Red)
+	local s2 = addMorphPart(morphModel, upperTorso, CFrame.new(1.15, -0.5, 0.4) * CFrame.Angles(0, 0, math.rad(-140)), Vector3.new(0.18, 3.6, 0.28), Color3.fromRGB(190, 30, 30), Enum.Material.SmoothPlastic)
+	-- Sword 3: Shusui (Black & Gold)
+	local s3 = addMorphPart(morphModel, upperTorso, CFrame.new(1.2, -0.4, 0.6) * CFrame.Angles(0, 0, math.rad(-145)), Vector3.new(0.18, 3.6, 0.28), Color3.fromRGB(24, 24, 28), Enum.Material.SmoothPlastic)
+
+	-- 5. Left Eye Scar Line
+	addMorphPart(morphModel, head, CFrame.new(-0.25, 0.08, -0.56) * CFrame.Angles(0, 0, math.rad(15)), Vector3.new(0.04, 0.35, 0.02), Color3.fromRGB(80, 40, 40), Enum.Material.SmoothPlastic)
+end
+
+-- =========================================================
+-- 5. KILLUA ZOLDYCK VISUAL MORPH
+-- =========================================================
+local function morphKillua(char: Model, morphModel: Model)
+	local head = char:FindFirstChild("Head") :: BasePart?
+	local upperTorso = (char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")) :: BasePart?
+	local lowerTorso = (char:FindFirstChild("LowerTorso") or upperTorso) :: BasePart?
+	local leftHand = (char:FindFirstChild("LeftHand") or char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm")) :: BasePart?
+	local rightHand = (char:FindFirstChild("RightHand") or char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm")) :: BasePart?
+	if not head or not upperTorso then return end
+
+	local hairSilver = Color3.fromRGB(245, 245, 255)
+	local turtleNavy = Color3.fromRGB(25, 30, 50)
+	local shirtWhite = Color3.fromRGB(240, 242, 248)
+	local shortsViolet = Color3.fromRGB(40, 35, 65)
+
+	-- 1. Silver-White Wild Spiky Assassin Hair
+	addMorphWedge(morphModel, head, CFrame.new(0, 0.85, 0) * CFrame.Angles(math.rad(10), 0, 0), Vector3.new(0.85, 0.9, 0.8), hairSilver)
+	addMorphWedge(morphModel, head, CFrame.new(-0.45, 0.75, 0.1) * CFrame.Angles(math.rad(15), math.rad(-30), math.rad(30)), Vector3.new(0.6, 0.8, 0.6), hairSilver)
+	addMorphWedge(morphModel, head, CFrame.new(0.45, 0.75, 0.1) * CFrame.Angles(math.rad(15), math.rad(30), math.rad(-30)), Vector3.new(0.6, 0.8, 0.6), hairSilver)
+	addMorphWedge(morphModel, head, CFrame.new(0, 0.65, 0.55) * CFrame.Angles(math.rad(-25), math.rad(180), 0), Vector3.new(0.8, 0.75, 0.6), hairSilver)
+	-- Fluffy front bangs
+	addMorphWedge(morphModel, head, CFrame.new(-0.25, 0.45, -0.55) * CFrame.Angles(math.rad(35), 0, math.rad(-15)), Vector3.new(0.35, 0.5, 0.25), hairSilver)
+	addMorphWedge(morphModel, head, CFrame.new(0.25, 0.45, -0.55) * CFrame.Angles(math.rad(35), 0, math.rad(15)), Vector3.new(0.35, 0.5, 0.25), hairSilver)
+
+	-- 2. Navy Blue Turtle-Neck Undershirt with White V-Neck Skater Shirt
+	addMorphPart(morphModel, upperTorso, CFrame.new(0, 0.75, 0), Vector3.new(1.65, 0.4, 1.05), turtleNavy, Enum.Material.Fabric) -- High turtle-neck
+	addMorphPart(morphModel, upperTorso, CFrame.new(0, -0.05, 0), Vector3.new(2.1, 1.35, 1.1), shirtWhite, Enum.Material.Fabric) -- Baggy white shirt
+
+	-- 3. Indigo Assassin Shorts
+	if lowerTorso then
+		addMorphPart(morphModel, lowerTorso, CFrame.new(0, 0, 0), Vector3.new(2.05, 0.9, 1.05), shortsViolet, Enum.Material.Fabric)
+	end
+
+	-- 4. Godspeed Electric Lightning Sparks (Active aura on fists)
+	local function addLightning(hand: BasePart)
+		local sparks = Instance.new("ParticleEmitter")
+		sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		sparks.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 240)),
+			ColorSequenceKeypoint.new(0.7, Color3.fromRGB(180, 100, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+		})
+		sparks.Size = NumberSequence.new(0.3, 0)
+		sparks.Rate = 18
+		sparks.Speed = NumberRange.new(1, 3)
+		sparks.Lifetime = NumberRange.new(0.2, 0.45)
+		sparks.Name = "GodspeedSparks"
+		sparks.Parent = hand
+	end
+	if leftHand then addLightning(leftHand) end
+	if rightHand then addLightning(rightHand) end
+end
+
+-- =========================================================
+-- MASTER MORPH DISPATCHER
+-- =========================================================
+function StormCharacterMorphServer.applyMorph(char: Model, charId: string)
+	if not char then return end
+
+	-- 1. Remove previous morph
+	local oldMorph = char:FindFirstChild("AnimeMorph")
+	if oldMorph then oldMorph:Destroy() end
+
+	-- Remove any old particle effects attached to limbs
+	for _, desc in ipairs(char:GetDescendants()) do
+		if desc:IsA("ParticleEmitter") and (desc.Name == "SharinganAura" or desc.Name == "GodspeedSparks") then
+			desc:Destroy()
+		end
+	end
+
+	-- 2. Hide default Roblox accessories (hats/hair) so they don't clash with anime hair
+	for _, child in ipairs(char:GetChildren()) do
+		if child:IsA("Accessory") then
+			local handle = child:FindFirstChild("Handle") :: BasePart?
+			if handle then
+				handle.Transparency = 1
+			end
+		end
+	end
+
+	-- 3. Create fresh Morph Container Model
+	local morphModel = Instance.new("Model")
+	morphModel.Name = "AnimeMorph"
+
+	-- 4. Apply Character-Specific Anime Sculpt & Clothing
+	if charId == "Naruto" then
+		morphNaruto(char, morphModel)
+	elseif charId == "Sasuke" then
+		morphSasuke(char, morphModel)
+	elseif charId == "Luffy" then
+		morphLuffy(char, morphModel)
+	elseif charId == "Zoro" then
+		morphZoro(char, morphModel)
+	elseif charId == "Killua" then
+		morphKillua(char, morphModel)
+	end
+
+	morphModel.Parent = char
+	print(string.format(">> [AnimeMorph] Successfully morphed %s into 3D %s! <<", char.Name, charId))
+end
+
+return StormCharacterMorphServer
+]=====]
+    installScript('StormCharacterMorphServer', 'ModuleScript', game:GetService('ServerScriptService'), src)
+end
+
+-- ============================================================
 -- INSTALL: LobbyManagerServer (Script)
 -- ============================================================
 do
@@ -1136,8 +1730,10 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+local StormCharacterMorphServer = require(ServerScriptService:WaitForChild("StormCharacterMorphServer")) :: any
 
 -- Positions
 local LOBBY_CENTER = Vector3.new(0, 50, -160)
@@ -1159,6 +1755,158 @@ end
 local evCharSelect   = ensureRemote("CharacterSelectEvent")
 local evOpenRoster   = ensureRemote("OpenRosterEvent")
 local evTeleportGate = ensureRemote("TeleportGateEvent")
+
+-- Forward declaration
+local applyCharacter: (player: Player, charId: string) -> ()
+
+-- =========================================================
+-- CREATE 3D ANIME DISPLAY MANNEQUIN
+-- =========================================================
+local function createAnimeMannequin(parent: Instance, pos: Vector3, charId: string)
+	local charData = CombatConfig.Characters[charId]
+	if not charData then return end
+
+	-- Pedestal
+	local ped = Instance.new("Part")
+	ped.Name = "Pedestal_" .. charId
+	ped.Shape = Enum.PartType.Cylinder
+	ped.Size = Vector3.new(0.8, 5, 5)
+	ped.CFrame = CFrame.new(pos + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	ped.Color = charData.PrimaryColor
+	ped.Material = Enum.Material.Neon
+	ped.Transparency = 0.35
+	ped.Anchored = true
+	ped.CanCollide = true
+	ped.Parent = parent
+
+	-- Mannequin Model
+	local man = Instance.new("Model")
+	man.Name = "Mannequin_" .. charId
+
+	local root = Instance.new("Part")
+	root.Name = "HumanoidRootPart"
+	root.Size = Vector3.new(2, 2, 1)
+	root.CFrame = CFrame.new(pos + Vector3.new(0, 3.2, 0)) * CFrame.Angles(0, math.rad(180), 0)
+	root.Transparency = 1
+	root.Anchored = true
+	root.CanCollide = false
+	root.Parent = man
+	man.PrimaryPart = root
+
+	local upperTorso = Instance.new("Part")
+	upperTorso.Name = "UpperTorso"
+	upperTorso.Size = Vector3.new(1.8, 1.4, 1.0)
+	upperTorso.CFrame = root.CFrame * CFrame.new(0, 0.4, 0)
+	upperTorso.Color = Color3.fromRGB(240, 210, 180)
+	upperTorso.Anchored = true
+	upperTorso.CanCollide = false
+	upperTorso.Parent = man
+
+	local lowerTorso = Instance.new("Part")
+	lowerTorso.Name = "LowerTorso"
+	lowerTorso.Size = Vector3.new(1.7, 0.8, 0.9)
+	lowerTorso.CFrame = root.CFrame * CFrame.new(0, -0.6, 0)
+	lowerTorso.Color = Color3.fromRGB(30, 35, 45)
+	lowerTorso.Anchored = true
+	lowerTorso.CanCollide = false
+	lowerTorso.Parent = man
+
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Size = Vector3.new(1.2, 1.2, 1.2)
+	head.CFrame = root.CFrame * CFrame.new(0, 1.6, 0)
+	head.Color = Color3.fromRGB(240, 210, 180)
+	head.Anchored = true
+	head.CanCollide = false
+	head.Parent = man
+
+	local leftArm = Instance.new("Part")
+	leftArm.Name = "LeftUpperArm"
+	leftArm.Size = Vector3.new(0.8, 1.4, 0.8)
+	leftArm.CFrame = root.CFrame * CFrame.new(-1.3, 0.3, 0)
+	leftArm.Color = Color3.fromRGB(240, 210, 180)
+	leftArm.Anchored = true
+	leftArm.CanCollide = false
+	leftArm.Parent = man
+
+	local rightArm = Instance.new("Part")
+	rightArm.Name = "RightUpperArm"
+	rightArm.Size = Vector3.new(0.8, 1.4, 0.8)
+	rightArm.CFrame = root.CFrame * CFrame.new(1.3, 0.3, 0)
+	rightArm.Color = Color3.fromRGB(240, 210, 180)
+	rightArm.Anchored = true
+	rightArm.CanCollide = false
+	rightArm.Parent = man
+
+	local leftLeg = Instance.new("Part")
+	leftLeg.Name = "LeftLowerLeg"
+	leftLeg.Size = Vector3.new(0.8, 1.5, 0.8)
+	leftLeg.CFrame = root.CFrame * CFrame.new(-0.5, -1.5, 0)
+	leftLeg.Color = Color3.fromRGB(35, 40, 50)
+	leftLeg.Anchored = true
+	leftLeg.CanCollide = false
+	leftLeg.Parent = man
+
+	local rightLeg = Instance.new("Part")
+	rightLeg.Name = "RightLowerLeg"
+	rightLeg.Size = Vector3.new(0.8, 1.5, 0.8)
+	rightLeg.CFrame = root.CFrame * CFrame.new(0.5, -1.5, 0)
+	rightLeg.Color = Color3.fromRGB(35, 40, 50)
+	rightLeg.Anchored = true
+	rightLeg.CanCollide = false
+	rightLeg.Parent = man
+
+	local hum = Instance.new("Humanoid")
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	hum.Parent = man
+
+	-- Morph into authentic 3D Anime Fighter
+	pcall(function()
+		StormCharacterMorphServer.applyMorph(man, charId)
+	end)
+
+	-- Overhead Billboard
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.new(0, 180, 0, 50)
+	bb.StudsOffset = Vector3.new(0, 2.8, 0)
+	bb.AlwaysOnTop = true
+	bb.Parent = head
+
+	local nameLbl = Instance.new("TextLabel")
+	nameLbl.Size = UDim2.fromScale(1, 0.5)
+	nameLbl.BackgroundTransparency = 1
+	nameLbl.Text = string.format("%s %s", charData.Icon, charData.Name)
+	nameLbl.TextColor3 = charData.PrimaryColor
+	nameLbl.Font = Enum.Font.GothamBlack
+	nameLbl.TextScaled = true
+	nameLbl.Parent = bb
+
+	local subLbl = Instance.new("TextLabel")
+	subLbl.Size = UDim2.fromScale(1, 0.45)
+	subLbl.Position = UDim2.new(0, 0, 0.5, 0)
+	subLbl.BackgroundTransparency = 1
+	subLbl.Text = string.format("%s • %s", charData.Title, charData.Archetype)
+	subLbl.TextColor3 = Color3.fromRGB(220, 220, 230)
+	subLbl.Font = Enum.Font.GothamBold
+	subLbl.TextScaled = true
+	subLbl.Parent = bb
+
+	-- Instant Select Proximity Prompt
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Pilih " .. charData.Name
+	prompt.ObjectText = "⚡ ROSTER"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 10
+	prompt.Parent = root
+
+	prompt.Triggered:Connect(function(player)
+		if applyCharacter then
+			applyCharacter(player, charId)
+		end
+	end)
+
+	man.Parent = parent
+end
 
 -- =========================================================
 -- BUILD PROCEDURAL SHINOBI LOBBY
@@ -1334,14 +2082,27 @@ local function buildLobby()
 		end
 	end)
 
+	-- 7. 5 3D Anime Character Mannequins standing in the Shinobi Lobby Courtyard
+	local rosterList = {
+		{ Id = "Naruto", Pos = LOBBY_CENTER + Vector3.new(0, 0, -22) },
+		{ Id = "Sasuke", Pos = LOBBY_CENTER + Vector3.new(-12, 0, -18) },
+		{ Id = "Luffy",  Pos = LOBBY_CENTER + Vector3.new(12, 0, -18) },
+		{ Id = "Zoro",   Pos = LOBBY_CENTER + Vector3.new(-22, 0, -10) },
+		{ Id = "Killua", Pos = LOBBY_CENTER + Vector3.new(22, 0, -10) },
+	}
+
+	for _, entry in ipairs(rosterList) do
+		createAnimeMannequin(lobbyModel, entry.Pos, entry.Id)
+	end
+
 	lobbyModel.Parent = Workspace
-	print(">> [LobbyManager] Shinobi Lobby Courtyard & Gateways built successfully! <<")
+	print(">> [LobbyManager] Shinobi Lobby Courtyard, Anime Mannequins & Gateways built successfully! <<")
 end
 
 -- =========================================================
 -- CHARACTER SELECTION & APPLICATION
 -- =========================================================
-local function applyCharacter(player: Player, charId: string)
+applyCharacter = function(player: Player, charId: string)
 	local charData = CombatConfig.Characters[charId]
 	if not charData then return end
 
@@ -1383,9 +2144,14 @@ local function applyCharacter(player: Player, charId: string)
 		end
 	end
 
-	-- 4. Replicate to all clients
+	-- 4. Apply 3D Anime Character Visual Morph (Naruto / Sasuke / Luffy / Zoro / Killua)
+	pcall(function()
+		StormCharacterMorphServer.applyMorph(char, charId)
+	end)
+
+	-- 5. Replicate to all clients
 	evCharSelect:FireAllClients(player, charId, charData)
-	print(string.format(">> [Roster] %s chose: %s [%s]! <<", player.Name, charData.Name, charData.Archetype))
+	print(string.format(">> [Roster] %s chose & morphed into: %s [%s]! <<", player.Name, charData.Name, charData.Archetype))
 end
 
 evCharSelect.OnServerEvent:Connect(function(player: Player, charId: string)
@@ -1878,8 +2644,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	local now = os.clock()
 
-	-- 1. Direct Ninja Dash with [L] Key or Gamepad ButtonB (Circle / B)
-	if input.KeyCode == Enum.KeyCode.L or input.KeyCode == Enum.KeyCode.ButtonB then
+	-- 1. Direct Ninja Dash with [LeftShift], [Q], or Gamepad ButtonB (Circle / B)
+	if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.Q or input.KeyCode == Enum.KeyCode.ButtonB then
 		executeNinjaDash()
 
 	-- 2. Sidestep detection (Double tap A or D)
@@ -1942,7 +2708,7 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
-print("[StormMovementController] ✅ Loaded — Movement [WASD], Sidestep [A/D x2], Ninja Dash [L] / [Space x2] / Gamepad (B).")
+print("[StormMovementController] ✅ Loaded — Movement [WASD], Sidestep [A/D x2], Ninja Dash [Shift/Q] / [Space x2] / Gamepad (B).")
 ]=====]
     installScript('StormMovementController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
@@ -1955,9 +2721,9 @@ do
 -- TekkenDefenseController.luau
 -- CLIENT SCRIPT: Tekken-Style Technical Defense System
 -- Features:
---   • WASD Movement + IJKL Defense:
---       [K] Hold: Standing High/Mid Guard (Cyan Shield)
---       [S + K] or [Ctrl + K]: Crouched Low Guard (Amber Shield)
+--   • WASD Movement + Guard Defense:
+--       [F] Hold: Standing High/Mid Guard (Cyan Shield)
+--       [S + F] or [Ctrl + F]: Crouched Low Guard (Amber Shield)
 --   • Just-Frame Parry (180ms window for counter stagger)
 --   • Full Controller Support: R1 / R2 Bumpers
 --   • Mobile Touch Support via Custom BindableEvent
@@ -2245,7 +3011,7 @@ end
 -- MULTI-PLATFORM INPUT LISTENERS
 -- =========================================================
 local function isGuardKey(key: Enum.KeyCode): boolean
-	return key == Enum.KeyCode.K or key == Enum.KeyCode.F or key == Enum.KeyCode.ButtonR1 or key == Enum.KeyCode.ButtonR2
+	return key == Enum.KeyCode.F or key == Enum.KeyCode.ButtonR1 or key == Enum.KeyCode.ButtonR2
 end
 
 UserInputService.InputBegan:Connect(function(input, processed)
@@ -2281,7 +3047,7 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
-print("[TekkenDefenseController] ✅ Loaded — Guard [K] / [F] / Gamepad (R1/R2), Low Guard [S+K].")
+print("[TekkenDefenseController] ✅ Loaded — Guard [F] / Gamepad (R1/R2), Low Guard [S+F].")
 ]=====]
     installScript('TekkenDefenseController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
@@ -2410,9 +3176,9 @@ local function findHitTarget(myRoot: BasePart): Model?
 end
 
 -- =========================================================
--- EXECUTE ATTACK (J / Left Click / Mobile / Gamepad)
+-- EXECUTE ATTACK: [J] Pukulan Biasa / [K] Serangan Bawah
 -- =========================================================
-local function executeAttack()
+local function executeAttack(forceLow: boolean?)
 	if isAttacking or isStaggered then return end
 	local char = LocalPlayer.Character
 	if not char then return end
@@ -2430,14 +3196,14 @@ local function executeAttack()
 		currentComboIndex = 0
 	end
 
-	-- Low Sweep check: S key (retreating/crouch in fighting games) OR Ctrl / C
-	local isSHeld = UserInputService:IsKeyDown(Enum.KeyCode.S)
-	local isCtrlHeld = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C)
-	local isLowSweep = isSHeld or isCtrlHeld
+	-- Naruto Storm Attack Standard:
+	-- [J]: 4-Hit Normal Taijutsu Punch Combo String
+	-- [K]: Dedicated Low Shinobi Sweep (Bypasses High Guard)
+	local isLowSweep = (forceLow == true)
 	local isHeavyFinisher = false
 
 	if isLowSweep then
-		-- Low Shinobi Sweep
+		-- Dedicated Low Shinobi Sweep
 		currentComboIndex = 1
 	else
 		currentComboIndex = (currentComboIndex % 4) + 1
@@ -2457,7 +3223,7 @@ local function executeAttack()
 
 	-- Storm 4 Forward Lunge
 	local forwardDir = root.CFrame.LookVector
-	local lungeSpeed = if isHeavyFinisher then 40 else LUNGE_FORCE
+	local lungeSpeed = if isHeavyFinisher then 40 else (if isLowSweep then 22 else LUNGE_FORCE)
 	root.AssemblyLinearVelocity = Vector3.new(forwardDir.X * lungeSpeed, root.AssemblyLinearVelocity.Y, forwardDir.Z * lungeSpeed)
 
 	-- Visual & Sound
@@ -2529,25 +3295,225 @@ end
 -- =========================================================
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
-	-- 1. Keyboard [J] or Left-Click
-	if input.KeyCode == Enum.KeyCode.J or input.UserInputType == Enum.UserInputType.MouseButton1 then
-		executeAttack()
-	-- 2. Gamepad Controller (Square on PS, X on Xbox)
-	elseif input.KeyCode == Enum.KeyCode.ButtonX then
-		executeAttack()
+	-- 1. Keyboard [J] (Pukulan Biasa) or Left-Click or Gamepad (Square / X)
+	if input.KeyCode == Enum.KeyCode.J or input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonX then
+		executeAttack(false)
+	-- 2. Keyboard [K] (Serangan Bawah / Low Sweep) or Gamepad DPadDown
+	elseif input.KeyCode == Enum.KeyCode.K or input.KeyCode == Enum.KeyCode.DPadDown then
+		executeAttack(true)
 	end
 end)
 
 -- Mobile Touch Integration
 if evMobileAttack then
-	evMobileAttack.Event:Connect(function()
-		executeAttack()
+	evMobileAttack.Event:Connect(function(isLow: any)
+		executeAttack(isLow == true)
 	end)
 end
 
-print("[CombatComboController] ✅ Loaded — Attack [J] / Left-Click / Gamepad (Square/X), Low Sweep [S+J].")
+local evMobileLow = ReplicatedStorage:FindFirstChild("MobileLowAttackAction") :: BindableEvent?
+if not evMobileLow then
+	evMobileLow = Instance.new("BindableEvent")
+	evMobileLow.Name = "MobileLowAttackAction"
+	evMobileLow.Parent = ReplicatedStorage
+end
+evMobileLow.Event:Connect(function()
+	executeAttack(true)
+end)
+
+print("[CombatComboController] ✅ Loaded — Pukulan Biasa [J], Serangan Bawah [K], Gamepad (Square=Punch / DPadDown=Low).")
 ]=====]
     installScript('CombatComboController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
+end
+
+-- ============================================================
+-- INSTALL: StormRangedController (LocalScript)
+-- ============================================================
+do
+    local src = [=====[--!strict
+-- StormRangedController.luau
+-- CLIENT SCRIPT: Naruto Storm Authentic Anime Ranged Attack System ([L] Key)
+-- Features:
+--   • [L] Key: Fires character-specific anime projectile jutsu:
+--       - Naruto: Wind Style: Rasen-Shuriken (Spinning aerodynamic chakra shuriken)
+--       - Sasuke: Fire Style: Fireball Jutsu / Goukakyuu (Explosive flame sphere)
+--       - Luffy: Gum-Gum Pistol / Gomu Gomu no Pistol (Stretching punch fist)
+--       - Zoro: 36 Pound Phoenix / Tobu Zangeki (Emerald flying wind blade)
+--       - Killua: Thunderbolt / Narukami (High-speed lightning spark strike)
+--   • Procedural anime casting pose & particle aura
+--   • Target lock-on aiming & cooldown management
+--   • Full Gamepad (ButtonY / Triangle) and Mobile Touch support
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera :: Camera
+
+local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+
+-- Cooldown tracking
+local lastRangedTime = 0
+local isFiring = false
+
+-- Remotes
+local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 15) :: Folder?
+local function getRemote(name: string): RemoteEvent?
+	return combatEvents and combatEvents:FindFirstChild(name) :: RemoteEvent?
+end
+
+local evRanged = getRemote("RangedAttackEvent")
+if not evRanged and combatEvents then
+	local r = Instance.new("RemoteEvent")
+	r.Name = "RangedAttackEvent"
+	r.Parent = combatEvents
+	evRanged = r
+end
+
+-- Mobile Bindable
+local evMobileRanged = ReplicatedStorage:FindFirstChild("MobileRangedAction") :: BindableEvent?
+if not evMobileRanged then
+	evMobileRanged = Instance.new("BindableEvent")
+	evMobileRanged.Name = "MobileRangedAction"
+	evMobileRanged.Parent = ReplicatedStorage
+end
+
+local evAnim = ReplicatedStorage:FindFirstChild("StormCombatAnimationEvent") :: BindableEvent?
+
+-- Target helper
+local function getTarget(): Model?
+	local dummy = Workspace:FindFirstChild("TrainingDummy")
+	if dummy and dummy:IsA("Model") and dummy:FindFirstChild("HumanoidRootPart") then
+		return dummy
+	end
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			return p.Character
+		end
+	end
+	return nil
+end
+
+-- =========================================================
+-- EXECUTE RANGED ANIME ATTACK ([L] Key)
+-- =========================================================
+local function executeRangedAttack()
+	if isFiring then return end
+	local char = LocalPlayer.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or hum.Health <= 0 then return end
+
+	-- Block ranged attack while guarding
+	if LocalPlayer:GetAttribute("IsBlocking") == true then
+		return
+	end
+
+	local charId = tostring(LocalPlayer:GetAttribute("SelectedCharacter") or "Naruto")
+	local charData = CombatConfig.Characters[charId] or CombatConfig.Characters["Naruto"]
+	local rangedData = charData.RangedSkill or {
+		Name = "Chakra Shuriken",
+		Damage = 18,
+		Speed = 100,
+		Cooldown = 1.6,
+		Color = Color3.fromRGB(0, 230, 255),
+		Sound = "rbxasset://sounds/action_whoosh.mp3",
+	}
+
+	local now = os.clock()
+	if now - lastRangedTime < (rangedData.Cooldown or 1.5) then
+		return
+	end
+
+	lastRangedTime = now
+	isFiring = true
+
+	-- Determine Aim Direction
+	local target = getTarget()
+	local aimDir = root.CFrame.LookVector
+	if target and target:FindFirstChild("HumanoidRootPart") then
+		local tRoot = target:FindFirstChild("HumanoidRootPart") :: BasePart
+		local diff = (tRoot.Position - (root.Position + Vector3.new(0, 1.2, 0)))
+		if diff.Magnitude > 0.1 then
+			aimDir = diff.Unit
+		end
+	end
+
+	-- Procedural Animation: Cast Pose
+	if evAnim then
+		evAnim:Fire("Attack2", 0.35)
+	end
+
+	-- Hands Energy Charge Flash
+	local flashPart = Instance.new("Part")
+	flashPart.Shape = Enum.PartType.Ball
+	flashPart.Size = Vector3.new(1.8, 1.8, 1.8)
+	flashPart.CFrame = root.CFrame * CFrame.new(0, 0.4, -2.2)
+	flashPart.Material = Enum.Material.Neon
+	flashPart.Color = rangedData.Color or Color3.fromRGB(0, 240, 255)
+	flashPart.Transparency = 0.2
+	flashPart.CanCollide = false
+	flashPart.Anchored = true
+	flashPart.Parent = Workspace
+
+	local tween = TweenService:Create(flashPart, TweenInfo.new(0.18), {
+		Size = Vector3.new(0.4, 0.4, 0.4),
+		Transparency = 1,
+	})
+	tween:Play()
+	tween.Completed:Connect(function()
+		flashPart:Destroy()
+	end)
+
+	-- Sound
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = rangedData.Sound or "rbxasset://sounds/action_whoosh.mp3"
+		snd.PlaybackSpeed = 1.3
+		snd.Volume = 0.9
+		snd.Parent = root
+		snd:Play()
+		task.delay(0.6, function() pcall(function() snd:Destroy() end) end)
+	end)
+
+	-- Fire Server
+	if evRanged then
+		evRanged:FireServer(aimDir, charId)
+	end
+
+	print(string.format(">> [StormRanged] %s fired: %s! <<", charData.Name, rangedData.Name))
+
+	task.delay(0.35, function()
+		isFiring = false
+	end)
+end
+
+-- =========================================================
+-- MULTI-PLATFORM INPUT LISTENERS
+-- =========================================================
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+
+	-- [L] Key: Serangan Jarak Jauh (Naruto Storm Standard)
+	if input.KeyCode == Enum.KeyCode.L or input.KeyCode == Enum.KeyCode.ButtonY then
+		executeRangedAttack()
+	end
+end)
+
+-- Mobile Touch Listener
+if evMobileRanged then
+	evMobileRanged.Event:Connect(function()
+		executeRangedAttack()
+	end)
+end
+
+print("[StormRangedController] ✅ Loaded — Serangan Jarak Jauh [L] / Gamepad (Triangle/Y) active.")
+]=====]
+    installScript('StormRangedController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
 
 -- ============================================================
@@ -4118,12 +5084,36 @@ end
 LocalPlayer.CharacterAdded:Connect(monitorCharacter)
 
 -- =========================================================
--- INPUT LISTENERS (Key [O] for Ultimate, Key [C] for Chakra)
+-- INPUT LISTENERS: [I] Mengisi Energi / Hold untuk Ultimate
 -- =========================================================
+local isHoldingI = false
+local iPressStartTime = 0
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 
-	if input.KeyCode == Enum.KeyCode.O then
+	-- Primary Key: [I] (Naruto Storm: Energy Charge & Hold for Ultimate)
+	if input.KeyCode == Enum.KeyCode.I then
+		isHoldingI = true
+		iPressStartTime = os.clock()
+		startChakraCharge()
+
+		-- Hold watcher: If held >= 0.60s and Chakra is full (100%), unleash Ultimate!
+		task.spawn(function()
+			while isHoldingI do
+				task.wait(0.05)
+				local heldDuration = os.clock() - iPressStartTime
+				if isHoldingI and chakra >= 100 and heldDuration >= 0.60 and not isExecutingUltimate then
+					print(">> [StormUltimate] [I] Key Hold threshold reached with 100% Chakra! Unleashing Ultimate! <<")
+					stopChakraCharge()
+					executeUltimateJutsu()
+					break
+				end
+			end
+		end)
+
+	-- Secondary/Fallback keys
+	elseif input.KeyCode == Enum.KeyCode.O then
 		executeUltimateJutsu()
 	elseif input.KeyCode == Enum.KeyCode.C then
 		startChakraCharge()
@@ -4131,7 +5121,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 UserInputService.InputEnded:Connect(function(input, processed)
-	if input.KeyCode == Enum.KeyCode.C then
+	if input.KeyCode == Enum.KeyCode.I then
+		isHoldingI = false
+		stopChakraCharge()
+	elseif input.KeyCode == Enum.KeyCode.C then
 		stopChakraCharge()
 	end
 end)
@@ -4146,7 +5139,7 @@ evMobileChakra.Event:Connect(function(isDown: boolean)
 	end
 end)
 
-print("[StormUltimateController] ✅ Ultimate Secret Technique & Tekken Awakening active.")
+print("[StormUltimateController] ✅ Ultimate Secret Technique & Tekken Awakening active — [I] Charge / Hold for Ultimate.")
 ]=====]
     installScript('StormUltimateController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
@@ -4189,6 +5182,8 @@ local function getOrMakeBindable(name: string): BindableEvent
 end
 
 local evMobileAttack   = getOrMakeBindable("MobileAttackAction")
+local evMobileLow      = getOrMakeBindable("MobileLowAttackAction")
+local evMobileRanged   = getOrMakeBindable("MobileRangedAction")
 local evMobileGuard    = getOrMakeBindable("MobileGuardAction")
 local evMobileDash     = getOrMakeBindable("MobileDashAction")
 local evMobileAssist   = getOrMakeBindable("MobileAssistAction")
@@ -4282,20 +5277,39 @@ local function createActionButton(
 end
 
 -- =========================================================
--- CREATE COMBAT BUTTONS
 -- =========================================================
--- 1. ATTACK [J] (Big Central Action Button)
+-- CREATE COMBAT BUTTONS (Naruto Storm Mobile Layout)
+-- =========================================================
+-- 1. PUNCH [J] (Primary Combo Strike)
 local btnAttack = createActionButton(
-	"BtnAttack", "⚔️", "ATTACK [J]", Color3.fromRGB(0, 240, 255),
+	"BtnAttack", "⚔️", "PUNCH [J]", Color3.fromRGB(0, 240, 255),
 	UDim2.new(0.65, 0, 0.65, 0), UDim2.new(0, 78, 0, 78)
 )
 btnAttack.MouseButton1Click:Connect(function()
-	evMobileAttack:Fire()
+	evMobileAttack:Fire(false)
 end)
 
--- 2. GUARD [K] (Right side button with hold support)
+-- 2. LOW SWEEP [K] (Serangan Bawah)
+local btnLow = createActionButton(
+	"BtnLow", "⚡", "LOW [K]", Color3.fromRGB(255, 180, 20),
+	UDim2.new(0.88, 0, 0.65, 0), UDim2.new(0, 56, 0, 56)
+)
+btnLow.MouseButton1Click:Connect(function()
+	evMobileLow:Fire()
+end)
+
+-- 3. RANGED JUTSU [L] (Serangan Jarak Jauh)
+local btnRanged = createActionButton(
+	"BtnRanged", "🌀", "RANGED [L]", Color3.fromRGB(80, 220, 255),
+	UDim2.new(0.65, 0, 0.32, 0), UDim2.new(0, 56, 0, 56)
+)
+btnRanged.MouseButton1Click:Connect(function()
+	evMobileRanged:Fire()
+end)
+
+-- 4. GUARD [F] (Hold to Block)
 local btnGuard = createActionButton(
-	"BtnGuard", "🛡️", "GUARD [K]", Color3.fromRGB(255, 215, 0),
+	"BtnGuard", "🛡️", "GUARD [F]", Color3.fromRGB(255, 215, 0),
 	UDim2.new(0.88, 0, 0.32, 0), UDim2.new(0, 56, 0, 56)
 )
 btnGuard.InputBegan:Connect(function(input)
@@ -4309,56 +5323,55 @@ btnGuard.InputEnded:Connect(function(input)
 	end
 end)
 
--- 3. DASH [L] (Left bottom button)
+-- 5. DASH [SHIFT] (Homing Ninja Dash)
 local btnDash = createActionButton(
-	"BtnDash", "💨", "DASH [L]", Color3.fromRGB(0, 255, 170),
-	UDim2.new(0.28, 0, 0.82, 0), UDim2.new(0, 58, 0, 58)
+	"BtnDash", "💨", "DASH [SHIFT]", Color3.fromRGB(0, 255, 170),
+	UDim2.new(0.38, 0, 0.82, 0), UDim2.new(0, 56, 0, 56)
 )
 btnDash.MouseButton1Click:Connect(function()
 	evMobileDash:Fire()
 end)
 
--- 4. ASSIST [I] (Top mid button)
-local btnAssist = createActionButton(
-	"BtnAssist", "⚡", "ASSIST [I]", Color3.fromRGB(255, 100, 50),
-	UDim2.new(0.48, 0, 0.22, 0), UDim2.new(0, 52, 0, 52)
-)
-btnAssist.MouseButton1Click:Connect(function()
-	evMobileAssist:Fire()
-end)
-
--- 5. LEADER SWAP [U] (Left button)
-local btnSwap = createActionButton(
-	"BtnSwap", "🔄", "SWAP [U]", Color3.fromRGB(200, 100, 255),
-	UDim2.new(0.18, 0, 0.40, 0), UDim2.new(0, 48, 0, 48)
-)
-btnSwap.MouseButton1Click:Connect(function()
-	evMobileSwap:Fire()
-end)
-
--- 6. ULTIMATE JUTSU [O] (Top-right special finisher button)
-local btnUltimate = createActionButton(
-	"BtnUltimate", "🔥", "ULT [O]", Color3.fromRGB(255, 60, 40),
-	UDim2.new(0.85, 0, 0.12, 0), UDim2.new(0, 56, 0, 56)
-)
-btnUltimate.MouseButton1Click:Connect(function()
-	evMobileUltimate:Fire()
-end)
-
--- 7. CHAKRA CHARGE [C] (Far left charge button)
+-- 6. CHAKRA ENERGY & ULTIMATE [I] (Hold for Ultimate!)
 local btnChakra = createActionButton(
-	"BtnChakra", "🌀", "CHAKRA [C]", Color3.fromRGB(0, 190, 255),
-	UDim2.new(0.08, 0, 0.65, 0), UDim2.new(0, 52, 0, 52)
+	"BtnChakra", "🔥", "CHAKRA/ULT [I]", Color3.fromRGB(255, 80, 40),
+	UDim2.new(0.12, 0, 0.65, 0), UDim2.new(0, 58, 0, 58)
 )
+local isMobileHoldingChakra = false
+local mobileChakraStart = 0
 btnChakra.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		isMobileHoldingChakra = true
+		mobileChakraStart = os.clock()
 		evMobileChakra:Fire(true)
+		task.spawn(function()
+			while isMobileHoldingChakra do
+				task.wait(0.05)
+				local held = os.clock() - mobileChakraStart
+				local curChakra = LocalPlayer:GetAttribute("ChakraValue") or 0
+				if isMobileHoldingChakra and curChakra >= 100 and held >= 0.60 then
+					evMobileChakra:Fire(false)
+					evMobileUltimate:Fire()
+					break
+				end
+			end
+		end)
 	end
 end)
 btnChakra.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		isMobileHoldingChakra = false
 		evMobileChakra:Fire(false)
 	end
+end)
+
+-- 7. LEADER SWAP [U]
+local btnSwap = createActionButton(
+	"BtnSwap", "🔄", "SWAP [U]", Color3.fromRGB(200, 100, 255),
+	UDim2.new(0.20, 0, 0.38, 0), UDim2.new(0, 48, 0, 48)
+)
+btnSwap.MouseButton1Click:Connect(function()
+	evMobileSwap:Fire()
 end)
 
 -- =========================================================

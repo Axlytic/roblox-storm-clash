@@ -17,6 +17,9 @@
       "StormWeaponServer": {
         "$path": "src/server/StormWeaponServer.luau"
       },
+      "StormCharacterMorphServer": {
+        "$path": "src/server/StormCharacterMorphServer.luau"
+      },
       "LobbyManagerServer": {
         "$path": "src/server/LobbyManagerServer.luau"
       }
@@ -34,6 +37,9 @@
         },
         "CombatComboController": {
           "$path": "src/client/CombatComboController.luau"
+        },
+        "StormRangedController": {
+          "$path": "src/client/StormRangedController.luau"
         },
         "StormAssistController": {
           "$path": "src/client/StormAssistController.luau"

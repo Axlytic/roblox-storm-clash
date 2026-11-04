@@ -32,6 +32,12 @@ parts = [
                 "file": os.path.join(base_dir, "server", "StormWeaponServer.luau")
             },
             {
+                "name": "StormCharacterMorphServer",
+                "type": "ModuleScript",
+                "parent": "game:GetService('ServerScriptService')",
+                "file": os.path.join(base_dir, "server", "StormCharacterMorphServer.luau")
+            },
+            {
                 "name": "LobbyManagerServer",
                 "type": "Script",
                 "parent": "game:GetService('ServerScriptService')",
@@ -65,6 +71,12 @@ parts = [
                 "type": "LocalScript",
                 "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
                 "file": os.path.join(base_dir, "client", "CombatComboController.luau")
+            },
+            {
+                "name": "StormRangedController",
+                "type": "LocalScript",
+                "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
+                "file": os.path.join(base_dir, "client", "StormRangedController.luau")
             },
             {
                 "name": "StormAssistController",

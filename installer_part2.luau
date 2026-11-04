@@ -454,8 +454,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	local now = os.clock()
 
-	-- 1. Direct Ninja Dash with [L] Key or Gamepad ButtonB (Circle / B)
-	if input.KeyCode == Enum.KeyCode.L or input.KeyCode == Enum.KeyCode.ButtonB then
+	-- 1. Direct Ninja Dash with [LeftShift], [Q], or Gamepad ButtonB (Circle / B)
+	if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.Q or input.KeyCode == Enum.KeyCode.ButtonB then
 		executeNinjaDash()
 
 	-- 2. Sidestep detection (Double tap A or D)
@@ -518,7 +518,7 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
-print("[StormMovementController] ✅ Loaded — Movement [WASD], Sidestep [A/D x2], Ninja Dash [L] / [Space x2] / Gamepad (B).")
+print("[StormMovementController] ✅ Loaded — Movement [WASD], Sidestep [A/D x2], Ninja Dash [Shift/Q] / [Space x2] / Gamepad (B).")
 ]=====]
     installScript('StormMovementController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
@@ -528,9 +528,9 @@ do
 -- TekkenDefenseController.luau
 -- CLIENT SCRIPT: Tekken-Style Technical Defense System
 -- Features:
---   • WASD Movement + IJKL Defense:
---       [K] Hold: Standing High/Mid Guard (Cyan Shield)
---       [S + K] or [Ctrl + K]: Crouched Low Guard (Amber Shield)
+--   • WASD Movement + Guard Defense:
+--       [F] Hold: Standing High/Mid Guard (Cyan Shield)
+--       [S + F] or [Ctrl + F]: Crouched Low Guard (Amber Shield)
 --   • Just-Frame Parry (180ms window for counter stagger)
 --   • Full Controller Support: R1 / R2 Bumpers
 --   • Mobile Touch Support via Custom BindableEvent
@@ -818,7 +818,7 @@ end
 -- MULTI-PLATFORM INPUT LISTENERS
 -- =========================================================
 local function isGuardKey(key: Enum.KeyCode): boolean
-	return key == Enum.KeyCode.K or key == Enum.KeyCode.F or key == Enum.KeyCode.ButtonR1 or key == Enum.KeyCode.ButtonR2
+	return key == Enum.KeyCode.F or key == Enum.KeyCode.ButtonR1 or key == Enum.KeyCode.ButtonR2
 end
 
 UserInputService.InputBegan:Connect(function(input, processed)
@@ -854,7 +854,7 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
-print("[TekkenDefenseController] ✅ Loaded — Guard [K] / [F] / Gamepad (R1/R2), Low Guard [S+K].")
+print("[TekkenDefenseController] ✅ Loaded — Guard [F] / Gamepad (R1/R2), Low Guard [S+F].")
 ]=====]
     installScript('TekkenDefenseController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
@@ -980,9 +980,9 @@ local function findHitTarget(myRoot: BasePart): Model?
 end
 
 -- =========================================================
--- EXECUTE ATTACK (J / Left Click / Mobile / Gamepad)
+-- EXECUTE ATTACK: [J] Pukulan Biasa / [K] Serangan Bawah
 -- =========================================================
-local function executeAttack()
+local function executeAttack(forceLow: boolean?)
 	if isAttacking or isStaggered then return end
 	local char = LocalPlayer.Character
 	if not char then return end
@@ -1000,14 +1000,14 @@ local function executeAttack()
 		currentComboIndex = 0
 	end
 
-	-- Low Sweep check: S key (retreating/crouch in fighting games) OR Ctrl / C
-	local isSHeld = UserInputService:IsKeyDown(Enum.KeyCode.S)
-	local isCtrlHeld = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C)
-	local isLowSweep = isSHeld or isCtrlHeld
+	-- Naruto Storm Attack Standard:
+	-- [J]: 4-Hit Normal Taijutsu Punch Combo String
+	-- [K]: Dedicated Low Shinobi Sweep (Bypasses High Guard)
+	local isLowSweep = (forceLow == true)
 	local isHeavyFinisher = false
 
 	if isLowSweep then
-		-- Low Shinobi Sweep
+		-- Dedicated Low Shinobi Sweep
 		currentComboIndex = 1
 	else
 		currentComboIndex = (currentComboIndex % 4) + 1
@@ -1027,7 +1027,7 @@ local function executeAttack()
 
 	-- Storm 4 Forward Lunge
 	local forwardDir = root.CFrame.LookVector
-	local lungeSpeed = if isHeavyFinisher then 40 else LUNGE_FORCE
+	local lungeSpeed = if isHeavyFinisher then 40 else (if isLowSweep then 22 else LUNGE_FORCE)
 	root.AssemblyLinearVelocity = Vector3.new(forwardDir.X * lungeSpeed, root.AssemblyLinearVelocity.Y, forwardDir.Z * lungeSpeed)
 
 	-- Visual & Sound
@@ -1099,25 +1099,222 @@ end
 -- =========================================================
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
-	-- 1. Keyboard [J] or Left-Click
-	if input.KeyCode == Enum.KeyCode.J or input.UserInputType == Enum.UserInputType.MouseButton1 then
-		executeAttack()
-	-- 2. Gamepad Controller (Square on PS, X on Xbox)
-	elseif input.KeyCode == Enum.KeyCode.ButtonX then
-		executeAttack()
+	-- 1. Keyboard [J] (Pukulan Biasa) or Left-Click or Gamepad (Square / X)
+	if input.KeyCode == Enum.KeyCode.J or input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonX then
+		executeAttack(false)
+	-- 2. Keyboard [K] (Serangan Bawah / Low Sweep) or Gamepad DPadDown
+	elseif input.KeyCode == Enum.KeyCode.K or input.KeyCode == Enum.KeyCode.DPadDown then
+		executeAttack(true)
 	end
 end)
 
 -- Mobile Touch Integration
 if evMobileAttack then
-	evMobileAttack.Event:Connect(function()
-		executeAttack()
+	evMobileAttack.Event:Connect(function(isLow: any)
+		executeAttack(isLow == true)
 	end)
 end
 
-print("[CombatComboController] ✅ Loaded — Attack [J] / Left-Click / Gamepad (Square/X), Low Sweep [S+J].")
+local evMobileLow = ReplicatedStorage:FindFirstChild("MobileLowAttackAction") :: BindableEvent?
+if not evMobileLow then
+	evMobileLow = Instance.new("BindableEvent")
+	evMobileLow.Name = "MobileLowAttackAction"
+	evMobileLow.Parent = ReplicatedStorage
+end
+evMobileLow.Event:Connect(function()
+	executeAttack(true)
+end)
+
+print("[CombatComboController] ✅ Loaded — Pukulan Biasa [J], Serangan Bawah [K], Gamepad (Square=Punch / DPadDown=Low).")
 ]=====]
     installScript('CombatComboController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
+end
+
+do
+    local src = [=====[--!strict
+-- StormRangedController.luau
+-- CLIENT SCRIPT: Naruto Storm Authentic Anime Ranged Attack System ([L] Key)
+-- Features:
+--   • [L] Key: Fires character-specific anime projectile jutsu:
+--       - Naruto: Wind Style: Rasen-Shuriken (Spinning aerodynamic chakra shuriken)
+--       - Sasuke: Fire Style: Fireball Jutsu / Goukakyuu (Explosive flame sphere)
+--       - Luffy: Gum-Gum Pistol / Gomu Gomu no Pistol (Stretching punch fist)
+--       - Zoro: 36 Pound Phoenix / Tobu Zangeki (Emerald flying wind blade)
+--       - Killua: Thunderbolt / Narukami (High-speed lightning spark strike)
+--   • Procedural anime casting pose & particle aura
+--   • Target lock-on aiming & cooldown management
+--   • Full Gamepad (ButtonY / Triangle) and Mobile Touch support
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera :: Camera
+
+local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+
+-- Cooldown tracking
+local lastRangedTime = 0
+local isFiring = false
+
+-- Remotes
+local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 15) :: Folder?
+local function getRemote(name: string): RemoteEvent?
+	return combatEvents and combatEvents:FindFirstChild(name) :: RemoteEvent?
+end
+
+local evRanged = getRemote("RangedAttackEvent")
+if not evRanged and combatEvents then
+	local r = Instance.new("RemoteEvent")
+	r.Name = "RangedAttackEvent"
+	r.Parent = combatEvents
+	evRanged = r
+end
+
+-- Mobile Bindable
+local evMobileRanged = ReplicatedStorage:FindFirstChild("MobileRangedAction") :: BindableEvent?
+if not evMobileRanged then
+	evMobileRanged = Instance.new("BindableEvent")
+	evMobileRanged.Name = "MobileRangedAction"
+	evMobileRanged.Parent = ReplicatedStorage
+end
+
+local evAnim = ReplicatedStorage:FindFirstChild("StormCombatAnimationEvent") :: BindableEvent?
+
+-- Target helper
+local function getTarget(): Model?
+	local dummy = Workspace:FindFirstChild("TrainingDummy")
+	if dummy and dummy:IsA("Model") and dummy:FindFirstChild("HumanoidRootPart") then
+		return dummy
+	end
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			return p.Character
+		end
+	end
+	return nil
+end
+
+-- =========================================================
+-- EXECUTE RANGED ANIME ATTACK ([L] Key)
+-- =========================================================
+local function executeRangedAttack()
+	if isFiring then return end
+	local char = LocalPlayer.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or hum.Health <= 0 then return end
+
+	-- Block ranged attack while guarding
+	if LocalPlayer:GetAttribute("IsBlocking") == true then
+		return
+	end
+
+	local charId = tostring(LocalPlayer:GetAttribute("SelectedCharacter") or "Naruto")
+	local charData = CombatConfig.Characters[charId] or CombatConfig.Characters["Naruto"]
+	local rangedData = charData.RangedSkill or {
+		Name = "Chakra Shuriken",
+		Damage = 18,
+		Speed = 100,
+		Cooldown = 1.6,
+		Color = Color3.fromRGB(0, 230, 255),
+		Sound = "rbxasset://sounds/action_whoosh.mp3",
+	}
+
+	local now = os.clock()
+	if now - lastRangedTime < (rangedData.Cooldown or 1.5) then
+		return
+	end
+
+	lastRangedTime = now
+	isFiring = true
+
+	-- Determine Aim Direction
+	local target = getTarget()
+	local aimDir = root.CFrame.LookVector
+	if target and target:FindFirstChild("HumanoidRootPart") then
+		local tRoot = target:FindFirstChild("HumanoidRootPart") :: BasePart
+		local diff = (tRoot.Position - (root.Position + Vector3.new(0, 1.2, 0)))
+		if diff.Magnitude > 0.1 then
+			aimDir = diff.Unit
+		end
+	end
+
+	-- Procedural Animation: Cast Pose
+	if evAnim then
+		evAnim:Fire("Attack2", 0.35)
+	end
+
+	-- Hands Energy Charge Flash
+	local flashPart = Instance.new("Part")
+	flashPart.Shape = Enum.PartType.Ball
+	flashPart.Size = Vector3.new(1.8, 1.8, 1.8)
+	flashPart.CFrame = root.CFrame * CFrame.new(0, 0.4, -2.2)
+	flashPart.Material = Enum.Material.Neon
+	flashPart.Color = rangedData.Color or Color3.fromRGB(0, 240, 255)
+	flashPart.Transparency = 0.2
+	flashPart.CanCollide = false
+	flashPart.Anchored = true
+	flashPart.Parent = Workspace
+
+	local tween = TweenService:Create(flashPart, TweenInfo.new(0.18), {
+		Size = Vector3.new(0.4, 0.4, 0.4),
+		Transparency = 1,
+	})
+	tween:Play()
+	tween.Completed:Connect(function()
+		flashPart:Destroy()
+	end)
+
+	-- Sound
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = rangedData.Sound or "rbxasset://sounds/action_whoosh.mp3"
+		snd.PlaybackSpeed = 1.3
+		snd.Volume = 0.9
+		snd.Parent = root
+		snd:Play()
+		task.delay(0.6, function() pcall(function() snd:Destroy() end) end)
+	end)
+
+	-- Fire Server
+	if evRanged then
+		evRanged:FireServer(aimDir, charId)
+	end
+
+	print(string.format(">> [StormRanged] %s fired: %s! <<", charData.Name, rangedData.Name))
+
+	task.delay(0.35, function()
+		isFiring = false
+	end)
+end
+
+-- =========================================================
+-- MULTI-PLATFORM INPUT LISTENERS
+-- =========================================================
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+
+	-- [L] Key: Serangan Jarak Jauh (Naruto Storm Standard)
+	if input.KeyCode == Enum.KeyCode.L or input.KeyCode == Enum.KeyCode.ButtonY then
+		executeRangedAttack()
+	end
+end)
+
+-- Mobile Touch Listener
+if evMobileRanged then
+	evMobileRanged.Event:Connect(function()
+		executeRangedAttack()
+	end)
+end
+
+print("[StormRangedController] ✅ Loaded — Serangan Jarak Jauh [L] / Gamepad (Triangle/Y) active.")
+]=====]
+    installScript('StormRangedController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
 
 do
@@ -1378,4 +1575,4 @@ print("[StormAssistController] ✅ Loaded — Assist [I] / [T] / Gamepad (L1), L
     installScript('StormAssistController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
 
-return 'Part 2 Installed Successfully (5 scripts)'
+return 'Part 2 Installed Successfully (6 scripts)'

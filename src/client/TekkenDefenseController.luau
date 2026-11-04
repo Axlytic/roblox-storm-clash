@@ -2,9 +2,9 @@
 -- TekkenDefenseController.luau
 -- CLIENT SCRIPT: Tekken-Style Technical Defense System
 -- Features:
---   • WASD Movement + IJKL Defense:
---       [K] Hold: Standing High/Mid Guard (Cyan Shield)
---       [S + K] or [Ctrl + K]: Crouched Low Guard (Amber Shield)
+--   • WASD Movement + Guard Defense:
+--       [F] Hold: Standing High/Mid Guard (Cyan Shield)
+--       [S + F] or [Ctrl + F]: Crouched Low Guard (Amber Shield)
 --   • Just-Frame Parry (180ms window for counter stagger)
 --   • Full Controller Support: R1 / R2 Bumpers
 --   • Mobile Touch Support via Custom BindableEvent
@@ -292,7 +292,7 @@ end
 -- MULTI-PLATFORM INPUT LISTENERS
 -- =========================================================
 local function isGuardKey(key: Enum.KeyCode): boolean
-	return key == Enum.KeyCode.K or key == Enum.KeyCode.F or key == Enum.KeyCode.ButtonR1 or key == Enum.KeyCode.ButtonR2
+	return key == Enum.KeyCode.F or key == Enum.KeyCode.ButtonR1 or key == Enum.KeyCode.ButtonR2
 end
 
 UserInputService.InputBegan:Connect(function(input, processed)
@@ -328,4 +328,4 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
-print("[TekkenDefenseController] ✅ Loaded — Guard [K] / [F] / Gamepad (R1/R2), Low Guard [S+K].")
+print("[TekkenDefenseController] ✅ Loaded — Guard [F] / Gamepad (R1/R2), Low Guard [S+F].")

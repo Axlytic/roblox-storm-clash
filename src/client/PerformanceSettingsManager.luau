@@ -79,3 +79,4 @@ btnGfx.MouseButton1Click:Connect(function()
 end)
 
 print("[PerformanceSettingsManager] ✅ Loaded — Low-GFX / 60FPS Performance Toggle active.")
+

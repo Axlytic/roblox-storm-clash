@@ -152,13 +152,15 @@ local function callAssistStriker()
 	end
 
 	-- Sound
-	local callSnd = Instance.new("Sound")
-	callSnd.SoundId = "rbxasset://sounds/electronicpingshort.wav"
-	callSnd.PlaybackSpeed = 1.6
-	callSnd.Volume = 0.9
-	callSnd.Parent = root
-	callSnd:Play()
-	task.delay(0.5, function() callSnd:Destroy() end)
+	pcall(function()
+		local callSnd = Instance.new("Sound")
+		callSnd.SoundId = "rbxasset://sounds/volume_slider.ogg"
+		callSnd.PlaybackSpeed = 1.8
+		callSnd.Volume = 0.9
+		callSnd.Parent = root
+		callSnd:Play()
+		task.delay(0.5, function() pcall(function() callSnd:Destroy() end) end)
+	end)
 
 	print(">> [Storm Assist] Sasuke / Shadow Striker summoned! <<")
 
@@ -204,13 +206,15 @@ local function executeLeaderSwap()
 	tw.Completed:Connect(function() flash:Destroy() end)
 
 	-- Swap Sound
-	local swapSnd = Instance.new("Sound")
-	swapSnd.SoundId = "rbxasset://sounds/bell.wav"
-	swapSnd.PlaybackSpeed = 1.8
-	swapSnd.Volume = 1
-	swapSnd.Parent = root
-	swapSnd:Play()
-	task.delay(0.5, function() swapSnd:Destroy() end)
+	pcall(function()
+		local swapSnd = Instance.new("Sound")
+		swapSnd.SoundId = "rbxasset://sounds/action_jump.mp3"
+		swapSnd.PlaybackSpeed = 1.6
+		swapSnd.Volume = 1
+		swapSnd.Parent = root
+		swapSnd:Play()
+		task.delay(0.5, function() pcall(function() swapSnd:Destroy() end) end)
+	end)
 
 	if evLeaderSwap then
 		evLeaderSwap:FireServer()

@@ -199,18 +199,20 @@ local function triggerGuardCrush()
 		pe.Parent = att
 
 		-- Sound
-		local crackSound = Instance.new("Sound")
-		crackSound.SoundId = "rbxasset://sounds/electronicpingshort.wav"
-		crackSound.PlaybackSpeed = 0.6
-		crackSound.Volume = 1
-		crackSound.Parent = root
-		crackSound:Play()
+		pcall(function()
+			local crackSound = Instance.new("Sound")
+			crackSound.SoundId = "rbxasset://sounds/impact_explosion_03.mp3"
+			crackSound.PlaybackSpeed = 1.4
+			crackSound.Volume = 0.9
+			crackSound.Parent = root
+			crackSound:Play()
+			task.delay(0.6, function() pcall(function() crackSound:Destroy() end) end)
+		end)
 
 		print(">> [GUARD CRUSH] Defender Guard Broken! <<")
 
 		task.delay(2.2, function()
 			att:Destroy()
-			crackSound:Destroy()
 			if hum then hum.WalkSpeed = 16 end
 			guardHealth = 50
 			isGuardCrushed = false
@@ -238,12 +240,15 @@ local function triggerParryVFX()
 	pe.Lifetime = NumberRange.new(0.3, 0.5)
 	pe.Parent = att
 
-	local snd = Instance.new("Sound")
-	snd.SoundId = "rbxasset://sounds/bell.wav"
-	snd.PlaybackSpeed = 1.6
-	snd.Volume = 1
-	snd.Parent = root
-	snd:Play()
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = "rbxasset://sounds/volume_slider.ogg"
+		snd.PlaybackSpeed = 1.6
+		snd.Volume = 1
+		snd.Parent = root
+		snd:Play()
+		task.delay(0.5, function() pcall(function() snd:Destroy() end) end)
+	end)
 
 	-- Floating UI Banner
 	local bb = Instance.new("BillboardGui")
@@ -263,7 +268,6 @@ local function triggerParryVFX()
 
 	task.delay(0.6, function()
 		att:Destroy()
-		snd:Destroy()
 		bb:Destroy()
 	end)
 

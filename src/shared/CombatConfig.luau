@@ -66,7 +66,7 @@ CombatConfig.Combo = {
 			Hitstun = 0.32,
 			Knockback = 3,
 			AttackType = "High", -- High attack (can be blocked by High Guard)
-			Sound = "rbxasset://sounds/action_footstep_plastic.mp3",
+			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
 			Pitch = 1.3,
 		},
 		[2] = {
@@ -74,7 +74,7 @@ CombatConfig.Combo = {
 			Hitstun = 0.35,
 			Knockback = 4,
 			AttackType = "Mid",  -- Mid attack (blocked by High Guard)
-			Sound = "rbxasset://sounds/action_footstep_plastic.mp3",
+			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
 			Pitch = 1.1,
 		},
 		[3] = {
@@ -83,7 +83,7 @@ CombatConfig.Combo = {
 			Knockback = 6,
 			LiftY = 6,           -- Launches opponent slightly into the air
 			AttackType = "High",
-			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Sound = "rbxasset://sounds/volume_slider.ogg",
 			Pitch = 1.5,
 		},
 		[4] = {
@@ -92,7 +92,7 @@ CombatConfig.Combo = {
 			Knockback = 48,      -- Heavy finisher blow: launches opponent flying
 			LiftY = 8,
 			AttackType = "Mid",
-			Sound = "rbxasset://sounds/bass.wav",
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
 			Pitch = 1.0,
 		},
 	},

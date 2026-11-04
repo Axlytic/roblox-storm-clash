@@ -111,7 +111,7 @@ CombatConfig.Combo = {
 			Hitstun = 0.32,
 			Knockback = 3,
 			AttackType = "High", -- High attack (can be blocked by High Guard)
-			Sound = "rbxasset://sounds/action_footstep_plastic.mp3",
+			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
 			Pitch = 1.3,
 		},
 		[2] = {
@@ -119,7 +119,7 @@ CombatConfig.Combo = {
 			Hitstun = 0.35,
 			Knockback = 4,
 			AttackType = "Mid",  -- Mid attack (blocked by High Guard)
-			Sound = "rbxasset://sounds/action_footstep_plastic.mp3",
+			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
 			Pitch = 1.1,
 		},
 		[3] = {
@@ -128,7 +128,7 @@ CombatConfig.Combo = {
 			Knockback = 6,
 			LiftY = 6,           -- Launches opponent slightly into the air
 			AttackType = "High",
-			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Sound = "rbxasset://sounds/volume_slider.ogg",
 			Pitch = 1.5,
 		},
 		[4] = {
@@ -137,7 +137,7 @@ CombatConfig.Combo = {
 			Knockback = 48,      -- Heavy finisher blow: launches opponent flying
 			LiftY = 8,
 			AttackType = "Mid",
-			Sound = "rbxasset://sounds/bass.wav",
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
 			Pitch = 1.0,
 		},
 	},
@@ -1082,12 +1082,15 @@ local function executeTekkenSidestep(direction: "Left" | "Right")
 	root.AssemblyLinearVelocity = Vector3.new(sidestepVelocity.X, root.AssemblyLinearVelocity.Y, sidestepVelocity.Z)
 
 	-- Sound
-	local dodgeSound = Instance.new("Sound")
-	dodgeSound.SoundId = "rbxasset://sounds/action_footstep_plastic.mp3"
-	dodgeSound.PlaybackSpeed = 1.8
-	dodgeSound.Volume = 0.9
-	dodgeSound.Parent = root
-	dodgeSound:Play()
+	pcall(function()
+		local dodgeSound = Instance.new("Sound")
+		dodgeSound.SoundId = "rbxasset://sounds/action_footsteps_plastic.mp3"
+		dodgeSound.PlaybackSpeed = 1.8
+		dodgeSound.Volume = 0.9
+		dodgeSound.Parent = root
+		dodgeSound:Play()
+		task.delay(0.3, function() pcall(function() dodgeSound:Destroy() end) end)
+	end)
 
 	print(string.format(">> [Tekken Sidestep] Evasion %s executed! <<", direction))
 
@@ -1095,7 +1098,6 @@ local function executeTekkenSidestep(direction: "Left" | "Right")
 		trail:Destroy()
 		trailAtt0:Destroy()
 		trailAtt1:Destroy()
-		dodgeSound:Destroy()
 		isSidestepping = false
 	end)
 end
@@ -1131,12 +1133,16 @@ local function executeNinjaDash()
 	pe.Parent = burstAtt
 
 	-- Sound
-	local dashSound = Instance.new("Sound")
-	dashSound.SoundId = "rbxasset://sounds/action_jump.mp3"
-	dashSound.PlaybackSpeed = 1.7
-	dashSound.Volume = 0.9
-	dashSound.Parent = root
-	dashSound:Play()
+	local dashSound: Sound? = nil
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = "rbxasset://sounds/action_jump.mp3"
+		snd.PlaybackSpeed = 1.7
+		snd.Volume = 0.9
+		snd.Parent = root
+		snd:Play()
+		dashSound = snd
+	end)
 
 	local startTime = os.clock()
 	local maxDuration = 0.70
@@ -1152,7 +1158,7 @@ local function executeNinjaDash()
 			isNinjaDashing = false
 			LocalPlayer:SetAttribute("IsNinjaDashing", false)
 			burstAtt:Destroy()
-			dashSound:Destroy()
+			if dashSound then pcall(function() dashSound:Destroy() end) end
 			return
 		end
 
@@ -1447,18 +1453,20 @@ local function triggerGuardCrush()
 		pe.Parent = att
 
 		-- Sound
-		local crackSound = Instance.new("Sound")
-		crackSound.SoundId = "rbxasset://sounds/electronicpingshort.wav"
-		crackSound.PlaybackSpeed = 0.6
-		crackSound.Volume = 1
-		crackSound.Parent = root
-		crackSound:Play()
+		pcall(function()
+			local crackSound = Instance.new("Sound")
+			crackSound.SoundId = "rbxasset://sounds/impact_explosion_03.mp3"
+			crackSound.PlaybackSpeed = 1.4
+			crackSound.Volume = 0.9
+			crackSound.Parent = root
+			crackSound:Play()
+			task.delay(0.6, function() pcall(function() crackSound:Destroy() end) end)
+		end)
 
 		print(">> [GUARD CRUSH] Defender Guard Broken! <<")
 
 		task.delay(2.2, function()
 			att:Destroy()
-			crackSound:Destroy()
 			if hum then hum.WalkSpeed = 16 end
 			guardHealth = 50
 			isGuardCrushed = false
@@ -1486,12 +1494,15 @@ local function triggerParryVFX()
 	pe.Lifetime = NumberRange.new(0.3, 0.5)
 	pe.Parent = att
 
-	local snd = Instance.new("Sound")
-	snd.SoundId = "rbxasset://sounds/bell.wav"
-	snd.PlaybackSpeed = 1.6
-	snd.Volume = 1
-	snd.Parent = root
-	snd:Play()
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = "rbxasset://sounds/volume_slider.ogg"
+		snd.PlaybackSpeed = 1.6
+		snd.Volume = 1
+		snd.Parent = root
+		snd:Play()
+		task.delay(0.5, function() pcall(function() snd:Destroy() end) end)
+	end)
 
 	-- Floating UI Banner
 	local bb = Instance.new("BillboardGui")
@@ -1511,7 +1522,6 @@ local function triggerParryVFX()
 
 	task.delay(0.6, function()
 		att:Destroy()
-		snd:Destroy()
 		bb:Destroy()
 	end)
 
@@ -1620,10 +1630,24 @@ if not evMobileAttack then
 	evMobileAttack.Parent = ReplicatedStorage
 end
 
--- Sounds
-local SOUND_PUNCH = "rbxasset://sounds/action_footstep_plastic.mp3"
-local SOUND_HEAVY = "rbxasset://sounds/bass.wav"
+-- Sounds (Verified local engine assets)
+local SOUND_PUNCH = "rbxasset://sounds/action_footsteps_plastic.mp3"
+local SOUND_HEAVY = "rbxasset://sounds/impact_explosion_03.mp3"
 local SOUND_SWEEP = "rbxasset://sounds/action_jump.mp3"
+
+local function playSafeSound(soundId: string, parent: Instance, pitch: number, volume: number)
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = soundId
+		snd.PlaybackSpeed = pitch
+		snd.Volume = volume
+		snd.Parent = parent
+		snd:Play()
+		task.delay(0.5, function()
+			pcall(function() snd:Destroy() end)
+		end)
+	end)
+end
 
 -- =========================================================
 -- VISUAL SLASH / IMPACT EFFECT
@@ -1648,14 +1672,10 @@ local function playAttackFX(root: BasePart, isHeavy: boolean, isLow: boolean)
 		fxPart:Destroy()
 	end)
 
-	-- Sound
-	local snd = Instance.new("Sound")
-	snd.SoundId = if isHeavy then SOUND_HEAVY elseif isLow then SOUND_SWEEP else SOUND_PUNCH
-	snd.PlaybackSpeed = if isHeavy then 1.1 elseif isLow then 1.4 else 1.2 + (currentComboIndex * 0.1)
-	snd.Volume = 0.9
-	snd.Parent = root
-	snd:Play()
-	task.delay(0.4, function() snd:Destroy() end)
+	-- Safe Sound Playback
+	local sId = if isHeavy then SOUND_HEAVY elseif isLow then SOUND_SWEEP else SOUND_PUNCH
+	local sPitch = if isHeavy then 1.1 elseif isLow then 1.4 else 1.2 + (currentComboIndex * 0.1)
+	playSafeSound(sId, root, sPitch, 0.9)
 end
 
 -- =========================================================
@@ -1975,13 +1995,15 @@ local function callAssistStriker()
 	end
 
 	-- Sound
-	local callSnd = Instance.new("Sound")
-	callSnd.SoundId = "rbxasset://sounds/electronicpingshort.wav"
-	callSnd.PlaybackSpeed = 1.6
-	callSnd.Volume = 0.9
-	callSnd.Parent = root
-	callSnd:Play()
-	task.delay(0.5, function() callSnd:Destroy() end)
+	pcall(function()
+		local callSnd = Instance.new("Sound")
+		callSnd.SoundId = "rbxasset://sounds/volume_slider.ogg"
+		callSnd.PlaybackSpeed = 1.8
+		callSnd.Volume = 0.9
+		callSnd.Parent = root
+		callSnd:Play()
+		task.delay(0.5, function() pcall(function() callSnd:Destroy() end) end)
+	end)
 
 	print(">> [Storm Assist] Sasuke / Shadow Striker summoned! <<")
 
@@ -2027,13 +2049,15 @@ local function executeLeaderSwap()
 	tw.Completed:Connect(function() flash:Destroy() end)
 
 	-- Swap Sound
-	local swapSnd = Instance.new("Sound")
-	swapSnd.SoundId = "rbxasset://sounds/bell.wav"
-	swapSnd.PlaybackSpeed = 1.8
-	swapSnd.Volume = 1
-	swapSnd.Parent = root
-	swapSnd:Play()
-	task.delay(0.5, function() swapSnd:Destroy() end)
+	pcall(function()
+		local swapSnd = Instance.new("Sound")
+		swapSnd.SoundId = "rbxasset://sounds/action_jump.mp3"
+		swapSnd.PlaybackSpeed = 1.6
+		swapSnd.Volume = 1
+		swapSnd.Parent = root
+		swapSnd:Play()
+		task.delay(0.5, function() pcall(function() swapSnd:Destroy() end) end)
+	end)
 
 	if evLeaderSwap then
 		evLeaderSwap:FireServer()
@@ -2284,6 +2308,7 @@ toggleBtn.MouseButton1Click:Connect(function()
 end)
 
 print("[MobileCombatHUD] ✅ Loaded — Touch controls auto-configured for worldwide mobile & tablet players.")
+
 ]=====]
     installScript('MobileCombatHUD', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
@@ -2373,6 +2398,7 @@ btnGfx.MouseButton1Click:Connect(function()
 end)
 
 print("[PerformanceSettingsManager] ✅ Loaded — Low-GFX / 60FPS Performance Toggle active.")
+
 ]=====]
     installScript('PerformanceSettingsManager', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end

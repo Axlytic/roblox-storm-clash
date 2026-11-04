@@ -90,12 +90,15 @@ local function executeTekkenSidestep(direction: "Left" | "Right")
 	root.AssemblyLinearVelocity = Vector3.new(sidestepVelocity.X, root.AssemblyLinearVelocity.Y, sidestepVelocity.Z)
 
 	-- Sound
-	local dodgeSound = Instance.new("Sound")
-	dodgeSound.SoundId = "rbxasset://sounds/action_footstep_plastic.mp3"
-	dodgeSound.PlaybackSpeed = 1.8
-	dodgeSound.Volume = 0.9
-	dodgeSound.Parent = root
-	dodgeSound:Play()
+	pcall(function()
+		local dodgeSound = Instance.new("Sound")
+		dodgeSound.SoundId = "rbxasset://sounds/action_footsteps_plastic.mp3"
+		dodgeSound.PlaybackSpeed = 1.8
+		dodgeSound.Volume = 0.9
+		dodgeSound.Parent = root
+		dodgeSound:Play()
+		task.delay(0.3, function() pcall(function() dodgeSound:Destroy() end) end)
+	end)
 
 	print(string.format(">> [Tekken Sidestep] Evasion %s executed! <<", direction))
 
@@ -103,7 +106,6 @@ local function executeTekkenSidestep(direction: "Left" | "Right")
 		trail:Destroy()
 		trailAtt0:Destroy()
 		trailAtt1:Destroy()
-		dodgeSound:Destroy()
 		isSidestepping = false
 	end)
 end
@@ -139,12 +141,16 @@ local function executeNinjaDash()
 	pe.Parent = burstAtt
 
 	-- Sound
-	local dashSound = Instance.new("Sound")
-	dashSound.SoundId = "rbxasset://sounds/action_jump.mp3"
-	dashSound.PlaybackSpeed = 1.7
-	dashSound.Volume = 0.9
-	dashSound.Parent = root
-	dashSound:Play()
+	local dashSound: Sound? = nil
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = "rbxasset://sounds/action_jump.mp3"
+		snd.PlaybackSpeed = 1.7
+		snd.Volume = 0.9
+		snd.Parent = root
+		snd:Play()
+		dashSound = snd
+	end)
 
 	local startTime = os.clock()
 	local maxDuration = 0.70
@@ -160,7 +166,7 @@ local function executeNinjaDash()
 			isNinjaDashing = false
 			LocalPlayer:SetAttribute("IsNinjaDashing", false)
 			burstAtt:Destroy()
-			dashSound:Destroy()
+			if dashSound then pcall(function() dashSound:Destroy() end) end
 			return
 		end
 

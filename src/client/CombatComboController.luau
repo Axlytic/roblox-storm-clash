@@ -43,10 +43,24 @@ if not evMobileAttack then
 	evMobileAttack.Parent = ReplicatedStorage
 end
 
--- Sounds
-local SOUND_PUNCH = "rbxasset://sounds/action_footstep_plastic.mp3"
-local SOUND_HEAVY = "rbxasset://sounds/bass.wav"
+-- Sounds (Verified local engine assets)
+local SOUND_PUNCH = "rbxasset://sounds/action_footsteps_plastic.mp3"
+local SOUND_HEAVY = "rbxasset://sounds/impact_explosion_03.mp3"
 local SOUND_SWEEP = "rbxasset://sounds/action_jump.mp3"
+
+local function playSafeSound(soundId: string, parent: Instance, pitch: number, volume: number)
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = soundId
+		snd.PlaybackSpeed = pitch
+		snd.Volume = volume
+		snd.Parent = parent
+		snd:Play()
+		task.delay(0.5, function()
+			pcall(function() snd:Destroy() end)
+		end)
+	end)
+end
 
 -- =========================================================
 -- VISUAL SLASH / IMPACT EFFECT
@@ -71,14 +85,10 @@ local function playAttackFX(root: BasePart, isHeavy: boolean, isLow: boolean)
 		fxPart:Destroy()
 	end)
 
-	-- Sound
-	local snd = Instance.new("Sound")
-	snd.SoundId = if isHeavy then SOUND_HEAVY elseif isLow then SOUND_SWEEP else SOUND_PUNCH
-	snd.PlaybackSpeed = if isHeavy then 1.1 elseif isLow then 1.4 else 1.2 + (currentComboIndex * 0.1)
-	snd.Volume = 0.9
-	snd.Parent = root
-	snd:Play()
-	task.delay(0.4, function() snd:Destroy() end)
+	-- Safe Sound Playback
+	local sId = if isHeavy then SOUND_HEAVY elseif isLow then SOUND_SWEEP else SOUND_PUNCH
+	local sPitch = if isHeavy then 1.1 elseif isLow then 1.4 else 1.2 + (currentComboIndex * 0.1)
+	playSafeSound(sId, root, sPitch, 0.9)
 end
 
 -- =========================================================

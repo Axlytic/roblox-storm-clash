@@ -174,4 +174,50 @@ CombatConfig.Archetypes = {
 	},
 }
 
+-- =========================================================
+-- 7. ULTIMATE SECRET TECHNIQUE (Storm 4 Cinematic Finisher)
+-- =========================================================
+CombatConfig.Ultimate = {
+	MaxChakra           = 100,
+	ChakraGainPerHit    = 12,     -- Gained per successful M1 strike
+	ChakraGainOnHit     = 8,      -- Gained when taking damage
+	ChakraChargeRate    = 35,     -- Points charged per second while holding [C]
+	RushSpeed           = 125,    -- Initial supersonic rush speed
+	RushMaxDuration     = 0.85,   -- Max duration to connect with target
+	RushConnectDistance = 7.0,    -- Distance to trigger cinematic cutscene
+	UltimateDamage      = 52,     -- Massive cinematic finisher damage
+	CutsceneDuration    = 2.6,    -- Seconds of dynamic multihit cinematic
+}
+
+-- =========================================================
+-- 8. AWAKENING / TEKKEN RAGE MODE
+-- =========================================================
+CombatConfig.Awakening = {
+	HealthThreshold  = 0.30,   -- Activates when character HP drops below 30%
+	DamageMultiplier = 1.25,   -- +25% attack damage boost in Rage state
+	SpeedMultiplier  = 1.20,   -- +20% walk and dash speed boost
+	AuraColor        = Color3.fromRGB(255, 45, 45),
+}
+
+-- =========================================================
+-- 9. MATCH & ROUND SYSTEM (Storm 4 Dual Top Screen HUD)
+-- =========================================================
+CombatConfig.Match = {
+	RoundDuration    = 99,     -- Standard fighting game 99 second timer
+	RoundsToWin      = 2,      -- Best of 3 rounds
+	IntroDelay       = 3.2,    -- Duration of "ROUND 1... FIGHT!" sequence
+	OutroDelay       = 4.0,    -- Duration of "K.O.! VICTORY!" sequence
+}
+
+-- =========================================================
+-- 10. WEAPON & SLASH VISUALS (Stylized Katana)
+-- =========================================================
+CombatConfig.Weapon = {
+	BladeLength   = 3.8,
+	TrailColor    = Color3.fromRGB(0, 240, 255),
+	TrailLifetime = 0.22,
+	SheathOffset  = CFrame.new(0.8, -0.2, 0.6) * CFrame.Angles(0, 0, math.rad(-140)),
+	WieldOffset   = CFrame.new(0, -1.0, 0) * CFrame.Angles(math.rad(-90), 0, 0),
+}
+
 return CombatConfig

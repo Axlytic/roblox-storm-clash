@@ -13,6 +13,9 @@
       },
       "TrainingDummySpawner": {
         "$path": "src/server/TrainingDummySpawner.luau"
+      },
+      "StormWeaponServer": {
+        "$path": "src/server/StormWeaponServer.luau"
       }
     },
     "StarterPlayer": {
@@ -31,6 +34,15 @@
         },
         "StormAssistController": {
           "$path": "src/client/StormAssistController.luau"
+        },
+        "StormAnimationController": {
+          "$path": "src/client/StormAnimationController.luau"
+        },
+        "StormMatchHUD": {
+          "$path": "src/client/StormMatchHUD.luau"
+        },
+        "StormUltimateController": {
+          "$path": "src/client/StormUltimateController.luau"
         },
         "MobileCombatHUD": {
           "$path": "src/client/MobileCombatHUD.luau"

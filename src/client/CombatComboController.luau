@@ -155,6 +155,14 @@ local function executeAttack()
 	lastAttackTime = now
 	isAttacking = true
 
+	-- Procedural Anime Combat Animation Trigger
+	local evAnim = ReplicatedStorage:FindFirstChild("StormCombatAnimationEvent") :: BindableEvent?
+	if evAnim then
+		local animName = if isLowSweep then "LowSweep" else ("Attack" .. tostring(currentComboIndex))
+		local animDur = if isLowSweep then 0.45 elseif isHeavyFinisher then 0.55 else 0.30
+		evAnim:Fire(animName, animDur)
+	end
+
 	-- Storm 4 Forward Lunge
 	local forwardDir = root.CFrame.LookVector
 	local lungeSpeed = if isHeavyFinisher then 40 else LUNGE_FORCE

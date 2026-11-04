@@ -23,7 +23,10 @@ Sebuah framework pertempuran anime 3D mutakhir di Roblox yang menggabungkan tiga
 | **Tekken Sidestep** | Double-tap `A` / `D` | - | Menghindar menyamping dengan jejak bayangan cyan |
 | **Assist Striker** | `I` | `T` | Panggil partner jutsu (tembakan energi, cooldown 20s) |
 | **Leader Swap** | `U` | `G` | Berganti peran dengan partner (tag-team synergy) |
+| **Ultimate Secret Technique** | `O` | Tombol `[ULT]` (Mobile) | Serangan sinematik pamungkas (52 Damage) saat Chakra = 100% |
+| **Charge Chakra** | Tahan `C` | Tahan `[CHAKRA]` (Mobile) | Mengisi bar energi / Chakra dengan aura spiral biru |
 | **Toggle Lock-On** | `Z` | `Klik Tengah Mouse` | Mengaktifkan / mematikan kamera dual-target Storm 4 |
+| **Tekken Awakening / Rage** | *Pasif Otomatis* | *Saat HP < 30%* | Aura api merah membara, +25% Damage Boost, +20% Speed |
 
 ---
 
@@ -34,7 +37,28 @@ Sebuah framework pertempuran anime 3D mutakhir di Roblox yang menggabungkan tiga
   * Tombol **💨 DASH [L]** (Ninja Dash instan)
   * Tombol **⚡ ASSIST [I]** (Panggil partner jutsu)
   * Tombol **🔄 SWAP [U]** (Leader Swap)
+  * Tombol **🔥 ULT [O]** (Ultimate Jutsu saat Chakra penuh)
+  * Tombol **🌀 CHAKRA [C]** (Hold untuk mengisi Chakra)
   * Tombol **📱 TOUCH: ON/OFF** di pojok kanan atas untuk uji coba di PC.
+
+---
+
+## 🌟 Fitur Baru & Peningkatan Mutakhir (STORM CLASH v2.0)
+1. **Model Katana Anime Stylized & Slash Trail**:
+   * Katana terpasang otomatis di tangan kanan saat bertarung dan di pinggang saat santai.
+   * Dilengkapi partikel **Slash Trail neon cyan** yang menyala saat mengayunkan pedang, dash, atau melancarkan jurus.
+2. **Engine Animasi Temp Anime R15 Mandiri (100% Asset-Independent)**:
+   * Menggunakan modulasi sendi Motor6D prosedural yang sangat halus (lerp/spring).
+   * **Bebas dari risiko HTTP 403 atau error aset gagal load** dari marketplace Roblox.
+   * Menghasilkan gerakan khas anime: kuda-kuda shinobi, lunge tebasan, sapuan kaki bawah 360°, cross-arm guard, deflect parry, dan flight dash ninja.
+3. **Storm 4 Dual Top Screen Fighting HUD & Announcer**:
+   * Healthbar simetris dengan **delayed ghost damage bar** (efek bar putih/merah turun bertahap khas game fighting).
+   * Hexagonal 99-second countdown timer di tengah atas.
+   * Efek announcer sinematik: *"ROUND 1"*, *"READY..."*, *"FIGHT!"*, *"K.O.!"*, dan *"VICTORY!"*.
+4. **Cinematic Ultimate Jutsu & Tekken Rage Mode**:
+   * Layar letterbox hitam 21:9 turun otomatis saat jurus pamungkas aktif.
+   * Gerakan kamera orbit dinamis mengelilingi pertarungan saat kombo 5 pukulan bertubi-tubi mendarat.
+   * Mode Rage otomatis menyala saat darah kritis (< 30%), memberikan aura api merah menyala dan bonus damage +25%.
 
 ---
 

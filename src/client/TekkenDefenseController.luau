@@ -231,6 +231,12 @@ local function triggerParryVFX()
 
 	-- Gold Sparkles & Bell Chime
 	local att = Instance.new("Attachment", root)
+
+	-- Procedural Parry Animation Trigger
+	local evAnim = ReplicatedStorage:FindFirstChild("StormCombatAnimationEvent") :: BindableEvent?
+	if evAnim then
+		evAnim:Fire("Parry", 0.45)
+	end
 	local pe = Instance.new("ParticleEmitter")
 	pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 	pe.Color = ColorSequence.new(Color3.fromRGB(255, 220, 80), Color3.fromRGB(255, 255, 255))

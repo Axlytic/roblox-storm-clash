@@ -31,11 +31,13 @@ local function getOrMakeBindable(name: string): BindableEvent
 	return be
 end
 
-local evMobileAttack = getOrMakeBindable("MobileAttackAction")
-local evMobileGuard  = getOrMakeBindable("MobileGuardAction")
-local evMobileDash   = getOrMakeBindable("MobileDashAction")
-local evMobileAssist = getOrMakeBindable("MobileAssistAction")
-local evMobileSwap   = getOrMakeBindable("MobileSwapAction")
+local evMobileAttack   = getOrMakeBindable("MobileAttackAction")
+local evMobileGuard    = getOrMakeBindable("MobileGuardAction")
+local evMobileDash     = getOrMakeBindable("MobileDashAction")
+local evMobileAssist   = getOrMakeBindable("MobileAssistAction")
+local evMobileSwap     = getOrMakeBindable("MobileSwapAction")
+local evMobileUltimate = getOrMakeBindable("MobileUltimateAction")
+local evMobileChakra   = getOrMakeBindable("MobileChakraAction")
 
 -- ScreenGui
 local screenGui = Instance.new("ScreenGui")
@@ -168,13 +170,38 @@ btnAssist.MouseButton1Click:Connect(function()
 	evMobileAssist:Fire()
 end)
 
--- 5. LEADER SWAP [U] (Top left button)
+-- 5. LEADER SWAP [U] (Left button)
 local btnSwap = createActionButton(
 	"BtnSwap", "🔄", "SWAP [U]", Color3.fromRGB(200, 100, 255),
 	UDim2.new(0.18, 0, 0.40, 0), UDim2.new(0, 48, 0, 48)
 )
 btnSwap.MouseButton1Click:Connect(function()
 	evMobileSwap:Fire()
+end)
+
+-- 6. ULTIMATE JUTSU [O] (Top-right special finisher button)
+local btnUltimate = createActionButton(
+	"BtnUltimate", "🔥", "ULT [O]", Color3.fromRGB(255, 60, 40),
+	UDim2.new(0.85, 0, 0.12, 0), UDim2.new(0, 56, 0, 56)
+)
+btnUltimate.MouseButton1Click:Connect(function()
+	evMobileUltimate:Fire()
+end)
+
+-- 7. CHAKRA CHARGE [C] (Far left charge button)
+local btnChakra = createActionButton(
+	"BtnChakra", "🌀", "CHAKRA [C]", Color3.fromRGB(0, 190, 255),
+	UDim2.new(0.08, 0, 0.65, 0), UDim2.new(0, 52, 0, 52)
+)
+btnChakra.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		evMobileChakra:Fire(true)
+	end
+end)
+btnChakra.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		evMobileChakra:Fire(false)
+	end
 end)
 
 -- =========================================================

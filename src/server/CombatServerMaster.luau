@@ -210,9 +210,11 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 	end
 
 	-- 5. CLEAN HIT!
-	tHum:TakeDamage(damage)
-	local dmgColor = if attackType == "Low" then Color3.fromRGB(255, 170, 0) elseif comboStep == 4 then Color3.fromRGB(255, 50, 50) else Color3.fromRGB(255, 255, 255)
-	spawnFloatingText(tRoot.Position, string.format("💥 -%d", damage), dmgColor)
+	local isAwakening = attacker:GetAttribute("IsAwakening") == true
+	local finalDamage = if isAwakening then math.floor(damage * 1.25) else damage
+	tHum:TakeDamage(finalDamage)
+	local dmgColor = if isAwakening then Color3.fromRGB(255, 30, 30) elseif attackType == "Low" then Color3.fromRGB(255, 170, 0) elseif comboStep == 4 then Color3.fromRGB(255, 50, 50) else Color3.fromRGB(255, 255, 255)
+	spawnFloatingText(tRoot.Position, string.format("💥 -%d%s", finalDamage, isAwakening and " [RAGE]" or ""), dmgColor)
 
 	-- Apply Knockback
 	local hitDir = (tRoot.Position - aRoot.Position).Unit
@@ -337,6 +339,32 @@ evAssist.OnServerEvent:Connect(function(player: Player, strikerType: string)
 	task.delay(2.8, function()
 		strikerModel:Destroy()
 	end)
+end)
+
+-- =========================================================
+-- 7. ULTIMATE SECRET TECHNIQUE (Storm 4 Finisher)
+-- =========================================================
+local evUltimate = ensureRemote("UltimateEvent")
+evUltimate.OnServerEvent:Connect(function(attacker: Player, targetModel: Model)
+	local attackerChar = attacker.Character
+	if not attackerChar then return end
+	local aRoot = attackerChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not aRoot then return end
+
+	if not targetModel or not targetModel.Parent then return end
+	local tRoot = targetModel:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local tHum = targetModel:FindFirstChildOfClass("Humanoid")
+	if not tRoot or not tHum or tHum.Health <= 0 then return end
+
+	local dist = (tRoot.Position - aRoot.Position).Magnitude
+	if dist > 25 then return end
+
+	local isAwakening = attacker:GetAttribute("IsAwakening") == true
+	local ultDmg = if isAwakening then 65 else 52
+	tHum:TakeDamage(ultDmg)
+	spawnFloatingText(tRoot.Position, string.format("⚡ ULTIMATE FINISH -%d!", ultDmg), Color3.fromRGB(255, 220, 50))
+	local hitDir = (tRoot.Position - aRoot.Position).Unit
+	tRoot.AssemblyLinearVelocity = hitDir * 75 + Vector3.new(0, 20, 0)
 end)
 
 print("[CombatServerMaster] ✅ Authoritative Combat Server Master fully initialized.")

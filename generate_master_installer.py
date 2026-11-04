@@ -23,6 +23,12 @@ scripts = [
         "file": os.path.join(base_dir, "server", "TrainingDummySpawner.luau")
     },
     {
+        "name": "StormWeaponServer",
+        "type": "Script",
+        "parent": "game:GetService('ServerScriptService')",
+        "file": os.path.join(base_dir, "server", "StormWeaponServer.luau")
+    },
+    {
         "name": "StormCameraController",
         "type": "LocalScript",
         "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
@@ -51,6 +57,24 @@ scripts = [
         "type": "LocalScript",
         "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
         "file": os.path.join(base_dir, "client", "StormAssistController.luau")
+    },
+    {
+        "name": "StormAnimationController",
+        "type": "LocalScript",
+        "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
+        "file": os.path.join(base_dir, "client", "StormAnimationController.luau")
+    },
+    {
+        "name": "StormMatchHUD",
+        "type": "LocalScript",
+        "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
+        "file": os.path.join(base_dir, "client", "StormMatchHUD.luau")
+    },
+    {
+        "name": "StormUltimateController",
+        "type": "LocalScript",
+        "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
+        "file": os.path.join(base_dir, "client", "StormUltimateController.luau")
     },
     {
         "name": "MobileCombatHUD",
@@ -87,7 +111,7 @@ out.append("    combatEvents.Name = 'CombatEvents'")
 out.append("    combatEvents.Parent = RS")
 out.append("end\n")
 
-out.append("local remoteNames = { 'NinjaDashEvent', 'SidestepEvent', 'BlockEvent', 'ParryEvent', 'AttackEvent', 'AssistEvent', 'LeaderSwapEvent' }")
+out.append("local remoteNames = { 'NinjaDashEvent', 'SidestepEvent', 'BlockEvent', 'ParryEvent', 'AttackEvent', 'AssistEvent', 'LeaderSwapEvent', 'UltimateEvent', 'WeaponStanceEvent' }")
 out.append("for _, name in remoteNames do")
 out.append("    if not combatEvents:FindFirstChild(name) then")
 out.append("        local ev = Instance.new('RemoteEvent')")
@@ -132,8 +156,14 @@ out.append("print('  • L / Double-Tap Space: Naruto Storm 4 Homing Ninja Dash'
 out.append("print('  • Double-Tap A / D: Tekken 3D Sidestep Evasion')")
 out.append("print('  • I / T: Summon Assist Partner (Jutsu Projectile Strike)')")
 out.append("print('  • U / G: Storm 4 Leader Swap')")
+out.append("print('  • O: Ultimate Secret Technique (Cinematic Finisher when Chakra=100%)')")
+out.append("print('  • C: Charge Chakra / Energy (Hold to Charge)')")
 out.append("print('  • Z: Toggle Dynamic Dual-Target Lock-On Camera')")
+out.append("print('  • Tekken Awakening / Rage: Auto-triggers when HP < 30% (+25% Damage Boost)')")
 out.append("print('Multi-Platform & Worldwide Features:')")
+out.append("print('  • ⚔️ Procedural Anime Katana Model with Glowing Slash Trail')")
+out.append("print('  • 🥋 100% Asset-Independent Procedural Anime Motor6D Combat Animations')")
+out.append("print('  • 📊 Storm 4 Dual Top Fighting Healthbars & 99s Round Announcer')")
 out.append("print('  • 📱 Mobile Touch Controls HUD (Right-Thumb Action Cluster)')")
 out.append("print('  • 🎮 Gamepad Support (PlayStation & Xbox Controller)')")
 out.append("print('  • ⚡ Low-GFX / 60FPS Performance Mode Toggle')")

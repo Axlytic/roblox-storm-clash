@@ -64,3 +64,4 @@ Jika Anda menggunakan ekstensi Rojo:
 rojo serve default.project.json
 ```
 Lalu hubungkan plugin Rojo di Roblox Studio.
+

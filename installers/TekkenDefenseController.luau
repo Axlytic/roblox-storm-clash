@@ -159,6 +159,11 @@ local function startGuard()
 		evBlock:FireServer(true, blockType, blockStartTime)
 	end
 
+	local evAnim = ReplicatedStorage:FindFirstChild("StormCombatAnimationEvent") :: BindableEvent?
+	if evAnim then
+		evAnim:Fire(blockType == "Low" and "LowGuard" or "HighGuard", 999)
+	end
+
 	print(string.format(">> [Tekken Guard] %s Guard Active! <<", blockType))
 end
 
@@ -175,6 +180,11 @@ local function stopGuard()
 	if evBlock then
 		evBlock:FireServer(false, "None", 0)
 	end
+
+	local evAnim = ReplicatedStorage:FindFirstChild("StormCombatAnimationEvent") :: BindableEvent?
+	if evAnim then
+		evAnim:Fire("Idle", 0.2)
+	end
 end
 
 -- =========================================================
@@ -183,6 +193,11 @@ end
 local function triggerGuardCrush()
 	isGuardCrushed = true
 	stopGuard()
+
+	local evAnim = ReplicatedStorage:FindFirstChild("StormCombatAnimationEvent") :: BindableEvent?
+	if evAnim then
+		evAnim:Fire("StaggerStun", 2.2)
+	end
 
 	local char = LocalPlayer.Character
 	if not char then return end

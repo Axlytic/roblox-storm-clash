@@ -32,6 +32,8 @@ if not evMobileDash then
 	evMobileDash.Parent = ReplicatedStorage
 end
 
+local evAnim = ReplicatedStorage:FindFirstChild("StormCombatAnimationEvent") :: BindableEvent?
+
 local function getTarget(): Model?
 	local dummy = Workspace:FindFirstChild("TrainingDummy")
 	if dummy and dummy:IsA("Model") and dummy:FindFirstChild("HumanoidRootPart") then
@@ -111,8 +113,15 @@ local function executeTekkenSidestep(direction: "Left" | "Right")
 end
 
 -- =========================================================
--- NINJA / CHAKRA DASH ([L] Key or Double-Tap Space)
+-- NINJA DASH / CHAKRA DASH (Storm 4 Supersonic Homing Dash & CDC)
 -- =========================================================
+local evCDC = ReplicatedStorage:FindFirstChild("ChakraDashCancelAction") :: BindableEvent?
+if not evCDC then
+	evCDC = Instance.new("BindableEvent")
+	evCDC.Name = "ChakraDashCancelAction"
+	evCDC.Parent = ReplicatedStorage
+end
+
 local function executeNinjaDash()
 	local char = LocalPlayer.Character
 	if not char or isNinjaDashing or isSidestepping then return end
@@ -125,6 +134,22 @@ local function executeNinjaDash()
 	local targetRoot = target:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not targetRoot then return end
 
+	-- Check for Chakra Dash (Storm 4 Chakra Load active)
+	local isChakraLoaded = LocalPlayer:GetAttribute("IsChakraLoaded") == true
+	local curChakra = LocalPlayer:GetAttribute("ChakraValue") or 60
+	local isChakraDash = isChakraLoaded and (curChakra >= 15)
+
+	if isChakraDash then
+		-- Deduct 15 Chakra & Clear Loaded State
+		LocalPlayer:SetAttribute("ChakraValue", curChakra - 15)
+		LocalPlayer:SetAttribute("IsChakraLoaded", false)
+		-- Trigger Chakra Dash Cancel (CDC) to cancel any active attack recovery
+		if evCDC then evCDC:Fire() end
+		print(">> [CHAKRA DASH] Supersonic 112 studs/s Chakra Dash unleashed! (CDC active) <<")
+	else
+		print(">> [Ninja Dash] Homing toward target! <<")
+	end
+
 	isNinjaDashing = true
 	LocalPlayer:SetAttribute("IsNinjaDashing", true)
 
@@ -132,12 +157,14 @@ local function executeNinjaDash()
 	local burstAtt = Instance.new("Attachment", root)
 	local pe = Instance.new("ParticleEmitter")
 	pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	pe.Color = ColorSequence.new(Color3.fromRGB(0, 220, 255), Color3.fromRGB(255, 255, 255))
-	pe.Size = NumberSequence.new(1.3, 0)
-	pe.Rate = 60
-	pe.Speed = NumberRange.new(8, 20)
+	pe.Color = if isChakraDash
+		then ColorSequence.new(Color3.fromRGB(0, 240, 255), Color3.fromRGB(80, 180, 255))
+		else ColorSequence.new(Color3.fromRGB(0, 220, 255), Color3.fromRGB(255, 255, 255))
+	pe.Size = NumberSequence.new(isChakraDash and 2.0 or 1.3, 0)
+	pe.Rate = isChakraDash and 120 or 60
+	pe.Speed = NumberRange.new(8, 24)
 	pe.SpreadAngle = Vector2.new(180, 180)
-	pe.Lifetime = NumberRange.new(0.3, 0.5)
+	pe.Lifetime = NumberRange.new(0.3, 0.6)
 	pe.Parent = burstAtt
 
 	-- Sound
@@ -145,15 +172,20 @@ local function executeNinjaDash()
 	pcall(function()
 		local snd = Instance.new("Sound")
 		snd.SoundId = "rbxasset://sounds/action_jump.mp3"
-		snd.PlaybackSpeed = 1.7
-		snd.Volume = 0.9
+		snd.PlaybackSpeed = isChakraDash and 1.9 or 1.7
+		snd.Volume = 0.95
 		snd.Parent = root
 		snd:Play()
 		dashSound = snd
 	end)
 
 	local startTime = os.clock()
-	local maxDuration = 0.70
+	local maxDuration = isChakraDash and 0.85 or 0.70
+	local targetSpeed = isChakraDash and 112 or 85
+
+	if evAnim then
+		evAnim:Fire("NinjaDash", maxDuration)
+	end
 
 	local conn: RBXScriptConnection?
 	conn = RunService.Heartbeat:Connect(function()
@@ -167,15 +199,14 @@ local function executeNinjaDash()
 			LocalPlayer:SetAttribute("IsNinjaDashing", false)
 			burstAtt:Destroy()
 			if dashSound then pcall(function() dashSound:Destroy() end) end
+			if evAnim then evAnim:Fire("Idle", 0.2) end
 			return
 		end
 
 		-- Homing direction toward target
 		local dir = (targetRoot.Position - root.Position).Unit
-		root.AssemblyLinearVelocity = dir * 85
+		root.AssemblyLinearVelocity = dir * targetSpeed
 	end)
-
-	print(">> [Ninja Dash] Homing toward target! <<")
 end
 
 -- =========================================================

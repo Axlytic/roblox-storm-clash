@@ -35,6 +35,15 @@ local evCharSelect = combatEvents:WaitForChild("CharacterSelectEvent", 10) :: Re
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Force STRICT Landscape Orientation on Mobile Devices (Naruto Storm Fighting Standard)
+pcall(function()
+	PlayerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+pcall(function()
+	local StarterGui = game:GetService("StarterGui")
+	StarterGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+
 -- Match State
 local roundTimer = 99
 local isMatchActive = true
@@ -263,6 +272,32 @@ p1GuardFill.BorderSizePixel = 0
 p1GuardFill.Parent = p1GuardBg
 Instance.new("UICorner", p1GuardFill).CornerRadius = UDim.new(0, 3)
 
+-- P1 4-Slot Substitution Gauge (Storm 4 Kawarimi Indicator)
+local p1SubContainer = Instance.new("Frame")
+p1SubContainer.Name = "P1SubContainer"
+p1SubContainer.Size = UDim2.new(0.65, 0, 0, 7)
+p1SubContainer.Position = UDim2.new(0, 66, 0, 56)
+p1SubContainer.BackgroundTransparency = 1
+p1SubContainer.Parent = p1Frame
+
+local p1SubLayout = Instance.new("UIListLayout")
+p1SubLayout.FillDirection = Enum.FillDirection.Horizontal
+p1SubLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+p1SubLayout.Padding = UDim.new(0, 4)
+p1SubLayout.Parent = p1SubContainer
+
+local p1SubSegments: { Frame } = {}
+for i = 1, 4 do
+	local seg = Instance.new("Frame")
+	seg.Name = "SubLog_" .. i
+	seg.Size = UDim2.new(0.22, 0, 1, 0)
+	seg.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+	seg.BorderSizePixel = 0
+	seg.Parent = p1SubContainer
+	Instance.new("UICorner", seg).CornerRadius = UDim.new(0, 2)
+	table.insert(p1SubSegments, seg)
+end
+
 -- =========================================================
 -- FIGHTER 2 (RIGHT SIDE - OPPONENT / TRAINING DUMMY)
 -- =========================================================
@@ -328,6 +363,49 @@ p2HealthFill.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
 p2HealthFill.BorderSizePixel = 0
 p2HealthFill.Parent = p2HealthBg
 Instance.new("UICorner", p2HealthFill).CornerRadius = UDim.new(0, 4)
+
+-- P2 Sub-bars: Chakra & Guard
+local p2ChakraBg = Instance.new("Frame")
+p2ChakraBg.Name = "P2ChakraBg"
+p2ChakraBg.Size = UDim2.new(0.65, 0, 0, 8)
+p2ChakraBg.Position = UDim2.new(0.35, -4, 0, 44)
+p2ChakraBg.BackgroundColor3 = Color3.fromRGB(15, 25, 45)
+p2ChakraBg.Parent = p2Frame
+Instance.new("UICorner", p2ChakraBg).CornerRadius = UDim.new(0, 3)
+
+local p2ChakraFill = Instance.new("Frame")
+p2ChakraFill.Name = "P2ChakraFill"
+p2ChakraFill.Size = UDim2.new(0.5, 0, 1, 0)
+p2ChakraFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+p2ChakraFill.BorderSizePixel = 0
+p2ChakraFill.Parent = p2ChakraBg
+Instance.new("UICorner", p2ChakraFill).CornerRadius = UDim.new(0, 3)
+
+-- P2 4-Slot Substitution Gauge (Opponent Kawarimi Indicator)
+local p2SubContainer = Instance.new("Frame")
+p2SubContainer.Name = "P2SubContainer"
+p2SubContainer.Size = UDim2.new(0.65, 0, 0, 7)
+p2SubContainer.Position = UDim2.new(0.35, -4, 0, 56)
+p2SubContainer.BackgroundTransparency = 1
+p2SubContainer.Parent = p2Frame
+
+local p2SubLayout = Instance.new("UIListLayout")
+p2SubLayout.FillDirection = Enum.FillDirection.Horizontal
+p2SubLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+p2SubLayout.Padding = UDim.new(0, 4)
+p2SubLayout.Parent = p2SubContainer
+
+local p2SubSegments: { Frame } = {}
+for i = 1, 4 do
+	local seg = Instance.new("Frame")
+	seg.Name = "SubLog_" .. i
+	seg.Size = UDim2.new(0.22, 0, 1, 0)
+	seg.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+	seg.BorderSizePixel = 0
+	seg.Parent = p2SubContainer
+	Instance.new("UICorner", seg).CornerRadius = UDim.new(0, 2)
+	table.insert(p2SubSegments, seg)
+end
 
 -- =========================================================
 -- ANNOUNCER OVERLAY BANNER
@@ -497,15 +575,34 @@ RunService.RenderStepped:Connect(function(dt: number)
 		end
 	end
 
-	-- 4. Local Chakra Gauge
-	local chakraVal = LocalPlayer:GetAttribute("ChakraValue") or 50
+	-- 4. Local Chakra Gauge & Chakra Load Pulse
+	local chakraVal = LocalPlayer:GetAttribute("ChakraValue") or 60
 	local chakraRatio = math.clamp(tonumber(chakraVal) :: number / 100, 0, 1)
 	p1ChakraFill.Size = UDim2.new(chakraRatio, 0, 1, 0)
-	if chakraRatio >= 1.0 then
+
+	local isChakraLoaded = LocalPlayer:GetAttribute("IsChakraLoaded") == true
+	if isChakraLoaded then
+		p1ChakraFill.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+	elseif chakraRatio >= 1.0 then
 		p1ChakraFill.BackgroundColor3 = Color3.fromRGB(255, 220, 50) -- glowing gold when ready
 	else
 		p1ChakraFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
 	end
+
+	-- 5. Storm 4 Substitution Bars (4 Stocks)
+	local p1Subs = LocalPlayer:GetAttribute("SubstitutionStocks") or 4
+	for i, seg in ipairs(p1SubSegments) do
+		seg.BackgroundTransparency = (i <= p1Subs) and 0 or 0.85
+	end
+
+	local targetPlayer = targetModel and Players:GetPlayerFromCharacter(targetModel)
+	local p2Subs = (targetPlayer and targetPlayer:GetAttribute("SubstitutionStocks")) or 4
+	for i, seg in ipairs(p2SubSegments) do
+		seg.BackgroundTransparency = (i <= p2Subs) and 0 or 0.85
+	end
+
+	local p2Chakra = (targetPlayer and targetPlayer:GetAttribute("ChakraValue")) or 60
+	p2ChakraFill.Size = UDim2.new(math.clamp(p2Chakra / 100, 0, 1), 0, 1, 0)
 end)
 
 print("[StormMatchHUD] ✅ Naruto Storm 4 Dual Top Screen Fighting HUD & Announcer active.")
@@ -556,11 +653,40 @@ local evMobileAssist   = getOrMakeBindable("MobileAssistAction")
 local evMobileSwap     = getOrMakeBindable("MobileSwapAction")
 local evMobileUltimate = getOrMakeBindable("MobileUltimateAction")
 local evMobileChakra   = getOrMakeBindable("MobileChakraAction")
+local evMobileSub      = getOrMakeBindable("MobileSubstitutionAction")
+
+-- Force STRICT Landscape Orientation on Mobile & Tablet Devices (Naruto Storm Fighting Standard)
+pcall(function()
+	PlayerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+pcall(function()
+	local StarterGui = game:GetService("StarterGui")
+	StarterGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+
+-- Continuous enforcer: guarantee orientation never reverts to Portrait or Sensor
+task.spawn(function()
+	local StarterGui = game:GetService("StarterGui")
+	for _ = 1, 10 do
+		task.wait(0.5)
+		if PlayerGui.ScreenOrientation ~= Enum.ScreenOrientation.LandscapeLeft then
+			pcall(function()
+				PlayerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+			end)
+		end
+		if StarterGui.ScreenOrientation ~= Enum.ScreenOrientation.LandscapeLeft then
+			pcall(function()
+				StarterGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+			end)
+		end
+	end
+end)
 
 -- ScreenGui
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "StormMobileCombatHUD"
 screenGui.ResetOnSpawn = false
+screenGui.DisplayOrder = 10
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = PlayerGui
 
@@ -740,6 +866,15 @@ btnSwap.MouseButton1Click:Connect(function()
 	evMobileSwap:Fire()
 end)
 
+-- 8. SUBSTITUTION JUTSU [E/Q] (Kawarimi Escape)
+local btnSub = createActionButton(
+	"BtnSub", "🪵", "SUB [E]", Color3.fromRGB(255, 215, 0),
+	UDim2.new(0.38, 0, 0.48, 0), UDim2.new(0, 54, 0, 54)
+)
+btnSub.MouseButton1Click:Connect(function()
+	evMobileSub:Fire()
+end)
+
 -- =========================================================
 -- TOGGLE BUTTON FOR PC TESTING
 -- =========================================================
@@ -880,6 +1015,15 @@ local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Force STRICT Landscape Orientation on Mobile Devices (Naruto Storm Fighting Standard)
+pcall(function()
+	PlayerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+pcall(function()
+	local StarterGui = game:GetService("StarterGui")
+	StarterGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+
 local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
 
 -- Remotes
@@ -999,7 +1143,7 @@ rosterList.Position = UDim2.new(0, 0, 0, 0)
 rosterList.BackgroundTransparency = 1
 rosterList.ScrollBarThickness = 6
 rosterList.ScrollBarImageColor3 = Color3.fromRGB(0, 240, 255)
-rosterList.CanvasSize = UDim2.new(0, 0, 0, 5 * 84)
+rosterList.CanvasSize = UDim2.new(0, 0, 0, 24 * 84)
 rosterList.Parent = contentFrame
 
 local rosterLayout = Instance.new("UIListLayout")
@@ -1266,7 +1410,17 @@ local function updatePreview(charId: string)
 end
 
 -- Build Card for each fighter
-local charOrder = { "Naruto", "Sasuke", "Luffy", "Zoro", "Killua" }
+local charOrder = {
+	"Naruto", "Sasuke", "Kakashi", "Madara",
+	"Luffy", "Zoro", "Sanji", "Law",
+	"Goku", "Vegeta", "Trunks",
+	"Ichigo", "Aizen", "Byakuya",
+	"Sukuna", "Gojo", "Yuji", "Megumi",
+	"Killua", "Gon",
+	"Tanjiro", "Zenitsu",
+	"Deku", "Bakugo",
+}
+rosterList.CanvasSize = UDim2.new(0, 0, 0, #charOrder * 84)
 for idx, charId in ipairs(charOrder) do
 	local char = CombatConfig.Characters[charId]
 	if not char then continue end
@@ -1303,24 +1457,36 @@ for idx, charId in ipairs(charOrder) do
 
 	-- Name
 	local cName = Instance.new("TextLabel")
-	cName.Size = UDim2.new(1, -74, 0, 20)
-	cName.Position = UDim2.new(0, 70, 0, 14)
+	cName.Size = UDim2.new(1, -74, 0, 18)
+	cName.Position = UDim2.new(0, 70, 0, 8)
 	cName.BackgroundTransparency = 1
 	cName.Font = Enum.Font.GothamBlack
-	cName.TextSize = 14
+	cName.TextSize = 13
 	cName.TextColor3 = Color3.fromRGB(255, 255, 255)
 	cName.TextXAlignment = Enum.TextXAlignment.Left
 	cName.Text = char.Name
 	cName.Parent = card
 
+	-- Anime Series Subtitle
+	local cSeries = Instance.new("TextLabel")
+	cSeries.Size = UDim2.new(1, -74, 0, 14)
+	cSeries.Position = UDim2.new(0, 70, 0, 28)
+	cSeries.BackgroundTransparency = 1
+	cSeries.Font = Enum.Font.GothamBold
+	cSeries.TextSize = 10
+	cSeries.TextColor3 = char.AccentColor or Color3.fromRGB(160, 175, 200)
+	cSeries.TextXAlignment = Enum.TextXAlignment.Left
+	cSeries.Text = char.Anime or "Anime"
+	cSeries.Parent = card
+
 	-- Archetype Tag
 	local cTag = Instance.new("TextLabel")
-	cTag.Size = UDim2.new(0, 90, 0, 18)
-	cTag.Position = UDim2.new(0, 70, 0, 38)
+	cTag.Size = UDim2.new(0, 85, 0, 16)
+	cTag.Position = UDim2.new(0, 70, 0, 46)
 	cTag.BackgroundColor3 = char.PrimaryColor
-	cTag.BackgroundTransparency = 0.3
-	cTag.Font = Enum.Font.GothamBold
-	cTag.TextSize = 10
+	cTag.BackgroundTransparency = 0.25
+	cTag.Font = Enum.Font.GothamBlack
+	cTag.TextSize = 9
 	cTag.TextColor3 = Color3.fromRGB(255, 255, 255)
 	cTag.Text = string.upper(char.Archetype)
 	cTag.Parent = card
@@ -1426,4 +1592,133 @@ print("[StormCharacterSelectHUD] ✅ Shinobi Roster UI loaded. Press [B] or visi
     install('StormCharacterSelectHUD', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
 
-return 'Batch 5 OK (4 scripts)'
+do
+    local src = [=====[--!strict
+-- StormSubstitutionController.luau
+-- CLIENT SCRIPT: Naruto Storm 4 Substitution Jutsu (Kawarimi)
+-- Features:
+--   • 4-Stock Substitution System (The core competitive lifeline of Storm 4)
+--   • Instant escape from enemy combos, jutsu, and hitstun
+--   • Spawns 3D wooden log & smoke poof, teleports directly behind opponent
+--   • Multi-platform input:
+--       Keyboard: [E] or [Q] or [LeftShift] (when attacked)
+--       Gamepad:  [L2] (Official PS/Xbox Storm 4 Button)
+--       Mobile:   [🪵 SUB] Touch Button
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Remotes
+local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 15) :: Folder
+local evSub = combatEvents:WaitForChild("SubstitutionEvent") :: RemoteEvent
+
+-- Mobile Bindable
+local evMobileSub = ReplicatedStorage:FindFirstChild("MobileSubstitutionAction") :: BindableEvent?
+if not evMobileSub then
+	evMobileSub = Instance.new("BindableEvent")
+	evMobileSub.Name = "MobileSubstitutionAction"
+	evMobileSub.Parent = ReplicatedStorage
+end
+
+local lastSubRequest = 0
+
+-- =========================================================
+-- VISUAL LOG & SMOKE BURST (Client Prediction & Replication)
+-- =========================================================
+local function playKawarimiVisual(posCFrame: CFrame)
+	local log = Instance.new("Part")
+	log.Name = "LocalKawarimiLog"
+	log.Shape = Enum.PartType.Cylinder
+	log.Size = Vector3.new(2.8, 1.4, 1.4)
+	log.CFrame = posCFrame * CFrame.Angles(0, 0, math.rad(90))
+	log.Color = Color3.fromRGB(139, 90, 43)
+	log.Material = Enum.Material.Wood
+	log.Anchored = false
+	log.CanCollide = true
+	log.Parent = Workspace
+	Debris:AddItem(log, 2.0)
+
+	local att = Instance.new("Attachment", log)
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	pe.Color = ColorSequence.new(Color3.fromRGB(245, 245, 250), Color3.fromRGB(210, 210, 220))
+	pe.Size = NumberSequence.new(2.5, 5.0)
+	pe.Transparency = NumberSequence.new(0.2, 1.0)
+	pe.Rate = 120
+	pe.Speed = NumberRange.new(6, 15)
+	pe.SpreadAngle = Vector2.new(180, 180)
+	pe.Lifetime = NumberRange.new(0.4, 0.7)
+	pe.Parent = att
+	task.delay(0.2, function() pe.Enabled = false end)
+
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = "rbxasset://sounds/action_footsteps_plastic.mp3"
+		snd.PlaybackSpeed = 0.8
+		snd.Volume = 1.0
+		snd.Parent = log
+		snd:Play()
+	end)
+end
+
+-- =========================================================
+-- EXECUTE SUBSTITUTION
+-- =========================================================
+local function requestSubstitution()
+	local now = os.clock()
+	if now - lastSubRequest < 0.35 then return end
+	lastSubRequest = now
+
+	local curStocks = LocalPlayer:GetAttribute("SubstitutionStocks") or 4
+	if curStocks < 1 then
+		print(">> [Substitution] Out of Substitution stocks! (0 left) <<")
+		return
+	end
+
+	local char = LocalPlayer.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then return end
+
+	print(">> [Substitution] Requesting Kawarimi escape! <<")
+	evSub:FireServer()
+end
+
+-- Listen for Server Broadcast (other players or dummy subbing)
+evSub.OnClientEvent:Connect(function(subbingPlayer: Player, prevCFrame: CFrame)
+	if subbingPlayer ~= LocalPlayer then
+		playKawarimiVisual(prevCFrame)
+	end
+end)
+
+-- =========================================================
+-- INPUT LISTENERS
+-- =========================================================
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	-- 1. Keyboard: [E] or [Q]
+	if input.KeyCode == Enum.KeyCode.E or input.KeyCode == Enum.KeyCode.Q then
+		requestSubstitution()
+	-- 2. Gamepad: [ButtonL2] (Official Storm 4 Sub Trigger)
+	elseif input.KeyCode == Enum.KeyCode.ButtonL2 then
+		requestSubstitution()
+	end
+end)
+
+-- Mobile Touch Listener
+evMobileSub.Event:Connect(function()
+	requestSubstitution()
+end)
+
+print("[StormSubstitutionController] ✅ Loaded — Substitution Jutsu [E / Q / Gamepad L2 / Mobile SUB] active.")
+
+]=====]
+    install('StormSubstitutionController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
+end
+
+return 'Batch 5 OK (5 scripts)'

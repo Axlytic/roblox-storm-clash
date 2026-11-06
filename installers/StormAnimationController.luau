@@ -4,129 +4,125 @@ local s = Instance.new('LocalScript')
 s.Name = 'StormAnimationController'
 s.Source = [=====[--!strict
 -- StormAnimationController.luau
--- CLIENT SCRIPT: High-Octane Procedural Anime Combat Animation Engine
+-- CLIENT SCRIPT: Master Procedural Anime Combat Animation Engine
 -- Features:
 --   • 100% Asset-Independent: Zero asset load failures or HTTP 403 permission errors
---   • Procedural Motor6D Joint Transformation with ultra-smooth spring/lerp easing
---   • Full Anime Move Set:
---       - Combat Ready / Shinobi Idle Stance (dynamic breathing sway)
---       - 4-Hit M1 Attack Combo (Thrust -> Horizontal Slice -> Skyward Launch -> Heavy Plunge)
---       - Low Shinobi Sweep (360° ground leg sweep)
---       - Tekken High Guard (Cross-arm chest defense) & Low Guard (Deep shin crouch block)
---       - Tekken Just-Frame Parry Counter deflection
---       - Iconic Naruto Ninja Dash (50° forward tilted flight with trailing arms)
---       - Chakra Charging Horse Stance with tremors
---   • Automatic Katana Slash Trail synchronization
+--   • Multi-Keyframe Sequence Engine with Sub-Frame Hermite Smoothstep Easing:
+--       - Phase 0: Anticipation / Energy Windup (Coiling joints)
+--       - Phase 1: Explosive Release / Strike Snap (Acceleration)
+--       - Phase 2: Micro Hitstop / Impact Frame (Freeze at peak extension)
+--       - Phase 3: Recoil / Follow-through & Settle
+--   • Complete Naruto Storm 4 Move List:
+--       - Idle: Dynamic breathing sway with shinobi guard posture
+--       - Neutral Combo (4-Hit): Right Jab -> Left Hook -> Roundhouse Kick -> Twin Palm Blast
+--       - Up Combo (4-Hit): Rising Chin Jab -> Crescent Kick -> Backflip -> Skyward Leaping Uppercut (Launcher)
+--       - Down Combo (4-Hit): Shin Kick -> 360 Low Sweep -> Overhead Heel Drop -> Heavy Ground Slam (Bounce)
+--       - Air Combo (3-Hit): Air Thrust -> 360 Helicopter Kick -> Meteor Dive Spike
+--       - Storm 4 Counter Stance: Cross-arm X-Guard -> Explosive Deflection Repel
+--       - Chakra Load: Iconic Naruto Ram Hand Seal with pulsing aura
+--       - Ninjutsu Rush: Low forward sprint thrusting Rasengan / Chidori palm forward
+--       - Kawarimi: Flash Vanish Seal gesture
+--       - Ninja Dash: 52° forward aerodynamic dive with trailing arms
+--       - Hit Reactions: High Head Snap, Mid Gut Flinch, Stagger Stun (Dizzy Wobble)
+--   • Real-Time Katana & Weapon Trail Synchronization
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Motor6D Cache
-type MotorCache = {
-	rootJoint: Motor6D?,
-	waist: Motor6D?,
-	neck: Motor6D?,
-	rightShoulder: Motor6D?,
-	leftShoulder: Motor6D?,
-	rightElbow: Motor6D?,
-	leftElbow: Motor6D?,
-	rightHip: Motor6D?,
-	leftHip: Motor6D?,
-	rightKnee: Motor6D?,
-	leftKnee: Motor6D?,
-	katanaWeld: Motor6D?,
+-- =========================================================
+-- TYPES & DATA STRUCTURES
+-- =========================================================
+type JointOffsets = { [string]: CFrame }
+
+type Keyframe = {
+	t: number, -- Time fraction (0.0 to 1.0)
+	offsets: JointOffsets,
 }
 
-type OffsetCache = {
-	rootJoint: CFrame,
-	waist: CFrame,
-	neck: CFrame,
-	rightShoulder: CFrame,
-	leftShoulder: CFrame,
-	rightElbow: CFrame,
-	leftElbow: CFrame,
-	rightHip: CFrame,
-	leftHip: CFrame,
-	rightKnee: CFrame,
-	leftKnee: CFrame,
+type AnimationSequence = {
+	duration: number,
+	loop: boolean?,
+	keyframes: { Keyframe },
 }
 
-local motors: MotorCache = {}
+-- Universal Joint Cache (AnimationConstraint & Motor6D)
+local joints: { [string]: Instance } = {}
 local baseC0: { [string]: CFrame } = {}
-local currentOffsets: OffsetCache = {
-	rootJoint = CFrame.identity,
-	waist = CFrame.identity,
-	neck = CFrame.identity,
-	rightShoulder = CFrame.identity,
-	leftShoulder = CFrame.identity,
-	rightElbow = CFrame.identity,
-	leftElbow = CFrame.identity,
-	rightHip = CFrame.identity,
-	leftHip = CFrame.identity,
-	rightKnee = CFrame.identity,
-	leftKnee = CFrame.identity,
-}
-
-local targetOffsets: OffsetCache = {
-	rootJoint = CFrame.identity,
-	waist = CFrame.identity,
-	neck = CFrame.identity,
-	rightShoulder = CFrame.identity,
-	leftShoulder = CFrame.identity,
-	rightElbow = CFrame.identity,
-	leftElbow = CFrame.identity,
-	rightHip = CFrame.identity,
-	leftHip = CFrame.identity,
-	rightKnee = CFrame.identity,
-	leftKnee = CFrame.identity,
-}
-
-local currentAction = "Idle"
-local actionEndTime = 0
 local katanaTrail: Trail? = nil
 
+-- Animation State
+local currentAnimName = "Idle"
+local animStartTime = 0
+local animDuration = 1.0
+local isLooping = true
+local currentSequence: AnimationSequence? = nil
+
+-- Forward declaration of triggerCombatAnimation
+local triggerCombatAnimation: (animName: string, durationOverride: number?) -> ()
+
+-- Hit Flinch State
+local flinchEndTime = 0
+local flinchOffsets: JointOffsets = {}
+
 -- =========================================================
--- INITIALIZE MOTOR CACHE
+-- EASING HELPERS (Hermite Smoothstep & Overshoot Snap)
+-- =========================================================
+local function smoothstep(x: number): number
+	x = math.clamp(x, 0, 1)
+	return x * x * (3 - 2 * x)
+end
+
+local function snapEase(x: number): number
+	x = math.clamp(x, 0, 1)
+	return x * x * x * (x * (x * 6 - 15) + 10) -- Smootherstep
+end
+
+-- =========================================================
+-- JOINT FINDER (Supports full R15 AnimationConstraint, Motor6D, and R6 fallback)
 -- =========================================================
 local function setupCharacter(char: Model)
-	table.clear(motors)
+	table.clear(joints)
 	table.clear(baseC0)
 
-	local function findMotor(name: string): Motor6D?
+	local function findJoint(name: string): Instance?
 		for _, desc in ipairs(char:GetDescendants()) do
-			if desc:IsA("Motor6D") and desc.Name == name then
+			if (desc:IsA("AnimationConstraint") or desc:IsA("Motor6D")) and (desc.Name == name or desc.Name:lower() == name:lower()) then
 				return desc
 			end
 		end
 		return nil
 	end
 
-	motors.rootJoint     = findMotor("RootJoint") or findMotor("Root")
-	motors.waist         = findMotor("Waist")
-	motors.neck          = findMotor("Neck")
-	motors.rightShoulder = findMotor("RightShoulder") or findMotor("Right Shoulder")
-	motors.leftShoulder  = findMotor("LeftShoulder") or findMotor("Left Shoulder")
-	motors.rightElbow    = findMotor("RightElbow")
-	motors.leftElbow     = findMotor("LeftElbow")
-	motors.rightHip      = findMotor("RightHip") or findMotor("Right Hip")
-	motors.leftHip       = findMotor("LeftHip") or findMotor("Left Hip")
-	motors.rightKnee     = findMotor("RightKnee")
-	motors.leftKnee      = findMotor("LeftKnee")
-	motors.katanaWeld    = findMotor("KatanaWeld")
+	-- Universal R15 & R6 Joint Mapping
+	joints["RootJoint"]     = findJoint("RootJoint") or findJoint("Root")
+	joints["Waist"]         = findJoint("Waist")
+	joints["Neck"]          = findJoint("Neck")
+	joints["RightShoulder"] = findJoint("RightShoulder") or findJoint("Right Shoulder")
+	joints["LeftShoulder"]  = findJoint("LeftShoulder") or findJoint("Left Shoulder")
+	joints["RightElbow"]    = findJoint("RightElbow")
+	joints["LeftElbow"]     = findJoint("LeftElbow")
+	joints["RightWrist"]    = findJoint("RightWrist")
+	joints["LeftWrist"]     = findJoint("LeftWrist")
+	joints["RightHip"]      = findJoint("RightHip") or findJoint("Right Hip")
+	joints["LeftHip"]       = findJoint("LeftHip") or findJoint("Left Hip")
+	joints["RightKnee"]     = findJoint("RightKnee")
+	joints["LeftKnee"]      = findJoint("LeftKnee")
+	joints["RightAnkle"]    = findJoint("RightAnkle")
+	joints["LeftAnkle"]     = findJoint("LeftAnkle")
 
-	-- Cache default C0
-	for key, motor in pairs(motors) do
-		if motor then
-			baseC0[key] = motor.C0
+	-- Cache default C0 for Motor6D fallback
+	for key, joint in pairs(joints) do
+		if joint and joint:IsA("Motor6D") then
+			baseC0[key] = (joint :: Motor6D).C0
 		end
 	end
 
-	-- Find Katana Trail
-	task.delay(0.5, function()
+	-- Katana Slash Trail lookup
+	task.delay(0.4, function()
 		local katana = char:FindFirstChild("StormKatana")
 		if katana then
 			local blade = katana:FindFirstChild("Blade")
@@ -135,6 +131,24 @@ local function setupCharacter(char: Model)
 			end
 		end
 	end)
+
+	-- Dynamic Hit Reaction Listener
+	local hum = char:WaitForChild("Humanoid", 3) :: Humanoid?
+	if hum then
+		local lastHealth = hum.Health
+		hum.HealthChanged:Connect(function(newHealth)
+			if newHealth < lastHealth and newHealth > 0 then
+				local diff = lastHealth - newHealth
+				if currentAnimName ~= "Ultimate" and currentAnimName ~= "StaggerStun" and currentAnimName ~= "CounterStance" then
+					local hitAnim = if diff >= 18 then "HitHead" else "HitGut"
+					if triggerCombatAnimation then
+						triggerCombatAnimation(hitAnim, 0.22)
+					end
+				end
+			end
+			lastHealth = newHealth
+		end)
+	end
 end
 
 if LocalPlayer.Character then
@@ -143,208 +157,1113 @@ end
 LocalPlayer.CharacterAdded:Connect(setupCharacter)
 
 -- =========================================================
--- ANIMATION POSES GENERATOR
+-- DEFINING DETAILED ANIME ANIMATION SEQUENCES
 -- =========================================================
-local function resetTargets()
-	targetOffsets.rootJoint     = CFrame.identity
-	targetOffsets.waist         = CFrame.identity
-	targetOffsets.neck          = CFrame.identity
-	targetOffsets.rightShoulder = CFrame.identity
-	targetOffsets.leftShoulder  = CFrame.identity
-	targetOffsets.rightElbow    = CFrame.identity
-	targetOffsets.leftElbow     = CFrame.identity
-	targetOffsets.rightHip      = CFrame.identity
-	targetOffsets.leftHip       = CFrame.identity
-	targetOffsets.rightKnee     = CFrame.identity
-	targetOffsets.leftKnee      = CFrame.identity
-end
+local ANIMATIONS: { [string]: AnimationSequence } = {}
 
-local function applyPose(poseName: string)
-	resetTargets()
+-- ---------------------------------------------------------
+-- [0] IDLE: Shinobi Combat Stance (Natural Breathing + Boxing Guard)
+-- ---------------------------------------------------------
+ANIMATIONS["Idle"] = {
+	duration = 1.8,
+	loop = true,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.05, 0) * CFrame.Angles(0, math.rad(-18), 0),
+				Waist         = CFrame.Angles(0, math.rad(18), 0),
+				Neck          = CFrame.Angles(math.rad(2), math.rad(4), 0),
+				RightShoulder = CFrame.new(-0.05, -0.05, -0.1) * CFrame.Angles(math.rad(38), math.rad(-22), math.rad(18)),
+				LeftShoulder  = CFrame.new(0.05, -0.02, 0.1) * CFrame.Angles(math.rad(48), math.rad(32), math.rad(-22)),
+				RightElbow    = CFrame.Angles(math.rad(52), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(68), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-8), 0, math.rad(12)),
+				LeftHip       = CFrame.Angles(math.rad(12), 0, math.rad(-10)),
+				RightKnee     = CFrame.Angles(math.rad(15), 0, 0),
+				LeftKnee      = CFrame.Angles(math.rad(18), 0, 0),
+			}
+		},
+		{
+			t = 0.5,
+			offsets = {
+				RootJoint     = CFrame.new(0, 0.02, 0) * CFrame.Angles(0, math.rad(-18), 0),
+				Waist         = CFrame.Angles(math.rad(2), math.rad(18), 0),
+				Neck          = CFrame.Angles(math.rad(-1), math.rad(4), 0),
+				RightShoulder = CFrame.new(-0.05, -0.02, -0.1) * CFrame.Angles(math.rad(42), math.rad(-22), math.rad(18)),
+				LeftShoulder  = CFrame.new(0.05, 0.01, 0.1) * CFrame.Angles(math.rad(52), math.rad(32), math.rad(-22)),
+				RightElbow    = CFrame.Angles(math.rad(48), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(64), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-8), 0, math.rad(12)),
+				LeftHip       = CFrame.Angles(math.rad(12), 0, math.rad(-10)),
+				RightKnee     = CFrame.Angles(math.rad(12), 0, 0),
+				LeftKnee      = CFrame.Angles(math.rad(14), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.05, 0) * CFrame.Angles(0, math.rad(-18), 0),
+				Waist         = CFrame.Angles(0, math.rad(18), 0),
+				Neck          = CFrame.Angles(math.rad(2), math.rad(4), 0),
+				RightShoulder = CFrame.new(-0.05, -0.05, -0.1) * CFrame.Angles(math.rad(38), math.rad(-22), math.rad(18)),
+				LeftShoulder  = CFrame.new(0.05, -0.02, 0.1) * CFrame.Angles(math.rad(48), math.rad(32), math.rad(-22)),
+				RightElbow    = CFrame.Angles(math.rad(52), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(68), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-8), 0, math.rad(12)),
+				LeftHip       = CFrame.Angles(math.rad(12), 0, math.rad(-10)),
+				RightKnee     = CFrame.Angles(math.rad(15), 0, 0),
+				LeftKnee      = CFrame.Angles(math.rad(18), 0, 0),
+			}
+		}
+	}
+}
 
-	if poseName == "Idle" then
-		-- Shinobi Combat Ready Stance (slight crouch, right hand blade ready)
-		targetOffsets.rootJoint = CFrame.Angles(0, math.rad(-15), 0)
-		targetOffsets.waist = CFrame.Angles(0, math.rad(15), 0)
-		targetOffsets.rightShoulder = CFrame.new(0, -0.05, -0.1) * CFrame.Angles(math.rad(35), math.rad(-25), math.rad(15))
-		targetOffsets.leftShoulder = CFrame.new(0, -0.05, 0.1) * CFrame.Angles(math.rad(45), math.rad(35), math.rad(-20))
-		if motors.rightElbow then targetOffsets.rightElbow = CFrame.Angles(math.rad(45), 0, 0) end
-		if motors.leftElbow then targetOffsets.leftElbow = CFrame.Angles(math.rad(60), 0, 0) end
-		targetOffsets.rightHip = CFrame.Angles(math.rad(-10), 0, math.rad(10))
-		targetOffsets.leftHip = CFrame.Angles(math.rad(10), 0, math.rad(-10))
+-- ---------------------------------------------------------
+-- [1] NEUTRAL COMBO (4-Hit Iconic Martial Flurry)
+-- ---------------------------------------------------------
+-- Hit 1: Fast Right Straight Jab (Windup -> Explosive Snap -> Recoil)
+ANIMATIONS["Neutral1"] = {
+	duration = 0.26,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.Angles(0, math.rad(-15), 0),
+				Waist         = CFrame.Angles(0, math.rad(15), 0),
+				RightShoulder = CFrame.new(0, 0, 0.2) * CFrame.Angles(math.rad(30), math.rad(-45), 0),
+				RightElbow    = CFrame.Angles(math.rad(85), 0, 0),
+				LeftShoulder  = CFrame.Angles(math.rad(55), math.rad(35), 0),
+				LeftElbow     = CFrame.Angles(math.rad(70), 0, 0),
+			}
+		},
+		{
+			t = 0.42, -- Snap Strike!
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.1, -0.4) * CFrame.Angles(0, math.rad(32), 0),
+				Waist         = CFrame.Angles(0, math.rad(-30), 0),
+				Neck          = CFrame.Angles(0, math.rad(-10), 0),
+				RightShoulder = CFrame.new(0.1, 0.1, -0.8) * CFrame.Angles(math.rad(88), math.rad(15), math.rad(-15)),
+				RightElbow    = CFrame.Angles(math.rad(10), 0, 0),
+				LeftShoulder  = CFrame.Angles(math.rad(45), math.rad(40), 0),
+				LeftElbow     = CFrame.Angles(math.rad(85), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(15), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-25), 0, 0),
+			}
+		},
+		{
+			t = 1.0, -- Settle
+			offsets = {
+				RootJoint     = CFrame.Angles(0, math.rad(-10), 0),
+				Waist         = CFrame.Angles(0, math.rad(10), 0),
+				RightShoulder = CFrame.new(0, 0, -0.1) * CFrame.Angles(math.rad(40), math.rad(-20), 0),
+				RightElbow    = CFrame.Angles(math.rad(55), 0, 0),
+				LeftShoulder  = CFrame.Angles(math.rad(50), math.rad(30), 0),
+				LeftElbow     = CFrame.Angles(math.rad(65), 0, 0),
+			}
+		}
+	}
+}
 
-	elseif poseName == "Attack1" then
-		-- Hit 1: Forward Right Arm Thrust / Slash
-		targetOffsets.rootJoint = CFrame.new(0, -0.1, -0.3) * CFrame.Angles(0, math.rad(-35), 0)
-		targetOffsets.waist = CFrame.Angles(0, math.rad(35), 0)
-		targetOffsets.rightShoulder = CFrame.new(0, 0.1, -0.6) * CFrame.Angles(math.rad(85), math.rad(-20), math.rad(25))
-		targetOffsets.leftShoulder = CFrame.Angles(math.rad(-30), 0, math.rad(-35))
-		if motors.rightElbow then targetOffsets.rightElbow = CFrame.Angles(math.rad(15), 0, 0) end
+-- Hit 2: High Horizontal Left Hook / Shinobi Palm Strike
+ANIMATIONS["Neutral2"] = {
+	duration = 0.28,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.Angles(0, math.rad(30), 0),
+				Waist         = CFrame.Angles(0, math.rad(-30), 0),
+				LeftShoulder  = CFrame.new(0, 0, 0.3) * CFrame.Angles(math.rad(40), math.rad(50), 0),
+				LeftElbow     = CFrame.Angles(math.rad(90), 0, 0),
+				RightShoulder = CFrame.Angles(math.rad(55), math.rad(-30), 0),
+			}
+		},
+		{
+			t = 0.45, -- Hook Impact!
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.1, -0.4) * CFrame.Angles(0, math.rad(-42), 0),
+				Waist         = CFrame.Angles(0, math.rad(40), 0),
+				Neck          = CFrame.Angles(0, math.rad(12), 0),
+				LeftShoulder  = CFrame.new(-0.2, 0.15, -0.7) * CFrame.Angles(math.rad(92), math.rad(-45), math.rad(35)),
+				LeftElbow     = CFrame.Angles(math.rad(50), 0, 0),
+				RightShoulder = CFrame.Angles(math.rad(60), math.rad(-25), 0),
+				RightElbow    = CFrame.Angles(math.rad(85), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-20), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(25), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = {
+				RootJoint     = CFrame.Angles(0, math.rad(-15), 0),
+				Waist         = CFrame.Angles(0, math.rad(15), 0),
+				LeftShoulder  = CFrame.Angles(math.rad(45), math.rad(30), 0),
+				RightShoulder = CFrame.Angles(math.rad(40), math.rad(-20), 0),
+			}
+		}
+	}
+}
 
-	elseif poseName == "Attack2" then
-		-- Hit 2: High Horizontal Cross-Cut + Left Knee Rotation
-		targetOffsets.rootJoint = CFrame.Angles(0, math.rad(45), 0)
-		targetOffsets.waist = CFrame.Angles(0, math.rad(-45), 0)
-		targetOffsets.rightShoulder = CFrame.new(-0.2, 0.2, -0.5) * CFrame.Angles(math.rad(95), math.rad(55), math.rad(-40))
-		targetOffsets.leftShoulder = CFrame.Angles(math.rad(25), 0, math.rad(40))
-		targetOffsets.leftHip = CFrame.Angles(math.rad(-35), 0, 0)
+-- Hit 3: High Spinning Roundhouse Kick (Body Pivot + Full Leg Extension)
+ANIMATIONS["Neutral3"] = {
+	duration = 0.34,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.Angles(0, math.rad(-40), 0),
+				Waist         = CFrame.Angles(0, math.rad(40), 0),
+				RightHip      = CFrame.Angles(math.rad(25), 0, math.rad(20)),
+				RightKnee     = CFrame.Angles(math.rad(70), 0, 0),
+			}
+		},
+		{
+			t = 0.48, -- Roundhouse Whip!
+			offsets = {
+				RootJoint     = CFrame.new(0, 0.1, -0.3) * CFrame.Angles(math.rad(10), math.rad(75), 0),
+				Waist         = CFrame.Angles(math.rad(-15), math.rad(-55), 0),
+				Neck          = CFrame.Angles(0, math.rad(-30), 0),
+				RightHip      = CFrame.Angles(0, math.rad(80), math.rad(75)),
+				RightKnee     = CFrame.Angles(math.rad(10), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-25), 0, 0),
+				LeftKnee      = CFrame.Angles(math.rad(35), 0, 0),
+				RightShoulder = CFrame.Angles(math.rad(-45), 0, math.rad(35)),
+				LeftShoulder  = CFrame.Angles(math.rad(45), 0, math.rad(-45)),
+			}
+		},
+		{
+			t = 1.0, -- Plant Foot Down
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.1, 0) * CFrame.Angles(0, math.rad(15), 0),
+				Waist         = CFrame.Angles(0, math.rad(-15), 0),
+				RightHip      = CFrame.Angles(math.rad(15), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-15), 0, 0),
+			}
+		}
+	}
+}
 
-	elseif poseName == "Attack3" then
-		-- Hit 3: Rising Dragon Uppercut / Skyward Blade Sweep
-		targetOffsets.rootJoint = CFrame.new(0, 0.4, 0) * CFrame.Angles(math.rad(-15), 0, 0)
-		targetOffsets.waist = CFrame.Angles(math.rad(-20), 0, 0)
-		targetOffsets.rightShoulder = CFrame.new(0, 0.5, -0.2) * CFrame.Angles(math.rad(165), math.rad(-15), math.rad(10))
-		targetOffsets.leftShoulder = CFrame.Angles(math.rad(-45), 0, math.rad(-30))
-		targetOffsets.rightHip = CFrame.Angles(math.rad(25), 0, 0)
+-- Hit 4: Heavy Twin Dragon Palms Finisher (Wall Splat / Knockdown)
+ANIMATIONS["Neutral4"] = {
+	duration = 0.52,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.4, 0.1) * CFrame.Angles(math.rad(15), 0, 0),
+				Waist         = CFrame.Angles(math.rad(-10), 0, 0),
+				RightShoulder = CFrame.new(-0.1, -0.2, 0.4) * CFrame.Angles(math.rad(-25), math.rad(-35), 0),
+				LeftShoulder  = CFrame.new(0.1, -0.2, 0.4) * CFrame.Angles(math.rad(-25), math.rad(35), 0),
+				RightElbow    = CFrame.Angles(math.rad(95), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(95), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-35), 0, math.rad(10)),
+				LeftHip       = CFrame.Angles(math.rad(-35), 0, math.rad(-10)),
+			}
+		},
+		{
+			t = 0.50, -- Massive Twin Thrust!
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.2, -0.7) * CFrame.Angles(math.rad(28), 0, 0),
+				Waist         = CFrame.Angles(math.rad(20), 0, 0),
+				Neck          = CFrame.Angles(math.rad(-20), 0, 0),
+				RightShoulder = CFrame.new(-0.25, 0.2, -0.9) * CFrame.Angles(math.rad(95), math.rad(-15), math.rad(10)),
+				LeftShoulder  = CFrame.new(0.25, 0.2, -0.9) * CFrame.Angles(math.rad(95), math.rad(15), math.rad(-10)),
+				RightElbow    = CFrame.Angles(math.rad(12), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(12), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(30), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-45), 0, 0),
+				LeftKnee      = CFrame.Angles(math.rad(45), 0, 0),
+			}
+		},
+		{
+			t = 0.72, -- Impact Hold (Hitstop pose)
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.2, -0.7) * CFrame.Angles(math.rad(28), 0, 0),
+				Waist         = CFrame.Angles(math.rad(20), 0, 0),
+				RightShoulder = CFrame.new(-0.25, 0.2, -0.9) * CFrame.Angles(math.rad(95), math.rad(-15), math.rad(10)),
+				LeftShoulder  = CFrame.new(0.25, 0.2, -0.9) * CFrame.Angles(math.rad(95), math.rad(15), math.rad(-10)),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = {
+				RootJoint     = CFrame.identity,
+				Waist         = CFrame.identity,
+				RightShoulder = CFrame.Angles(math.rad(40), 0, 0),
+				LeftShoulder  = CFrame.Angles(math.rad(40), 0, 0),
+			}
+		}
+	}
+}
 
-	elseif poseName == "Attack4" then
-		-- Hit 4: Heavy Overhead Downward Slam
-		targetOffsets.rootJoint = CFrame.new(0, -0.3, -0.4) * CFrame.Angles(math.rad(35), 0, 0)
-		targetOffsets.waist = CFrame.Angles(math.rad(25), 0, 0)
-		targetOffsets.rightShoulder = CFrame.new(0, 0.2, -0.8) * CFrame.Angles(math.rad(105), 0, 0)
-		targetOffsets.leftShoulder = CFrame.new(0, 0.2, -0.8) * CFrame.Angles(math.rad(105), 0, 0)
-		if motors.rightElbow then targetOffsets.rightElbow = CFrame.Angles(math.rad(30), 0, 0) end
-		if motors.leftElbow then targetOffsets.leftElbow = CFrame.Angles(math.rad(30), 0, 0) end
+-- ---------------------------------------------------------
+-- [2] UP COMBO (Air Launcher Strings - W + J)
+-- ---------------------------------------------------------
+ANIMATIONS["Up1"] = {
+	duration = 0.26,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.2, 0) * CFrame.Angles(math.rad(-15), math.rad(-20), 0),
+				RightShoulder = CFrame.new(0, -0.2, 0.1) * CFrame.Angles(math.rad(-10), 0, 0),
+				RightElbow    = CFrame.Angles(math.rad(80), 0, 0),
+			}
+		},
+		{
+			t = 0.45, -- Rising Chin Uppercut!
+			offsets = {
+				RootJoint     = CFrame.new(0, 0.15, -0.2) * CFrame.Angles(math.rad(15), math.rad(25), 0),
+				Waist         = CFrame.Angles(math.rad(15), math.rad(-20), 0),
+				Neck          = CFrame.Angles(math.rad(15), 0, 0),
+				RightShoulder = CFrame.new(0.1, 0.4, -0.5) * CFrame.Angles(math.rad(125), math.rad(-25), math.rad(15)),
+				RightElbow    = CFrame.Angles(math.rad(35), 0, 0),
+				LeftShoulder  = CFrame.Angles(math.rad(-30), 0, math.rad(-25)),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = {
+				RootJoint = CFrame.identity,
+			}
+		}
+	}
+}
 
-	elseif poseName == "LowSweep" then
-		-- Low Shinobi Sweep: Deep Crouch, Right Leg Sweep Arc
-		targetOffsets.rootJoint = CFrame.new(0, -1.4, 0) * CFrame.Angles(math.rad(25), math.rad(-60), 0)
-		targetOffsets.waist = CFrame.Angles(0, math.rad(50), 0)
-		targetOffsets.rightHip = CFrame.Angles(0, math.rad(70), math.rad(65))
-		targetOffsets.leftHip = CFrame.Angles(math.rad(-65), 0, 0)
-		targetOffsets.rightShoulder = CFrame.Angles(math.rad(30), 0, math.rad(45))
-		targetOffsets.leftShoulder = CFrame.Angles(math.rad(45), 0, math.rad(-40))
+ANIMATIONS["Up2"] = {
+	duration = 0.28,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint = CFrame.Angles(0, math.rad(25), 0),
+				LeftHip   = CFrame.Angles(math.rad(-20), 0, 0),
+			}
+		},
+		{
+			t = 0.46, -- Vertical Crescent Upkick!
+			offsets = {
+				RootJoint     = CFrame.new(0, 0.2, 0) * CFrame.Angles(math.rad(-25), math.rad(-35), 0),
+				Waist         = CFrame.Angles(math.rad(20), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(115), 0, math.rad(-15)),
+				LeftKnee      = CFrame.Angles(math.rad(10), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-15), 0, 0),
+				RightShoulder = CFrame.Angles(math.rad(-45), 0, math.rad(35)),
+				LeftShoulder  = CFrame.Angles(math.rad(-45), 0, math.rad(-35)),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = { RootJoint = CFrame.identity }
+		}
+	}
+}
 
-	elseif poseName == "HighGuard" then
-		-- Tekken High Guard: Cross-arm shielding chest & head
-		targetOffsets.rootJoint = CFrame.Angles(0, math.rad(-20), 0)
-		targetOffsets.waist = CFrame.Angles(0, math.rad(20), 0)
-		targetOffsets.rightShoulder = CFrame.new(-0.2, 0.1, -0.5) * CFrame.Angles(math.rad(75), math.rad(-35), math.rad(25))
-		targetOffsets.leftShoulder = CFrame.new(0.2, 0.1, -0.5) * CFrame.Angles(math.rad(75), math.rad(35), math.rad(-25))
-		if motors.rightElbow then targetOffsets.rightElbow = CFrame.Angles(math.rad(70), 0, 0) end
-		if motors.leftElbow then targetOffsets.leftElbow = CFrame.Angles(math.rad(70), 0, 0) end
+ANIMATIONS["Up3"] = {
+	duration = 0.32,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint = CFrame.new(0, -0.3, 0) * CFrame.Angles(math.rad(35), 0, 0),
+			}
+		},
+		{
+			t = 0.50, -- Somersault Kick Flip!
+			offsets = {
+				RootJoint     = CFrame.new(0, 0.5, -0.2) * CFrame.Angles(math.rad(-85), 0, 0),
+				Waist         = CFrame.Angles(math.rad(30), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(120), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(90), 0, 0),
+				RightShoulder = CFrame.Angles(math.rad(160), 0, 0),
+				LeftShoulder  = CFrame.Angles(math.rad(160), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = {
+				RootJoint = CFrame.new(0, -0.1, 0) * CFrame.Angles(math.rad(15), 0, 0),
+			}
+		}
+	}
+}
 
-	elseif poseName == "LowGuard" then
-		-- Tekken Low Guard: Deep shin-level defense block
-		targetOffsets.rootJoint = CFrame.new(0, -1.0, 0) * CFrame.Angles(math.rad(20), 0, 0)
-		targetOffsets.rightShoulder = CFrame.new(-0.1, -0.3, -0.4) * CFrame.Angles(math.rad(45), math.rad(-25), 0)
-		targetOffsets.leftShoulder = CFrame.new(0.1, -0.3, -0.4) * CFrame.Angles(math.rad(45), math.rad(25), 0)
-		targetOffsets.rightHip = CFrame.Angles(math.rad(-45), 0, 0)
-		targetOffsets.leftHip = CFrame.Angles(math.rad(-45), 0, 0)
+-- Hit 4: Skyward Leaping Uppercut (Shoryu Dragon Launcher -> LiftY = +38)
+ANIMATIONS["Up4"] = {
+	duration = 0.55,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.5, 0.2) * CFrame.Angles(math.rad(25), math.rad(-30), 0),
+				RightShoulder = CFrame.new(0, -0.4, 0.2) * CFrame.Angles(math.rad(-45), 0, 0),
+				RightElbow    = CFrame.Angles(math.rad(90), 0, 0),
+				LeftShoulder  = CFrame.Angles(math.rad(45), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-45), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-45), 0, 0),
+			}
+		},
+		{
+			t = 0.45, -- Skyward Leaping Apex Launcher!
+			offsets = {
+				RootJoint     = CFrame.new(0, 1.2, -0.3) * CFrame.Angles(math.rad(-20), math.rad(25), 0),
+				Waist         = CFrame.Angles(math.rad(-15), math.rad(-20), 0),
+				Neck          = CFrame.Angles(math.rad(-35), 0, 0), -- Head tracking skyward!
+				RightShoulder = CFrame.new(0, 0.6, -0.1) * CFrame.Angles(math.rad(175), math.rad(-10), math.rad(15)),
+				RightElbow    = CFrame.Angles(math.rad(10), 0, 0),
+				LeftShoulder  = CFrame.new(0, -0.2, 0.3) * CFrame.Angles(math.rad(-55), 0, math.rad(-25)),
+				LeftHip       = CFrame.Angles(math.rad(75), 0, 0), -- High knee drive
+				LeftKnee      = CFrame.Angles(math.rad(85), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-20), 0, 0),
+			}
+		},
+		{
+			t = 0.70, -- Apex Freeze (Skyward Pose)
+			offsets = {
+				RootJoint     = CFrame.new(0, 1.2, -0.3) * CFrame.Angles(math.rad(-20), math.rad(25), 0),
+				RightShoulder = CFrame.new(0, 0.6, -0.1) * CFrame.Angles(math.rad(175), math.rad(-10), math.rad(15)),
+				LeftHip       = CFrame.Angles(math.rad(75), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = {
+				RootJoint = CFrame.identity,
+			}
+		}
+	}
+}
 
-	elseif poseName == "Parry" then
-		-- Tekken Perfect Parry: Dynamic outward deflection strike
-		targetOffsets.rootJoint = CFrame.Angles(0, math.rad(30), 0)
-		targetOffsets.waist = CFrame.Angles(0, math.rad(-30), 0)
-		targetOffsets.rightShoulder = CFrame.new(0.2, 0.2, -0.6) * CFrame.Angles(math.rad(85), math.rad(60), math.rad(-30))
-		targetOffsets.leftShoulder = CFrame.Angles(math.rad(-20), 0, math.rad(-30))
+-- ---------------------------------------------------------
+-- [3] DOWN COMBO (Ground Bounce Strings - S + J / K)
+-- ---------------------------------------------------------
+ANIMATIONS["Down1"] = {
+	duration = 0.28,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint = CFrame.new(0, -0.3, 0) * CFrame.Angles(math.rad(15), 0, 0),
+			}
+		},
+		{
+			t = 0.45, -- Shin Kick!
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.6, -0.2) * CFrame.Angles(math.rad(25), math.rad(-35), 0),
+				RightHip      = CFrame.Angles(math.rad(65), math.rad(45), math.rad(30)),
+				RightKnee     = CFrame.Angles(math.rad(15), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-55), 0, 0),
+				LeftKnee      = CFrame.Angles(math.rad(65), 0, 0),
+				RightShoulder = CFrame.Angles(math.rad(45), 0, math.rad(30)),
+				LeftShoulder  = CFrame.Angles(math.rad(45), 0, math.rad(-30)),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = { RootJoint = CFrame.identity }
+		}
+	}
+}
 
-	elseif poseName == "NinjaDash" then
-		-- Naruto Ninja Dash: 50° forward body dive, arms trailing behind
-		targetOffsets.rootJoint = CFrame.new(0, -0.4, -0.6) * CFrame.Angles(math.rad(52), 0, 0)
-		targetOffsets.waist = CFrame.Angles(math.rad(-10), 0, 0)
-		targetOffsets.neck = CFrame.Angles(math.rad(-40), 0, 0) -- look forward
-		targetOffsets.rightShoulder = CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-65), 0, math.rad(20))
-		targetOffsets.leftShoulder = CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-65), 0, math.rad(-20))
-		targetOffsets.rightHip = CFrame.Angles(math.rad(-25), 0, 0)
-		targetOffsets.leftHip = CFrame.Angles(math.rad(25), 0, 0)
+-- Down2: 360° Low Shinobi Spin Sweep
+ANIMATIONS["Down2"] = {
+	duration = 0.32,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint = CFrame.new(0, -0.8, 0) * CFrame.Angles(math.rad(25), 0, 0),
+			}
+		},
+		{
+			t = 0.48, -- Full Low Sweep Arc!
+			offsets = {
+				RootJoint     = CFrame.new(0, -1.3, 0) * CFrame.Angles(math.rad(35), math.rad(-85), 0),
+				Waist         = CFrame.Angles(0, math.rad(75), 0),
+				RightHip      = CFrame.Angles(0, math.rad(90), math.rad(80)),
+				RightKnee     = CFrame.Angles(math.rad(5), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-80), 0, 0),
+				LeftKnee      = CFrame.Angles(math.rad(95), 0, 0),
+				LeftShoulder  = CFrame.new(0, -0.3, -0.4) * CFrame.Angles(math.rad(75), 0, 0), -- Left hand planted on floor
+				RightShoulder = CFrame.Angles(math.rad(-35), 0, math.rad(45)),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = {
+				RootJoint = CFrame.new(0, -0.3, 0),
+			}
+		}
+	}
+}
 
-	elseif poseName == "ChakraCharge" then
-		-- Dragon Ball / Naruto Chakra Charge: Clenched fists, trembling aura
-		targetOffsets.rootJoint = CFrame.new(0, -0.5, 0) * CFrame.Angles(math.rad(15), 0, 0)
-		targetOffsets.waist = CFrame.Angles(math.rad(10), 0, 0)
-		targetOffsets.rightShoulder = CFrame.new(-0.1, -0.1, -0.2) * CFrame.Angles(math.rad(25), math.rad(-30), math.rad(25))
-		targetOffsets.leftShoulder = CFrame.new(0.1, -0.1, -0.2) * CFrame.Angles(math.rad(25), math.rad(30), math.rad(-25))
-		if motors.rightElbow then targetOffsets.rightElbow = CFrame.Angles(math.rad(75), 0, 0) end
-		if motors.leftElbow then targetOffsets.leftElbow = CFrame.Angles(math.rad(75), 0, 0) end
-		targetOffsets.rightHip = CFrame.Angles(math.rad(-25), 0, math.rad(15))
-		targetOffsets.leftHip = CFrame.Angles(math.rad(-25), 0, math.rad(-15))
+ANIMATIONS["Down3"] = {
+	duration = 0.35,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint = CFrame.new(0, 0.1, 0) * CFrame.Angles(math.rad(-15), 0, 0),
+				RightHip  = CFrame.Angles(math.rad(110), 0, 0),
+			}
+		},
+		{
+			t = 0.52, -- Overhead Axe Heel Drop!
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.6, -0.3) * CFrame.Angles(math.rad(45), 0, 0),
+				Waist         = CFrame.Angles(math.rad(20), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(45), 0, 0),
+				RightKnee     = CFrame.Angles(math.rad(10), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-45), 0, 0),
+				RightShoulder = CFrame.Angles(math.rad(-45), 0, math.rad(45)),
+				LeftShoulder  = CFrame.Angles(math.rad(-45), 0, math.rad(-45)),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = { RootJoint = CFrame.identity }
+		}
+	}
+}
+
+-- Down4: Heavy Meteor Ground Slam (Rebound Bounce)
+ANIMATIONS["Down4"] = {
+	duration = 0.54,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, 0.6, -0.1) * CFrame.Angles(math.rad(-45), 0, 0),
+				RightShoulder = CFrame.Angles(math.rad(165), 0, 0),
+				LeftShoulder  = CFrame.Angles(math.rad(165), 0, 0),
+			}
+		},
+		{
+			t = 0.46, -- Ground Impact Crater Slam!
+			offsets = {
+				RootJoint     = CFrame.new(0, -1.2, -0.6) * CFrame.Angles(math.rad(55), 0, 0),
+				Waist         = CFrame.Angles(math.rad(25), 0, 0),
+				Neck          = CFrame.Angles(math.rad(-25), 0, 0),
+				RightShoulder = CFrame.new(-0.1, -0.3, -0.8) * CFrame.Angles(math.rad(85), 0, 0),
+				LeftShoulder  = CFrame.new(0.1, -0.3, -0.8) * CFrame.Angles(math.rad(85), 0, 0),
+				RightElbow    = CFrame.Angles(math.rad(25), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(25), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-55), 0, math.rad(25)),
+				LeftHip       = CFrame.Angles(math.rad(-55), 0, math.rad(-25)),
+				RightKnee     = CFrame.Angles(math.rad(75), 0, 0),
+				LeftKnee      = CFrame.Angles(math.rad(75), 0, 0),
+			}
+		},
+		{
+			t = 0.72, -- Impact Hold
+			offsets = {
+				RootJoint = CFrame.new(0, -1.2, -0.6) * CFrame.Angles(math.rad(55), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = { RootJoint = CFrame.identity }
+		}
+	}
+}
+
+-- ---------------------------------------------------------
+-- [4] AIR COMBO (Mid-Air Aerial Strings)
+-- ---------------------------------------------------------
+ANIMATIONS["Air1"] = {
+	duration = 0.26,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.Angles(math.rad(20), math.rad(-25), 0),
+				RightShoulder = CFrame.Angles(math.rad(30), math.rad(-30), 0),
+			}
+		},
+		{
+			t = 0.45,
+			offsets = {
+				RootJoint     = CFrame.new(0, 0, -0.3) * CFrame.Angles(math.rad(25), math.rad(35), 0),
+				Waist         = CFrame.Angles(0, math.rad(-35), 0),
+				RightShoulder = CFrame.new(0, 0.1, -0.7) * CFrame.Angles(math.rad(95), math.rad(15), 0),
+				LeftShoulder  = CFrame.Angles(math.rad(-45), 0, math.rad(-30)),
+				RightHip      = CFrame.Angles(math.rad(35), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-35), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = { RootJoint = CFrame.Angles(math.rad(15), 0, 0) }
+		}
+	}
+}
+
+ANIMATIONS["Air2"] = {
+	duration = 0.28,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint = CFrame.Angles(0, math.rad(-60), 0),
+			}
+		},
+		{
+			t = 0.50, -- 360 Mid-Air Helicopter Spin Kick!
+			offsets = {
+				RootJoint     = CFrame.Angles(math.rad(15), math.rad(120), 0),
+				Waist         = CFrame.Angles(0, math.rad(-30), 0),
+				RightHip      = CFrame.Angles(0, math.rad(85), math.rad(70)),
+				LeftHip       = CFrame.Angles(0, math.rad(-65), math.rad(-50)),
+				RightShoulder = CFrame.Angles(math.rad(-45), 0, math.rad(45)),
+				LeftShoulder  = CFrame.Angles(math.rad(45), 0, math.rad(-45)),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = { RootJoint = CFrame.Angles(math.rad(15), 0, 0) }
+		}
+	}
+}
+
+ANIMATIONS["Air3"] = {
+	duration = 0.52,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, 0.3, 0) * CFrame.Angles(math.rad(-35), 0, 0),
+				RightShoulder = CFrame.Angles(math.rad(165), 0, 0),
+				LeftShoulder  = CFrame.Angles(math.rad(165), 0, 0),
+			}
+		},
+		{
+			t = 0.45, -- Dive Spike Crash Slam!
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.6, -0.8) * CFrame.Angles(math.rad(75), 0, 0),
+				Waist         = CFrame.Angles(math.rad(20), 0, 0),
+				RightShoulder = CFrame.new(0, 0, -0.8) * CFrame.Angles(math.rad(95), 0, 0),
+				LeftShoulder  = CFrame.new(0, 0, -0.8) * CFrame.Angles(math.rad(95), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-45), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-45), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = { RootJoint = CFrame.identity }
+		}
+	}
+}
+
+-- ---------------------------------------------------------
+-- [5] STORM 4 COUNTER ATTACK (Cross-Arm Stance -> Deflection Shockwave)
+-- ---------------------------------------------------------
+ANIMATIONS["CounterStance"] = {
+	duration = 0.38,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.3, 0) * CFrame.Angles(math.rad(15), math.rad(-20), 0),
+				Waist         = CFrame.Angles(0, math.rad(20), 0),
+				RightShoulder = CFrame.new(-0.25, 0.15, -0.5) * CFrame.Angles(math.rad(75), math.rad(-40), math.rad(25)),
+				LeftShoulder  = CFrame.new(0.25, 0.15, -0.5) * CFrame.Angles(math.rad(75), math.rad(40), math.rad(-25)),
+				RightElbow    = CFrame.Angles(math.rad(85), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(85), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-20), 0, math.rad(15)),
+				LeftHip       = CFrame.Angles(math.rad(15), 0, math.rad(-15)),
+			}
+		},
+		{
+			t = 0.50, -- Deflection Outward Burst!
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.1, -0.4) * CFrame.Angles(math.rad(10), 0, 0),
+				Waist         = CFrame.Angles(math.rad(15), 0, 0),
+				RightShoulder = CFrame.new(0.3, 0.2, -0.8) * CFrame.Angles(math.rad(90), math.rad(45), math.rad(-25)),
+				LeftShoulder  = CFrame.new(-0.3, 0.2, -0.8) * CFrame.Angles(math.rad(90), math.rad(-45), math.rad(25)),
+				RightElbow    = CFrame.Angles(math.rad(15), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(15), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = { RootJoint = CFrame.identity }
+		}
+	}
+}
+
+-- ---------------------------------------------------------
+-- [6] CHAKRA LOAD (Naruto Ram Hand Seal)
+-- ---------------------------------------------------------
+ANIMATIONS["ChakraLoad"] = {
+	duration = 0.45,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.3, 0) * CFrame.Angles(math.rad(10), 0, 0),
+				Waist         = CFrame.Angles(math.rad(10), 0, 0),
+				RightShoulder = CFrame.new(-0.25, -0.1, -0.4) * CFrame.Angles(math.rad(45), math.rad(-35), math.rad(15)),
+				LeftShoulder  = CFrame.new(0.25, -0.1, -0.4) * CFrame.Angles(math.rad(45), math.rad(35), math.rad(-15)),
+				RightElbow    = CFrame.Angles(math.rad(75), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(75), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-15), 0, math.rad(10)),
+				LeftHip       = CFrame.Angles(math.rad(-15), 0, math.rad(-10)),
+			}
+		},
+		{
+			t = 0.50, -- Pulsing Seal
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.35, 0) * CFrame.Angles(math.rad(12), 0, 0),
+				Waist         = CFrame.Angles(math.rad(12), 0, 0),
+				RightShoulder = CFrame.new(-0.25, -0.1, -0.4) * CFrame.Angles(math.rad(48), math.rad(-35), math.rad(15)),
+				LeftShoulder  = CFrame.new(0.25, -0.1, -0.4) * CFrame.Angles(math.rad(48), math.rad(35), math.rad(-15)),
+				RightElbow    = CFrame.Angles(math.rad(80), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(80), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.3, 0) * CFrame.Angles(math.rad(10), 0, 0),
+				RightShoulder = CFrame.new(-0.25, -0.1, -0.4) * CFrame.Angles(math.rad(45), math.rad(-35), math.rad(15)),
+				LeftShoulder  = CFrame.new(0.25, -0.1, -0.4) * CFrame.Angles(math.rad(45), math.rad(35), math.rad(-15)),
+				RightElbow    = CFrame.Angles(math.rad(75), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(75), 0, 0),
+			}
+		}
+	}
+}
+
+-- ---------------------------------------------------------
+-- [7] NINJUTSU RUSH (Rasengan / Chidori Sprint Thrust)
+-- ---------------------------------------------------------
+ANIMATIONS["NinjutsuRush"] = {
+	duration = 0.60,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.4, 0) * CFrame.Angles(math.rad(35), math.rad(-25), 0),
+				RightShoulder = CFrame.new(0, -0.2, 0.4) * CFrame.Angles(math.rad(-25), 0, 0),
+				RightElbow    = CFrame.Angles(math.rad(85), 0, 0),
+			}
+		},
+		{
+			t = 0.35, -- Full Forward Sprint Thrust!
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.45, -0.8) * CFrame.Angles(math.rad(48), 0, 0),
+				Waist         = CFrame.Angles(math.rad(15), 0, 0),
+				Neck          = CFrame.Angles(math.rad(-35), 0, 0),
+				RightShoulder = CFrame.new(0, 0.2, -0.95) * CFrame.Angles(math.rad(95), 0, 0),
+				RightElbow    = CFrame.Angles(math.rad(10), 0, 0),
+				LeftShoulder  = CFrame.new(0, 0, 0.6) * CFrame.Angles(math.rad(-65), 0, math.rad(-25)),
+				RightHip      = CFrame.Angles(math.rad(-45), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(35), 0, 0),
+			}
+		},
+		{
+			t = 0.85, -- Hold thrust
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.45, -0.8) * CFrame.Angles(math.rad(48), 0, 0),
+				RightShoulder = CFrame.new(0, 0.2, -0.95) * CFrame.Angles(math.rad(95), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = { RootJoint = CFrame.identity }
+		}
+	}
+}
+
+-- ---------------------------------------------------------
+-- [8] NINJA DASH (Naruto 52° Aerodynamic Flight)
+-- ---------------------------------------------------------
+ANIMATIONS["NinjaDash"] = {
+	duration = 0.50,
+	loop = true,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.4, -0.6) * CFrame.Angles(math.rad(52), 0, 0),
+				Waist         = CFrame.Angles(math.rad(-10), 0, 0),
+				Neck          = CFrame.Angles(math.rad(-38), 0, 0),
+				RightShoulder = CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-65), 0, math.rad(22)),
+				LeftShoulder  = CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-65), 0, math.rad(-22)),
+				RightHip      = CFrame.Angles(math.rad(-25), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(25), 0, 0),
+			}
+		},
+		{
+			t = 0.5,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.42, -0.6) * CFrame.Angles(math.rad(55), 0, 0),
+				Waist         = CFrame.Angles(math.rad(-10), 0, 0),
+				Neck          = CFrame.Angles(math.rad(-40), 0, 0),
+				RightShoulder = CFrame.new(0, 0, 0.55) * CFrame.Angles(math.rad(-68), 0, math.rad(24)),
+				LeftShoulder  = CFrame.new(0, 0, 0.55) * CFrame.Angles(math.rad(-68), 0, math.rad(-24)),
+				RightHip      = CFrame.Angles(math.rad(25), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-25), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.4, -0.6) * CFrame.Angles(math.rad(52), 0, 0),
+				Waist         = CFrame.Angles(math.rad(-10), 0, 0),
+				Neck          = CFrame.Angles(math.rad(-38), 0, 0),
+				RightShoulder = CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-65), 0, math.rad(22)),
+				LeftShoulder  = CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-65), 0, math.rad(-22)),
+				RightHip      = CFrame.Angles(math.rad(-25), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(25), 0, 0),
+			}
+		}
+	}
+}
+
+-- ---------------------------------------------------------
+-- [9] DEFENSE POSES (High Guard, Low Guard, Parry)
+-- ---------------------------------------------------------
+ANIMATIONS["HighGuard"] = {
+	duration = 0.20,
+	loop = true,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.Angles(0, math.rad(-20), 0),
+				Waist         = CFrame.Angles(0, math.rad(20), 0),
+				RightShoulder = CFrame.new(-0.2, 0.1, -0.5) * CFrame.Angles(math.rad(78), math.rad(-35), math.rad(25)),
+				LeftShoulder  = CFrame.new(0.2, 0.1, -0.5) * CFrame.Angles(math.rad(78), math.rad(35), math.rad(-25)),
+				RightElbow    = CFrame.Angles(math.rad(75), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(75), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-15), 0, math.rad(10)),
+				LeftHip       = CFrame.Angles(math.rad(15), 0, math.rad(-10)),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = {
+				RootJoint     = CFrame.Angles(0, math.rad(-20), 0),
+				Waist         = CFrame.Angles(0, math.rad(20), 0),
+				RightShoulder = CFrame.new(-0.2, 0.1, -0.5) * CFrame.Angles(math.rad(78), math.rad(-35), math.rad(25)),
+				LeftShoulder  = CFrame.new(0.2, 0.1, -0.5) * CFrame.Angles(math.rad(78), math.rad(35), math.rad(-25)),
+				RightElbow    = CFrame.Angles(math.rad(75), 0, 0),
+				LeftElbow     = CFrame.Angles(math.rad(75), 0, 0),
+				RightHip      = CFrame.Angles(math.rad(-15), 0, math.rad(10)),
+				LeftHip       = CFrame.Angles(math.rad(15), 0, math.rad(-10)),
+			}
+		}
+	}
+}
+
+ANIMATIONS["LowGuard"] = {
+	duration = 0.20,
+	loop = true,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -1.0, 0) * CFrame.Angles(math.rad(22), 0, 0),
+				RightShoulder = CFrame.new(-0.1, -0.3, -0.4) * CFrame.Angles(math.rad(45), math.rad(-25), 0),
+				LeftShoulder  = CFrame.new(0.1, -0.3, -0.4) * CFrame.Angles(math.rad(45), math.rad(25), 0),
+				RightHip      = CFrame.Angles(math.rad(-50), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-50), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -1.0, 0) * CFrame.Angles(math.rad(22), 0, 0),
+				RightShoulder = CFrame.new(-0.1, -0.3, -0.4) * CFrame.Angles(math.rad(45), math.rad(-25), 0),
+				LeftShoulder  = CFrame.new(0.1, -0.3, -0.4) * CFrame.Angles(math.rad(45), math.rad(25), 0),
+				RightHip      = CFrame.Angles(math.rad(-50), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-50), 0, 0),
+			}
+		}
+	}
+}
+
+ANIMATIONS["Parry"] = {
+	duration = 0.30,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.Angles(0, math.rad(35), 0),
+				Waist         = CFrame.Angles(0, math.rad(-35), 0),
+				RightShoulder = CFrame.new(0.2, 0.2, -0.6) * CFrame.Angles(math.rad(88), math.rad(65), math.rad(-30)),
+				LeftShoulder  = CFrame.Angles(math.rad(-20), 0, math.rad(-30)),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = { RootJoint = CFrame.identity }
+		}
+	}
+}
+
+-- ---------------------------------------------------------
+-- [10] HIT REACTIONS & STAGGER STUN
+-- ---------------------------------------------------------
+ANIMATIONS["HitHead"] = {
+	duration = 0.28,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, 0, 0.2) * CFrame.Angles(math.rad(-25), math.rad(-10), 0),
+				Waist         = CFrame.Angles(math.rad(-15), 0, 0),
+				Neck          = CFrame.Angles(math.rad(-35), math.rad(-15), 0), -- Head snaps back
+				RightShoulder = CFrame.Angles(math.rad(-35), 0, math.rad(35)),
+				LeftShoulder  = CFrame.Angles(math.rad(-35), 0, math.rad(-35)),
+			}
+		},
+		{
+			t = 0.6,
+			offsets = {
+				RootJoint = CFrame.new(0, 0, 0.1) * CFrame.Angles(math.rad(-10), 0, 0),
+				Neck      = CFrame.Angles(math.rad(-15), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = { RootJoint = CFrame.identity }
+		}
+	}
+}
+
+ANIMATIONS["HitGut"] = {
+	duration = 0.30,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.3, 0.1) * CFrame.Angles(math.rad(35), 0, 0),
+				Waist         = CFrame.Angles(math.rad(25), 0, 0),
+				Neck          = CFrame.Angles(math.rad(-15), 0, 0),
+				RightShoulder = CFrame.new(0, -0.1, -0.2) * CFrame.Angles(math.rad(35), math.rad(-25), 0),
+				LeftShoulder  = CFrame.new(0, -0.1, -0.2) * CFrame.Angles(math.rad(35), math.rad(25), 0),
+				RightHip      = CFrame.Angles(math.rad(-30), 0, 0),
+				LeftHip       = CFrame.Angles(math.rad(-30), 0, 0),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = { RootJoint = CFrame.identity }
+		}
+	}
+}
+
+-- Stagger Stun (When parried / countered - dizzy wobble)
+ANIMATIONS["StaggerStun"] = {
+	duration = 1.30,
+	loop = true,
+	keyframes = {
+		{
+			t = 0.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.2, 0) * CFrame.Angles(math.rad(10), math.rad(15), math.rad(8)),
+				Neck          = CFrame.Angles(math.rad(15), math.rad(-10), math.rad(-12)),
+				RightShoulder = CFrame.Angles(math.rad(10), 0, math.rad(15)),
+				LeftShoulder  = CFrame.Angles(math.rad(10), 0, math.rad(-15)),
+			}
+		},
+		{
+			t = 0.5,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.2, 0) * CFrame.Angles(math.rad(12), math.rad(-15), math.rad(-8)),
+				Neck          = CFrame.Angles(math.rad(15), math.rad(10), math.rad(12)),
+				RightShoulder = CFrame.Angles(math.rad(5), 0, math.rad(20)),
+				LeftShoulder  = CFrame.Angles(math.rad(5), 0, math.rad(-20)),
+			}
+		},
+		{
+			t = 1.0,
+			offsets = {
+				RootJoint     = CFrame.new(0, -0.2, 0) * CFrame.Angles(math.rad(10), math.rad(15), math.rad(8)),
+				Neck          = CFrame.Angles(math.rad(15), math.rad(-10), math.rad(-12)),
+			}
+		}
+	}
+}
+
+-- Backward compatibility aliases
+ANIMATIONS["Attack1"] = ANIMATIONS["Neutral1"]
+ANIMATIONS["Attack2"] = ANIMATIONS["Neutral2"]
+ANIMATIONS["Attack3"] = ANIMATIONS["Neutral3"]
+ANIMATIONS["Attack4"] = ANIMATIONS["Neutral4"]
+ANIMATIONS["LowSweep"] = ANIMATIONS["Down2"]
+ANIMATIONS["ChakraCharge"] = ANIMATIONS["ChakraLoad"]
+ANIMATIONS["Hit"] = ANIMATIONS["HitGut"]
+ANIMATIONS["Stagger"] = ANIMATIONS["StaggerStun"]
+ANIMATIONS["Block"] = ANIMATIONS["HighGuard"]
+ANIMATIONS["Guard"] = ANIMATIONS["HighGuard"]
+
+-- =========================================================
+-- ANIMATION PLAYBACK & INTERPOLATION ENGINE
+-- =========================================================
+triggerCombatAnimation = function(animName: string, durationOverride: number?)
+	local seq = ANIMATIONS[animName]
+	if not seq then
+		print(string.format(">> [StormAnimation] Unknown anim: %s, falling back to Idle <<", animName))
+		seq = ANIMATIONS["Idle"]
+		animName = "Idle"
 	end
-end
 
--- =========================================================
--- PUBLIC TRIGGER API (Invoked by Combo & Movement Controllers)
--- =========================================================
-local function triggerCombatAnimation(animName: string, duration: number)
-	currentAction = animName
-	actionEndTime = os.clock() + duration
-	applyPose(animName)
+	currentAnimName = animName
+	currentSequence = seq
+	animStartTime = os.clock()
+	animDuration = durationOverride or seq.duration
+	isLooping = seq.loop == true
 
-	-- Trail management
+	-- Weapon trail
 	if katanaTrail then
-		local isAttack = string.sub(animName, 1, 6) == "Attack" or animName == "LowSweep" or animName == "NinjaDash"
+		local isAttack = string.sub(animName, 1, 7) == "Neutral"
+			or string.sub(animName, 1, 2) == "Up"
+			or string.sub(animName, 1, 4) == "Down"
+			or string.sub(animName, 1, 3) == "Air"
+			or animName == "NinjaDash"
+			or animName == "NinjutsuRush"
 		katanaTrail.Enabled = isAttack
-		if isAttack then
-			task.delay(duration, function()
-				if os.clock() >= actionEndTime and katanaTrail then
-					katanaTrail.Enabled = false
-				end
-			end)
-		end
 	end
 end
 
--- Bindable Event for local scripts
-local evAnim = Instance.new("BindableEvent")
-evAnim.Name = "StormCombatAnimationEvent"
-evAnim.Parent = ReplicatedStorage
+-- Remote & Bindable Listeners
+local evAnim = ReplicatedStorage:FindFirstChild("StormCombatAnimationEvent") :: BindableEvent?
+if not evAnim then
+	evAnim = Instance.new("BindableEvent")
+	evAnim.Name = "StormCombatAnimationEvent"
+	evAnim.Parent = ReplicatedStorage
+end
 evAnim.Event:Connect(triggerCombatAnimation)
 
 -- =========================================================
--- RENDER STEP JOINT LERP UPDATE
+-- RENDER STEP: JOINT INTERPOLATION & MOTOR6D APPLICATION
 -- =========================================================
-local breathTime = 0
+local function evaluateKeyframeOffsets(seq: AnimationSequence, progress: number): JointOffsets
+	local keyframes = seq.keyframes
+	if #keyframes == 1 then
+		return keyframes[1].offsets
+	end
+
+	-- Find surrounding keyframes
+	local kfA = keyframes[1]
+	local kfB = keyframes[#keyframes]
+
+	for i = 1, #keyframes - 1 do
+		if progress >= keyframes[i].t and progress <= keyframes[i + 1].t then
+			kfA = keyframes[i]
+			kfB = keyframes[i + 1]
+			break
+		end
+	end
+
+	local span = kfB.t - kfA.t
+	local alpha = if span > 0.0001 then math.clamp((progress - kfA.t) / span, 0, 1) else 0
+	local easedAlpha = snapEase(alpha)
+
+	-- Interpolate all joints in kfB
+	local interpolated: JointOffsets = {}
+	for jointName, cfB in pairs(kfB.offsets) do
+		local cfA = kfA.offsets[jointName] or CFrame.identity
+		interpolated[jointName] = cfA:Lerp(cfB, easedAlpha)
+	end
+
+	-- Copy any joints present in kfA but missing in kfB
+	for jointName, cfA in pairs(kfA.offsets) do
+		if not interpolated[jointName] then
+			interpolated[jointName] = cfA
+		end
+	end
+
+	return interpolated
+end
 
 local function onRenderStep(dt: number)
 	local now = os.clock()
+	local elapsed = now - animStartTime
+	local seq = currentSequence or ANIMATIONS["Idle"]
 
-	-- Check action expiration
-	if now >= actionEndTime and currentAction ~= "Idle" then
-		-- Check current player attributes
-		local isBlocking = LocalPlayer:GetAttribute("IsBlocking") == true
-		local blockType = tostring(LocalPlayer:GetAttribute("BlockType") or "None")
-		local isDashing = LocalPlayer:GetAttribute("IsNinjaDashing") == true
-		local isCharging = LocalPlayer:GetAttribute("IsChakraCharging") == true
+	-- Progress calculation
+	local progress = 0
+	if isLooping then
+		progress = (elapsed % animDuration) / animDuration
+	else
+		progress = math.clamp(elapsed / animDuration, 0, 1)
+		-- Check completion of non-looping animation
+		if progress >= 1.0 and currentAnimName ~= "Idle" then
+			-- Evaluate player attributes for next state
+			local isBlocking = LocalPlayer:GetAttribute("IsBlocking") == true
+			local blockType = tostring(LocalPlayer:GetAttribute("BlockType") or "None")
+			local isDashing = LocalPlayer:GetAttribute("IsNinjaDashing") == true
+			local isCharging = LocalPlayer:GetAttribute("IsChakraCharging") == true
+			local isCountering = LocalPlayer:GetAttribute("IsCountering") == true
 
-		if isCharging then
-			currentAction = "ChakraCharge"
-			applyPose("ChakraCharge")
-		elseif isBlocking then
-			currentAction = if blockType == "Low" then "LowGuard" else "HighGuard"
-			applyPose(currentAction)
-		elseif isDashing then
-			currentAction = "NinjaDash"
-			applyPose("NinjaDash")
-		else
-			currentAction = "Idle"
-			applyPose("Idle")
-			if katanaTrail then katanaTrail.Enabled = false end
-		end
-	end
-
-	-- Subtle breathing sway in idle
-	breathTime = breathTime + dt * 2.5
-	local swayY = if currentAction == "Idle" then math.sin(breathTime) * 0.04 else 0
-	local lerpSpeed = if currentAction == "NinjaDash" or string.sub(currentAction, 1, 6) == "Attack" then 24 else 14
-	local factor = math.clamp(dt * lerpSpeed, 0, 1)
-
-	-- Lerp all offsets
-	for name, targetCF in pairs(targetOffsets) do
-		local cur = currentOffsets[name]
-		if cur then
-			currentOffsets[name] = cur:Lerp(targetCF, factor)
-		end
-	end
-
-	-- Apply to Motor6Ds
-	for name, motor in pairs(motors) do
-		local base = baseC0[name]
-		local off = currentOffsets[name]
-		if motor and base and off then
-			if name == "rootJoint" and swayY ~= 0 then
-				motor.C0 = base * off * CFrame.new(0, swayY, 0)
+			if isCountering then
+				triggerCombatAnimation("CounterStance", 0.35)
+			elseif isCharging then
+				triggerCombatAnimation("ChakraLoad", 0.45)
+			elseif isBlocking then
+				triggerCombatAnimation(if blockType == "Low" then "LowGuard" else "HighGuard", 0.20)
+			elseif isDashing then
+				triggerCombatAnimation("NinjaDash", 0.50)
 			else
-				motor.C0 = base * off
+				triggerCombatAnimation("Idle", 1.8)
+				if katanaTrail then katanaTrail.Enabled = false end
+			end
+			seq = currentSequence or ANIMATIONS["Idle"]
+			progress = 0
+		end
+	end
+
+	-- Evaluate offsets from sequence
+	local offsets = evaluateKeyframeOffsets(seq, progress)
+
+	-- Apply offsets to cached joints (AnimationConstraint & Motor6D compatible)
+	local char = LocalPlayer.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local isMoving = hum and hum.MoveDirection.Magnitude > 0.1
+
+	for jointName, joint in pairs(joints) do
+		if joint then
+			local off = offsets[jointName]
+
+			-- Shinobi Run blend: if Idle and character is running, perform Naruto Ninja Run!
+			if currentAnimName == "Idle" and isMoving then
+				if jointName == "RootJoint" then
+					off = CFrame.Angles(math.rad(28), 0, 0)
+				elseif jointName == "Waist" then
+					off = CFrame.Angles(math.rad(8), 0, 0)
+				elseif jointName == "Neck" then
+					off = CFrame.Angles(math.rad(-22), 0, 0)
+				elseif jointName == "RightShoulder" then
+					off = CFrame.Angles(math.rad(-65), math.rad(-10), math.rad(-15))
+				elseif jointName == "LeftShoulder" then
+					off = CFrame.Angles(math.rad(-65), math.rad(10), math.rad(15))
+				elseif jointName == "RightElbow" then
+					off = CFrame.Angles(math.rad(18), 0, 0)
+				elseif jointName == "LeftElbow" then
+					off = CFrame.Angles(math.rad(18), 0, 0)
+				elseif jointName:find("Hip") or jointName:find("Knee") or jointName:find("Ankle") then
+					-- Let default Roblox walk/run animation cycle legs naturally!
+					off = nil
+				end
+			end
+
+			if off then
+				if joint:IsA("AnimationConstraint") then
+					(joint :: AnimationConstraint).Transform = off
+				elseif joint:IsA("Motor6D") then
+					local m = joint :: Motor6D
+					local base = baseC0[jointName]
+					if base then
+						m.C0 = base * off
+					else
+						m.Transform = off
+					end
+				end
 			end
 		end
 	end
@@ -352,8 +1271,7 @@ end
 
 RunService:BindToRenderStep("StormProceduralAnim", Enum.RenderPriority.Character.Value + 1, onRenderStep)
 
-print("[StormAnimationController] ✅ Procedural Anime Combat Animation Engine active.")
-
+print("[StormAnimationController] ✅ Master Procedural Anime Animation Engine active — 60FPS Multi-Keyframe Sequencer with Hermite Smoothstep ready.")
 ]=====]
 s.Parent = game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')
 return 'Installed LocalScript: StormAnimationController'

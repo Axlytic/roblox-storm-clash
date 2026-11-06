@@ -22,6 +22,15 @@ local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Force STRICT Landscape Orientation on Mobile Devices (Naruto Storm Fighting Standard)
+pcall(function()
+	PlayerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+pcall(function()
+	local StarterGui = game:GetService("StarterGui")
+	StarterGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+
 local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
 
 -- Remotes
@@ -141,7 +150,7 @@ rosterList.Position = UDim2.new(0, 0, 0, 0)
 rosterList.BackgroundTransparency = 1
 rosterList.ScrollBarThickness = 6
 rosterList.ScrollBarImageColor3 = Color3.fromRGB(0, 240, 255)
-rosterList.CanvasSize = UDim2.new(0, 0, 0, 5 * 84)
+rosterList.CanvasSize = UDim2.new(0, 0, 0, 24 * 84)
 rosterList.Parent = contentFrame
 
 local rosterLayout = Instance.new("UIListLayout")
@@ -408,7 +417,17 @@ local function updatePreview(charId: string)
 end
 
 -- Build Card for each fighter
-local charOrder = { "Naruto", "Sasuke", "Luffy", "Zoro", "Killua" }
+local charOrder = {
+	"Naruto", "Sasuke", "Kakashi", "Madara",
+	"Luffy", "Zoro", "Sanji", "Law",
+	"Goku", "Vegeta", "Trunks",
+	"Ichigo", "Aizen", "Byakuya",
+	"Sukuna", "Gojo", "Yuji", "Megumi",
+	"Killua", "Gon",
+	"Tanjiro", "Zenitsu",
+	"Deku", "Bakugo",
+}
+rosterList.CanvasSize = UDim2.new(0, 0, 0, #charOrder * 84)
 for idx, charId in ipairs(charOrder) do
 	local char = CombatConfig.Characters[charId]
 	if not char then continue end
@@ -445,24 +464,36 @@ for idx, charId in ipairs(charOrder) do
 
 	-- Name
 	local cName = Instance.new("TextLabel")
-	cName.Size = UDim2.new(1, -74, 0, 20)
-	cName.Position = UDim2.new(0, 70, 0, 14)
+	cName.Size = UDim2.new(1, -74, 0, 18)
+	cName.Position = UDim2.new(0, 70, 0, 8)
 	cName.BackgroundTransparency = 1
 	cName.Font = Enum.Font.GothamBlack
-	cName.TextSize = 14
+	cName.TextSize = 13
 	cName.TextColor3 = Color3.fromRGB(255, 255, 255)
 	cName.TextXAlignment = Enum.TextXAlignment.Left
 	cName.Text = char.Name
 	cName.Parent = card
 
+	-- Anime Series Subtitle
+	local cSeries = Instance.new("TextLabel")
+	cSeries.Size = UDim2.new(1, -74, 0, 14)
+	cSeries.Position = UDim2.new(0, 70, 0, 28)
+	cSeries.BackgroundTransparency = 1
+	cSeries.Font = Enum.Font.GothamBold
+	cSeries.TextSize = 10
+	cSeries.TextColor3 = char.AccentColor or Color3.fromRGB(160, 175, 200)
+	cSeries.TextXAlignment = Enum.TextXAlignment.Left
+	cSeries.Text = char.Anime or "Anime"
+	cSeries.Parent = card
+
 	-- Archetype Tag
 	local cTag = Instance.new("TextLabel")
-	cTag.Size = UDim2.new(0, 90, 0, 18)
-	cTag.Position = UDim2.new(0, 70, 0, 38)
+	cTag.Size = UDim2.new(0, 85, 0, 16)
+	cTag.Position = UDim2.new(0, 70, 0, 46)
 	cTag.BackgroundColor3 = char.PrimaryColor
-	cTag.BackgroundTransparency = 0.3
-	cTag.Font = Enum.Font.GothamBold
-	cTag.TextSize = 10
+	cTag.BackgroundTransparency = 0.25
+	cTag.Font = Enum.Font.GothamBlack
+	cTag.TextSize = 9
 	cTag.TextColor3 = Color3.fromRGB(255, 255, 255)
 	cTag.Text = string.upper(char.Archetype)
 	cTag.Parent = card

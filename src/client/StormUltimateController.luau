@@ -26,6 +26,7 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 -- Remotes
 local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 10) :: Folder?
 local evAttack = combatEvents and combatEvents:FindFirstChild("AttackEvent") :: RemoteEvent?
+local evNinjutsu = combatEvents and combatEvents:WaitForChild("NinjutsuEvent") :: RemoteEvent?
 
 -- Ensure Ultimate Remote
 local evUltimate = combatEvents and combatEvents:FindFirstChild("UltimateEvent") :: RemoteEvent?
@@ -183,7 +184,7 @@ local function startChakraCharge()
 	end)
 
 	if evAnim then
-		evAnim:Fire("ChakraCharge", 999)
+		evAnim:Fire("ChakraLoad", 999)
 	end
 end
 
@@ -191,6 +192,10 @@ local function stopChakraCharge()
 	if not isChargingChakra then return end
 	isChargingChakra = false
 	LocalPlayer:SetAttribute("IsChakraCharging", false)
+
+	if evAnim then
+		evAnim:Fire("Idle", 0.2)
+	end
 
 	if chargeEmitter then
 		local att = chargeEmitter.Parent :: Attachment?
@@ -433,7 +438,96 @@ end
 LocalPlayer.CharacterAdded:Connect(monitorCharacter)
 
 -- =========================================================
--- INPUT LISTENERS: [I] Mengisi Energi / Hold untuk Ultimate
+-- CHAKRA LOAD AURA (Storm 4 Flashing Blue State)
+-- =========================================================
+local chakraLoadPart: Part? = nil
+local chakraLoadTimeoutThread: thread? = nil
+
+local function activateChakraLoad()
+	local char = LocalPlayer.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then return end
+
+	local curVal = LocalPlayer:GetAttribute("ChakraValue") or 60
+	if curVal < 15 then
+		print(">> [Chakra Load] Not enough chakra to load! <<")
+		return
+	end
+
+	LocalPlayer:SetAttribute("IsChakraLoaded", true)
+	print(">> [Chakra Load] CHAKRA LOADED! Press Dash for Chakra Dash, Melee for Ninjutsu! <<")
+	if evAnim then
+		evAnim:Fire("ChakraLoad", 0.45)
+	end
+
+	-- Visual Flashing Blue Chakra Aura Part
+	if chakraLoadPart then chakraLoadPart:Destroy() end
+	local aura = Instance.new("Part")
+	aura.Name = "ChakraLoadAura"
+	aura.Shape = Enum.PartType.Ball
+	aura.Size = Vector3.new(4.5, 4.5, 4.5)
+	aura.CFrame = root.CFrame
+	aura.Material = Enum.Material.ForceField
+	aura.Color = Color3.fromRGB(0, 240, 255)
+	aura.Transparency = 0.35
+	aura.CanCollide = false
+	aura.Anchored = false
+	aura.Parent = char
+	chakraLoadPart = aura
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = root
+	weld.Part1 = aura
+	weld.Parent = aura
+
+	local att = Instance.new("Attachment", aura)
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	pe.Color = ColorSequence.new(Color3.fromRGB(0, 255, 255), Color3.fromRGB(80, 180, 255))
+	pe.Size = NumberSequence.new(1.8, 0)
+	pe.Rate = 75
+	pe.Speed = NumberRange.new(5, 12)
+	pe.Lifetime = NumberRange.new(0.3, 0.5)
+	pe.Parent = att
+
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+		snd.PlaybackSpeed = 1.4
+		snd.Volume = 0.9
+		snd.Parent = root
+		snd:Play()
+		task.delay(0.5, function() pcall(function() snd:Destroy() end) end)
+	end)
+
+	if chakraLoadTimeoutThread then task.cancel(chakraLoadTimeoutThread) end
+	chakraLoadTimeoutThread = task.delay(2.2, function()
+		LocalPlayer:SetAttribute("IsChakraLoaded", false)
+		if chakraLoadPart then
+			chakraLoadPart:Destroy()
+			chakraLoadPart = nil
+		end
+	end)
+end
+
+local function deactivateChakraLoad()
+	LocalPlayer:SetAttribute("IsChakraLoaded", false)
+	if chakraLoadPart then
+		chakraLoadPart:Destroy()
+		chakraLoadPart = nil
+	end
+end
+
+LocalPlayer:GetAttributeChangedSignal("IsChakraLoaded"):Connect(function()
+	if LocalPlayer:GetAttribute("IsChakraLoaded") == false and chakraLoadPart then
+		chakraLoadPart:Destroy()
+		chakraLoadPart = nil
+	end
+end)
+
+-- =========================================================
+-- INPUT LISTENERS: [I] Chakra Load (Tap) / Charge & Ult (Hold)
 -- =========================================================
 local isHoldingI = false
 local iPressStartTime = 0
@@ -441,7 +535,7 @@ local iPressStartTime = 0
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 
-	-- Primary Key: [I] (Naruto Storm: Energy Charge & Hold for Ultimate)
+	-- 1. [I] Key (Naruto Storm: Chakra Load on Tap / Charge & Ult on Hold)
 	if input.KeyCode == Enum.KeyCode.I then
 		isHoldingI = true
 		iPressStartTime = os.clock()
@@ -455,13 +549,30 @@ UserInputService.InputBegan:Connect(function(input, processed)
 				if isHoldingI and chakra >= 100 and heldDuration >= 0.60 and not isExecutingUltimate then
 					print(">> [StormUltimate] [I] Key Hold threshold reached with 100% Chakra! Unleashing Ultimate! <<")
 					stopChakraCharge()
+					deactivateChakraLoad()
 					executeUltimateJutsu()
 					break
 				end
 			end
 		end)
 
-	-- Secondary/Fallback keys
+	-- 2. [J] Key while Chakra Loaded = NINJUTSU!
+	elseif input.KeyCode == Enum.KeyCode.J or input.KeyCode == Enum.KeyCode.ButtonX then
+		if LocalPlayer:GetAttribute("IsChakraLoaded") == true then
+			local curVal = LocalPlayer:GetAttribute("ChakraValue") or 60
+			if curVal >= 25 then
+				deactivateChakraLoad()
+				local target = findTarget()
+				if evAnim then
+					evAnim:Fire("NinjutsuRush", 0.65)
+				end
+				if evNinjutsu then
+					evNinjutsu:FireServer(target)
+				end
+			end
+		end
+
+	-- 3. Secondary/Fallback keys
 	elseif input.KeyCode == Enum.KeyCode.O then
 		executeUltimateJutsu()
 	elseif input.KeyCode == Enum.KeyCode.C then
@@ -471,8 +582,18 @@ end)
 
 UserInputService.InputEnded:Connect(function(input, processed)
 	if input.KeyCode == Enum.KeyCode.I then
+		local pressDuration = os.clock() - iPressStartTime
 		isHoldingI = false
 		stopChakraCharge()
+
+		-- If quick tap (< 0.28s), toggle Chakra Loaded state!
+		if pressDuration < 0.28 and not isExecutingUltimate then
+			if LocalPlayer:GetAttribute("IsChakraLoaded") == true then
+				deactivateChakraLoad()
+			else
+				activateChakraLoad()
+			end
+		end
 	elseif input.KeyCode == Enum.KeyCode.C then
 		stopChakraCharge()
 	end
@@ -488,4 +609,4 @@ evMobileChakra.Event:Connect(function(isDown: boolean)
 	end
 end)
 
-print("[StormUltimateController] ✅ Ultimate Secret Technique & Tekken Awakening active — [I] Charge / Hold for Ultimate.")
+print("[StormUltimateController] ✅ Loaded — Storm 4 Chakra Load [Tap I], Ninjutsu [I+J], Ultimate [Hold I at 100% / O].")

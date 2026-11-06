@@ -45,6 +45,7 @@ batches = [
             {"name": "MobileCombatHUD", "type": "LocalScript", "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", "file": os.path.join(base_dir, "client", "MobileCombatHUD.luau")},
             {"name": "PerformanceSettingsManager", "type": "LocalScript", "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", "file": os.path.join(base_dir, "client", "PerformanceSettingsManager.luau")},
             {"name": "StormCharacterSelectHUD", "type": "LocalScript", "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", "file": os.path.join(base_dir, "client", "StormCharacterSelectHUD.luau")},
+            {"name": "StormSubstitutionController", "type": "LocalScript", "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", "file": os.path.join(base_dir, "client", "StormSubstitutionController.luau")},
         ]
     }
 ]
@@ -75,3 +76,4 @@ for idx, b in enumerate(batches):
     with open(b["file"], "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
     print(f"Wrote {b['file']}: {os.path.getsize(b['file'])} bytes")
+

@@ -23,6 +23,7 @@ all_scripts = [
     ("MobileCombatHUD", "LocalScript", "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", os.path.join(base_dir, "client", "MobileCombatHUD.luau")),
     ("PerformanceSettingsManager", "LocalScript", "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", os.path.join(base_dir, "client", "PerformanceSettingsManager.luau")),
     ("StormCharacterSelectHUD", "LocalScript", "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", os.path.join(base_dir, "client", "StormCharacterSelectHUD.luau")),
+    ("StormSubstitutionController", "LocalScript", "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", os.path.join(base_dir, "client", "StormSubstitutionController.luau")),
 ]
 
 for name, sType, parent, fpath in all_scripts:
@@ -40,3 +41,4 @@ return 'Installed {sType}: {name}'
     with open(out_file, "w", encoding="utf-8") as f:
         f.write(code)
     print(f"Wrote {out_file}: {os.path.getsize(out_file)} bytes")
+

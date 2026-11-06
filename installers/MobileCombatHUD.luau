@@ -44,11 +44,40 @@ local evMobileAssist   = getOrMakeBindable("MobileAssistAction")
 local evMobileSwap     = getOrMakeBindable("MobileSwapAction")
 local evMobileUltimate = getOrMakeBindable("MobileUltimateAction")
 local evMobileChakra   = getOrMakeBindable("MobileChakraAction")
+local evMobileSub      = getOrMakeBindable("MobileSubstitutionAction")
+
+-- Force STRICT Landscape Orientation on Mobile & Tablet Devices (Naruto Storm Fighting Standard)
+pcall(function()
+	PlayerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+pcall(function()
+	local StarterGui = game:GetService("StarterGui")
+	StarterGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+
+-- Continuous enforcer: guarantee orientation never reverts to Portrait or Sensor
+task.spawn(function()
+	local StarterGui = game:GetService("StarterGui")
+	for _ = 1, 10 do
+		task.wait(0.5)
+		if PlayerGui.ScreenOrientation ~= Enum.ScreenOrientation.LandscapeLeft then
+			pcall(function()
+				PlayerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+			end)
+		end
+		if StarterGui.ScreenOrientation ~= Enum.ScreenOrientation.LandscapeLeft then
+			pcall(function()
+				StarterGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+			end)
+		end
+	end
+end)
 
 -- ScreenGui
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "StormMobileCombatHUD"
 screenGui.ResetOnSpawn = false
+screenGui.DisplayOrder = 10
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = PlayerGui
 
@@ -226,6 +255,15 @@ local btnSwap = createActionButton(
 )
 btnSwap.MouseButton1Click:Connect(function()
 	evMobileSwap:Fire()
+end)
+
+-- 8. SUBSTITUTION JUTSU [E/Q] (Kawarimi Escape)
+local btnSub = createActionButton(
+	"BtnSub", "🪵", "SUB [E]", Color3.fromRGB(255, 215, 0),
+	UDim2.new(0.38, 0, 0.48, 0), UDim2.new(0, 54, 0, 54)
+)
+btnSub.MouseButton1Click:Connect(function()
+	evMobileSub:Fire()
 end)
 
 -- =========================================================

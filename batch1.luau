@@ -23,12 +23,13 @@ CombatConfig.Controls = {
 	MoveLeft      = Enum.KeyCode.A,         -- Kiri
 	MoveBackward  = Enum.KeyCode.S,         -- Mundur
 	MoveRight     = Enum.KeyCode.D,         -- Kanan
-	PunchMelee    = Enum.KeyCode.J,         -- Pukulan Biasa (4-Hit Attack Combo)
+	PunchMelee    = Enum.KeyCode.J,         -- Pukulan Biasa (Attack Combo)
 	LowSweep      = Enum.KeyCode.K,         -- Serangan Bawah (Low Sweep Attack)
 	RangedJutsu   = Enum.KeyCode.L,         -- Serangan Jarak Jauh (Anime Ranged Projectile)
-	ChakraEnergy  = Enum.KeyCode.I,         -- Mengisi Energi / Hold untuk Ultimate Ougi
-	GuardDefense  = Enum.KeyCode.F,         -- Pertahanan / Tekken High & Low Guard
-	NinjaDash     = Enum.KeyCode.LeftShift, -- Ninja Dash (also Q / Double-tap Space)
+	ChakraEnergy  = Enum.KeyCode.I,         -- Chakra Load (Tap) / Charge (Hold) / Ultimate
+	GuardDefense  = Enum.KeyCode.F,         -- Pertahanan / Guard (Hold F) / Counter (F + J)
+	NinjaDash     = Enum.KeyCode.LeftShift, -- Ninja Dash (also Shift / Double-tap Space)
+	Substitution  = Enum.KeyCode.E,         -- Substitution Jutsu (Kawarimi / Log Teleport) - also Q / Gamepad L2
 }
 
 -- =========================================================
@@ -52,7 +53,8 @@ CombatConfig.Movement = {
 	NormalWalkSpeed  = 16,
 	CombatRunSpeed   = 24,
 	NinjaDashSpeed   = 85,    -- High-speed homing dash toward opponent
-	NinjaDashRange   = 80,    -- Max distance to lock and dash
+	ChakraDashSpeed  = 112,   -- Supersonic Chakra Dash (blue aura, cuts through projectiles)
+	NinjaDashRange   = 85,    -- Max distance to lock and dash
 	DashDuration     = 0.70,  -- Max duration of a single dash
 	StopDistance     = 6.5,   -- Stop dash when within melee strike range
 	
@@ -65,7 +67,39 @@ CombatConfig.Movement = {
 }
 
 -- =========================================================
--- 3. DEFENSE & PARRY SETTINGS (Tekken Technical Defense)
+-- 2B. SUBSTITUTION JUTSU (Kawarimi - The Core Storm 4 Mechanic!)
+-- =========================================================
+CombatConfig.Substitution = {
+	MaxStocks           = 4,      -- 4 substitution stocks
+	RegenTimePerStock   = 12.0,   -- Seconds to regenerate 1 sub stock
+	TeleportBehindDist  = 8.0,    -- Studs teleported directly behind the attacker
+	DamageImmunityTime  = 0.35,   -- Brief i-frame after subbing to prevent immediate re-hit
+	LogModel = {
+		Size = Vector3.new(1.8, 3.2, 1.8),
+		Color = Color3.fromRGB(139, 90, 43), -- Wood bark
+		Material = Enum.Material.Wood,
+		Lifetime = 1.6,
+	},
+	SmokeColor = Color3.fromRGB(240, 240, 245),
+}
+
+-- =========================================================
+-- 2C. CHAKRA LOAD & JUTSU (Storm 4 Chakra Engine)
+-- =========================================================
+CombatConfig.Chakra = {
+	MaxChakra           = 100,
+	ChakraLoadDuration  = 2.2,    -- Window after pressing [I] where character is in Chakra Loaded state
+	ChakraDashCost      = 15,     -- Chakra consumed by supersonic Chakra Dash
+	NinjutsuCost        = 25,     -- Chakra consumed by Ninjutsu ([I] + [J])
+	ChakraShurikenCost  = 10,     -- Chakra consumed by Chakra Shuriken ([I] + [L])
+	UltimateCost        = 50,     -- Chakra consumed by Ultimate Secret Technique ([I] hold or [I]+[I]+[J])
+	ChakraChargeRate    = 40,     -- Chakra filled per second while holding [I]
+	ChakraGainPerHit    = 10,     -- Gained per successful melee strike
+	ChakraGainOnHit     = 7,      -- Gained when taking damage
+}
+
+-- =========================================================
+-- 3. DEFENSE, PARRY & COUNTER (Tekken + Storm 4 Counter Attack)
 -- =========================================================
 CombatConfig.Defense = {
 	MaxGuardHealth     = 100,
@@ -76,60 +110,60 @@ CombatConfig.Defense = {
 	-- Tekken Just-Frame Parry
 	ParryWindow        = 0.18,  -- 180ms window from pressing Guard (F) to achieve Perfect Parry
 	ParryStaggerTime   = 1.15,  -- Attacker stagger duration on being parried
+
+	-- Storm 4 Counter Attack ([Guard + Attack] / [F + J])
+	CounterWindow      = 0.35,  -- Active counter stance window
+	CounterCooldown    = 3.5,   -- Seconds before counter can be used again
+	CounterKnockback   = 55,    -- Blows rushing attacker flying across the arena
+	CounterStunTime    = 1.30,  -- Attacker dizzy/stagger duration on triggering counter
 }
 
 -- =========================================================
--- 4. ATTACK & COMBO SETTINGS (Core Fighting Strings)
+-- 4. ATTACK & DIRECTIONAL COMBOS (Storm 4 Branching Strings)
 -- =========================================================
 CombatConfig.Combo = {
 	ComboResetTime   = 0.85,  -- Seconds before combo counter resets to 1
-	MaxMeleeRange    = 7.5,   -- Max range for basic melee hits
-	LungeDistance    = 4.5,   -- Forward step distance toward target on strike
+	MaxMeleeRange    = 8.0,   -- Max range for basic melee hits
+	LungeDistance    = 5.0,   -- Forward step distance toward target on strike
+	HitstopDuration  = 0.05,  -- CyberConnect2 signature micro-freeze hitstop on contact
 
-	-- 4-Hit M1 Attack String
-	Hits = {
-		[1] = {
-			Damage = 8,
-			Hitstun = 0.32,
-			Knockback = 3,
-			AttackType = "High", -- High attack (can be blocked by High Guard)
-			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
-			Pitch = 1.3,
-		},
-		[2] = {
-			Damage = 10,
-			Hitstun = 0.35,
-			Knockback = 4,
-			AttackType = "Mid",  -- Mid attack (blocked by High Guard)
-			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
-			Pitch = 1.1,
-		},
-		[3] = {
-			Damage = 14,
-			Hitstun = 0.42,
-			Knockback = 6,
-			LiftY = 6,           -- Launches opponent slightly into the air
-			AttackType = "High",
-			Sound = "rbxasset://sounds/volume_slider.ogg",
-			Pitch = 1.5,
-		},
-		[4] = {
-			Damage = 24,
-			Hitstun = 1.1,
-			Knockback = 48,      -- Heavy finisher blow: launches opponent flying
-			LiftY = 8,
-			AttackType = "Mid",
-			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
-			Pitch = 1.0,
-		},
+	-- Neutral Combo: Standard forward barrage ending in horizontal wall splat / knockdown
+	NeutralHits = {
+		[1] = { Damage = 8,  Hitstun = 0.30, Knockback = 3,  AttackType = "High" },
+		[2] = { Damage = 10, Hitstun = 0.32, Knockback = 4,  AttackType = "Mid" },
+		[3] = { Damage = 14, Hitstun = 0.38, Knockback = 6,  AttackType = "High" },
+		[4] = { Damage = 24, Hitstun = 1.00, Knockback = 48, AttackType = "Mid", Finisher = "Knockdown" },
 	},
 
-	-- Crouch M1: Low Shinobi Sweep
+	-- Up Combo ([W + J]): Uppercuts that launch the opponent high into the air (Air Launcher)
+	UpHits = {
+		[1] = { Damage = 8,  Hitstun = 0.30, Knockback = 2,  LiftY = 3,  AttackType = "High" },
+		[2] = { Damage = 10, Hitstun = 0.32, Knockback = 3,  LiftY = 5,  AttackType = "Mid" },
+		[3] = { Damage = 15, Hitstun = 0.40, Knockback = 6,  LiftY = 16, AttackType = "High" },
+		[4] = { Damage = 25, Hitstun = 1.10, Knockback = 12, LiftY = 38, AttackType = "High", Finisher = "Launcher" },
+	},
+
+	-- Down Combo ([S + J]): Low sweep and downward spike into ground bounce (Rebound)
+	DownHits = {
+		[1] = { Damage = 9,  Hitstun = 0.32, Knockback = 2,  AttackType = "Low" },
+		[2] = { Damage = 11, Hitstun = 0.34, Knockback = 3,  AttackType = "Low" },
+		[3] = { Damage = 16, Hitstun = 0.42, Knockback = 5,  AttackType = "Low" },
+		[4] = { Damage = 26, Hitstun = 1.15, Knockback = 18, LiftY = -25, AttackType = "Low", Finisher = "GroundBounce" },
+	},
+
+	-- Air Combo (While airborne in mid-air + [J]): Aerial flurry ending in downward dive spike
+	AirHits = {
+		[1] = { Damage = 9,  Hitstun = 0.30, Knockback = 2,  AttackType = "Mid" },
+		[2] = { Damage = 12, Hitstun = 0.32, Knockback = 3,  AttackType = "Mid" },
+		[3] = { Damage = 24, Hitstun = 1.00, Knockback = 15, LiftY = -35, AttackType = "Mid", Finisher = "DiveSpike" },
+	},
+
+	-- Legacy Crouch M1: Low Shinobi Sweep ([K])
 	CrouchSweep = {
 		Damage = 16,
 		Hitstun = 0.75,
 		Knockback = 12,
-		AttackType = "Low",   -- LOW attack (Bypasses High Guard! Must use Low Guard to block!)
+		AttackType = "Low",   -- LOW attack (Bypasses High Guard!)
 		Sound = "rbxasset://sounds/action_jump.mp3",
 		Pitch = 1.4,
 	},
@@ -274,8 +308,18 @@ CombatConfig.Characters = {
 			Lifetime = 2.2,
 			Color = Color3.fromRGB(0, 235, 255),
 			Shape = "Disc",
-			Sound = "rbxasset://sounds/action_whoosh.mp3",
+			Sound = "rbxasset://sounds/action_jump.mp3",
 			Icon = "🌀",
+		},
+		NinjutsuSkill = {
+			Name = "Rasengan (Spiraling Sphere)",
+			Damage = 28,
+			ChakraCost = 25,
+			RushSpeed = 90,
+			Color = Color3.fromRGB(0, 220, 255),
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Knockback = 35,
+			LiftY = 12,
 		},
 		AssistName = "Shadow Clone Rasengan",
 		UltimateName = "Wind Style: Rasenshuriken Blast",
@@ -307,9 +351,99 @@ CombatConfig.Characters = {
 			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
 			Icon = "🔥",
 		},
+		NinjutsuSkill = {
+			Name = "Chidori (One Thousand Birds)",
+			Damage = 30,
+			ChakraCost = 25,
+			RushSpeed = 95,
+			Color = Color3.fromRGB(120, 220, 255),
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Knockback = 42,
+			LiftY = 8,
+		},
 		AssistName = "Fireball Jutsu / Flame Bullet",
 		UltimateName = "Kirin: Heavenly Lightning Strike",
 		Quote = "My dream doesn't exist in the future. It lies in the past.",
+	},
+	["Kakashi"] = {
+		Id = "Kakashi",
+		Name = "Kakashi Hatake",
+		Anime = "Naruto Shippuden",
+		Title = "The Copy Ninja",
+		Icon = "⚡",
+		Archetype = "Balanced",
+		PrimaryColor = Color3.fromRGB(45, 110, 65),
+		AccentColor = Color3.fromRGB(80, 230, 255),
+		WalkSpeed = 17,
+		NinjaDashSpeed = 89,
+		GuardHealth = 95,
+		Stats = { Speed = 88, Power = 84, Defense = 86, Jutsu = 92 },
+		M1Name = "Hatake Taijutsu Flurry",
+		SweepName = "Earth Style: Mud Sweep",
+		RangedSkill = {
+			Name = "Lightning Hound (Raiju Tsuiga)",
+			Damage = 21,
+			Speed = 125,
+			Cooldown = 1.6,
+			Lifetime = 2.0,
+			Color = Color3.fromRGB(100, 230, 255),
+			Shape = "Bolt",
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Icon = "🐕",
+		},
+		NinjutsuSkill = {
+			Name = "Lightning Blade (Raikiri)",
+			Damage = 31,
+			ChakraCost = 25,
+			RushSpeed = 96,
+			Color = Color3.fromRGB(80, 225, 255),
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Knockback = 38,
+			LiftY = 10,
+		},
+		AssistName = "Kamui Spatial Distortion",
+		UltimateName = "Kamui Raikiri: Dimensional Slash",
+		Quote = "Those who abandon their friends are worse than scum.",
+	},
+	["Madara"] = {
+		Id = "Madara",
+		Name = "Madara Uchiha",
+		Anime = "Naruto Shippuden",
+		Title = "Ghost of the Uchiha",
+		Icon = "☄️",
+		Archetype = "Zoner",
+		PrimaryColor = Color3.fromRGB(180, 25, 35),
+		AccentColor = Color3.fromRGB(60, 120, 255),
+		WalkSpeed = 16,
+		NinjaDashSpeed = 87,
+		GuardHealth = 110,
+		Stats = { Speed = 86, Power = 96, Defense = 92, Jutsu = 98 },
+		M1Name = "Gunbai & Scythe Cleave",
+		SweepName = "Majestic Flame Sweep",
+		RangedSkill = {
+			Name = "Fire Style: Majestic Destroyer Flame",
+			Damage = 24,
+			Speed = 90,
+			Cooldown = 2.0,
+			Lifetime = 2.8,
+			Color = Color3.fromRGB(255, 60, 20),
+			Shape = "Ball",
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Icon = "🔥",
+		},
+		NinjutsuSkill = {
+			Name = "Susanoo Ribcage Crusher",
+			Damage = 34,
+			ChakraCost = 25,
+			RushSpeed = 85,
+			Color = Color3.fromRGB(60, 120, 255),
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Knockback = 48,
+			LiftY = 14,
+		},
+		AssistName = "Susanoo Blade Cleave",
+		UltimateName = "Tengai Shinsei: Dual Meteors",
+		Quote = "Wake up to reality! Nothing ever goes as planned in this world.",
 	},
 	["Luffy"] = {
 		Id = "Luffy",
@@ -337,6 +471,16 @@ CombatConfig.Characters = {
 			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
 			Icon = "👊",
 		},
+		NinjutsuSkill = {
+			Name = "Gum-Gum Red Hawk",
+			Damage = 32,
+			ChakraCost = 25,
+			RushSpeed = 85,
+			Color = Color3.fromRGB(255, 60, 20),
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Knockback = 45,
+			LiftY = 14,
+		},
 		AssistName = "Gum-Gum Bazooka Striker",
 		UltimateName = "Gear Fourth: King Kong Gun",
 		Quote = "I'm gonna be King of the Pirates!",
@@ -349,7 +493,7 @@ CombatConfig.Characters = {
 		Icon = "⚔️",
 		Archetype = "Sword",
 		PrimaryColor = Color3.fromRGB(30, 220, 110),
-		AccentColor = Color3.fromRGB(240, 255, 255),
+		AccentColor = Color3.fromRGB(20, 95, 45),
 		WalkSpeed = 16,
 		NinjaDashSpeed = 86,
 		GuardHealth = 105,
@@ -367,9 +511,499 @@ CombatConfig.Characters = {
 			Sound = "rbxasset://sounds/action_jump.mp3",
 			Icon = "⚔️",
 		},
+		NinjutsuSkill = {
+			Name = "Demon Slash: Oni Giri",
+			Damage = 30,
+			ChakraCost = 25,
+			RushSpeed = 95,
+			Color = Color3.fromRGB(40, 255, 130),
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Knockback = 40,
+			LiftY = 6,
+		},
 		AssistName = "1080 Pound Ho Cannon",
 		UltimateName = "Billion-Fold World Trichiliocosm",
 		Quote = "Scars on the back are a swordsman's shame.",
+	},
+	["Sanji"] = {
+		Id = "Sanji",
+		Name = "Vinsmoke Sanji",
+		Anime = "One Piece",
+		Title = "Black Leg / Cook of Straw Hats",
+		Icon = "🍳",
+		Archetype = "Rushdown",
+		PrimaryColor = Color3.fromRGB(35, 45, 65),
+		AccentColor = Color3.fromRGB(255, 110, 20),
+		WalkSpeed = 18,
+		NinjaDashSpeed = 94,
+		GuardHealth = 88,
+		Stats = { Speed = 94, Power = 86, Defense = 80, Jutsu = 84 },
+		M1Name = "Black Leg Flurry (Collier Strike)",
+		SweepName = "Concassé Ground Sweep",
+		RangedSkill = {
+			Name = "Diable Jambe: Poêle à Frire",
+			Damage = 20,
+			Speed = 120,
+			Cooldown = 1.5,
+			Lifetime = 1.8,
+			Color = Color3.fromRGB(255, 100, 25),
+			Shape = "Ball",
+			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
+			Icon = "🔥",
+		},
+		NinjutsuSkill = {
+			Name = "Diable Jambe: Flambage Shot",
+			Damage = 31,
+			ChakraCost = 25,
+			RushSpeed = 94,
+			Color = Color3.fromRGB(255, 80, 20),
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Knockback = 42,
+			LiftY = 12,
+		},
+		AssistName = "Party Table Kick Course",
+		UltimateName = "Ifrit Jambe: Bœuf Burst",
+		Quote = "A real man forgives a woman's lies.",
+	},
+	["Law"] = {
+		Id = "Law",
+		Name = "Trafalgar D. Water Law",
+		Anime = "One Piece",
+		Title = "Surgeon of Death",
+		Icon = "🩺",
+		Archetype = "Trickster",
+		PrimaryColor = Color3.fromRGB(235, 200, 40),
+		AccentColor = Color3.fromRGB(25, 25, 30),
+		WalkSpeed = 17,
+		NinjaDashSpeed = 88,
+		GuardHealth = 92,
+		Stats = { Speed = 86, Power = 89, Defense = 82, Jutsu = 95 },
+		M1Name = "Kikoku Nodachi Blade Slices",
+		SweepName = "ROOM Amputation Sweep",
+		RangedSkill = {
+			Name = "Takt: Kinetic Debris Launch",
+			Damage = 22,
+			Speed = 115,
+			Cooldown = 1.6,
+			Lifetime = 2.0,
+			Color = Color3.fromRGB(80, 230, 255),
+			Shape = "SlashBlade",
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Icon = "🌐",
+		},
+		NinjutsuSkill = {
+			Name = "Shock Wille: Internal Surge",
+			Damage = 33,
+			ChakraCost = 25,
+			RushSpeed = 90,
+			Color = Color3.fromRGB(130, 240, 255),
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Knockback = 44,
+			LiftY = 10,
+		},
+		AssistName = "Counter Shock Burst",
+		UltimateName = "Puncture Wille: Heart Destroyer",
+		Quote = "The weak don't get to decide anything, not even how they die.",
+	},
+	["Goku"] = {
+		Id = "Goku",
+		Name = "Son Goku",
+		Anime = "Dragon Ball",
+		Title = "Saiyan Raised on Earth",
+		Icon = "🌟",
+		Archetype = "Balanced",
+		PrimaryColor = Color3.fromRGB(255, 140, 0),
+		AccentColor = Color3.fromRGB(0, 160, 255),
+		WalkSpeed = 17,
+		NinjaDashSpeed = 90,
+		GuardHealth = 100,
+		Stats = { Speed = 92, Power = 95, Defense = 85, Jutsu = 92 },
+		M1Name = "Turtle Hermit Martial Arts",
+		SweepName = "Dragon Sweep Kick",
+		RangedSkill = {
+			Name = "Ki Blast Volley",
+			Damage = 19,
+			Speed = 130,
+			Cooldown = 1.3,
+			Lifetime = 1.8,
+			Color = Color3.fromRGB(255, 230, 40),
+			Shape = "Ball",
+			Sound = "rbxasset://sounds/volume_slider.ogg",
+			Icon = "✨",
+		},
+		NinjutsuSkill = {
+			Name = "Super Kamehameha",
+			Damage = 34,
+			ChakraCost = 25,
+			RushSpeed = 75,
+			Color = Color3.fromRGB(0, 220, 255),
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Knockback = 50,
+			LiftY = 10,
+		},
+		AssistName = "Spirit Bomb Support",
+		UltimateName = "Dragon Fist Explosion",
+		Quote = "I am the hope of the universe! Prepare yourself!",
+	},
+	["Vegeta"] = {
+		Id = "Vegeta",
+		Name = "Vegeta",
+		Anime = "Dragon Ball",
+		Title = "Prince of all Saiyans",
+		Icon = "👑",
+		Archetype = "Rushdown",
+		PrimaryColor = Color3.fromRGB(30, 80, 210),
+		AccentColor = Color3.fromRGB(255, 215, 0),
+		WalkSpeed = 18,
+		NinjaDashSpeed = 93,
+		GuardHealth = 95,
+		Stats = { Speed = 91, Power = 94, Defense = 86, Jutsu = 93 },
+		M1Name = "Royal Saiyan Rush Strike",
+		SweepName = "Final Sweep Kick",
+		RangedSkill = {
+			Name = "Big Bang Attack",
+			Damage = 23,
+			Speed = 110,
+			Cooldown = 1.7,
+			Lifetime = 2.2,
+			Color = Color3.fromRGB(90, 180, 255),
+			Shape = "Ball",
+			Sound = "rbxasset://sounds/volume_slider.ogg",
+			Icon = "💥",
+		},
+		NinjutsuSkill = {
+			Name = "Galick Gun",
+			Damage = 32,
+			ChakraCost = 25,
+			RushSpeed = 80,
+			Color = Color3.fromRGB(160, 60, 240),
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Knockback = 46,
+			LiftY = 8,
+		},
+		AssistName = "Rapid Ki Blast Barrage",
+		UltimateName = "Final Flash: Super Saiyan Blast",
+		Quote = "There is only one certainty in life: a strong man stands above and conquers all!",
+	},
+	["Trunks"] = {
+		Id = "Trunks",
+		Name = "Future Trunks",
+		Anime = "Dragon Ball",
+		Title = "Warrior of Hope",
+		Icon = "🗡️",
+		Archetype = "Sword",
+		PrimaryColor = Color3.fromRGB(75, 75, 180),
+		AccentColor = Color3.fromRGB(150, 60, 220),
+		WalkSpeed = 17,
+		NinjaDashSpeed = 91,
+		GuardHealth = 94,
+		Stats = { Speed = 90, Power = 91, Defense = 84, Jutsu = 89 },
+		M1Name = "Shining Sword Slash Flurry",
+		SweepName = "Burning Low Sweep",
+		RangedSkill = {
+			Name = "Burning Attack (Hand Signs Ki Blast)",
+			Damage = 21,
+			Speed = 125,
+			Cooldown = 1.5,
+			Lifetime = 1.9,
+			Color = Color3.fromRGB(255, 200, 30),
+			Shape = "Ball",
+			Sound = "rbxasset://sounds/volume_slider.ogg",
+			Icon = "🔥",
+		},
+		NinjutsuSkill = {
+			Name = "Shining Slash Rush",
+			Damage = 30,
+			ChakraCost = 25,
+			RushSpeed = 94,
+			Color = Color3.fromRGB(240, 220, 100),
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Knockback = 42,
+			LiftY = 10,
+		},
+		AssistName = "Buster Cannon",
+		UltimateName = "Heat Dome Attack",
+		Quote = "You're about to find out what it's like to fight a real Super Saiyan!",
+	},
+	["Ichigo"] = {
+		Id = "Ichigo",
+		Name = "Ichigo Kurosaki",
+		Anime = "Bleach",
+		Title = "Substitute Soul Reaper",
+		Icon = "🗡️",
+		Archetype = "Rushdown",
+		PrimaryColor = Color3.fromRGB(20, 20, 25),
+		AccentColor = Color3.fromRGB(255, 50, 50),
+		WalkSpeed = 18,
+		NinjaDashSpeed = 94,
+		GuardHealth = 95,
+		Stats = { Speed = 92, Power = 91, Defense = 82, Jutsu = 89 },
+		M1Name = "Zangetsu Cleave String",
+		SweepName = "Bankai Low Sweep",
+		RangedSkill = {
+			Name = "Getsuga Tensho Slash Wave",
+			Damage = 23,
+			Speed = 120,
+			Cooldown = 1.6,
+			Lifetime = 2.2,
+			Color = Color3.fromRGB(255, 30, 40),
+			Shape = "SlashBlade",
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Icon = "🌙",
+		},
+		NinjutsuSkill = {
+			Name = "Black Getsuga Tensho",
+			Damage = 32,
+			ChakraCost = 25,
+			RushSpeed = 92,
+			Color = Color3.fromRGB(255, 20, 20),
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Knockback = 44,
+			LiftY = 12,
+		},
+		AssistName = "Getsuga Tensho Barrage",
+		UltimateName = "Mugetsu: Final Getsuga",
+		Quote = "I'm not fighting because I want to win. I'm fighting because I have to protect them!",
+	},
+	["Aizen"] = {
+		Id = "Aizen",
+		Name = "Sosuke Aizen",
+		Anime = "Bleach",
+		Title = "Master of Kyoka Suigetsu",
+		Icon = "🦋",
+		Archetype = "Trickster",
+		PrimaryColor = Color3.fromRGB(245, 245, 250),
+		AccentColor = Color3.fromRGB(130, 40, 210),
+		WalkSpeed = 17,
+		NinjaDashSpeed = 93,
+		GuardHealth = 98,
+		Stats = { Speed = 93, Power = 94, Defense = 89, Jutsu = 99 },
+		M1Name = "Kyoka Suigetsu Hypnotic Slash",
+		SweepName = "Hado 63 Raikoho Sweep",
+		RangedSkill = {
+			Name = "Hado #90: Kurohitsugi (Black Coffin)",
+			Damage = 24,
+			Speed = 100,
+			Cooldown = 1.9,
+			Lifetime = 2.4,
+			Color = Color3.fromRGB(70, 20, 110),
+			Shape = "SlashBlade",
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Icon = "⬛",
+		},
+		NinjutsuSkill = {
+			Name = "Instant Shunpo Flash Thrust",
+			Damage = 33,
+			ChakraCost = 25,
+			RushSpeed = 98,
+			Color = Color3.fromRGB(140, 50, 220),
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Knockback = 40,
+			LiftY = 6,
+		},
+		AssistName = "Mirror Illusion Shield",
+		UltimateName = "Hogyoku Transcendence: Fragor",
+		Quote = "No one stands on the top of the world. Not you, not me, not even gods.",
+	},
+	["Byakuya"] = {
+		Id = "Byakuya",
+		Name = "Byakuya Kuchiki",
+		Anime = "Bleach",
+		Title = "Captain of Squad 6",
+		Icon = "🌸",
+		Archetype = "Sword",
+		PrimaryColor = Color3.fromRGB(255, 160, 195),
+		AccentColor = Color3.fromRGB(40, 180, 180),
+		WalkSpeed = 17,
+		NinjaDashSpeed = 91,
+		GuardHealth = 96,
+		Stats = { Speed = 91, Power = 88, Defense = 87, Jutsu = 94 },
+		M1Name = "Senbonzakura Petal Dance",
+		SweepName = "Wind Petal Low Sweep",
+		RangedSkill = {
+			Name = "Senbonzakura Shikan (Petal Storm)",
+			Damage = 21,
+			Speed = 120,
+			Cooldown = 1.6,
+			Lifetime = 2.0,
+			Color = Color3.fromRGB(255, 150, 190),
+			Shape = "SlashBlade",
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Icon = "🌸",
+		},
+		NinjutsuSkill = {
+			Name = "Utsusemi Flash Step Strike",
+			Damage = 29,
+			ChakraCost = 25,
+			RushSpeed = 95,
+			Color = Color3.fromRGB(255, 130, 180),
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Knockback = 36,
+			LiftY = 8,
+		},
+		AssistName = "Blossom Wall Defense",
+		UltimateName = "Senbonzakura Kageyoshi: Gokei",
+		Quote = "Pride is something that should not be shed so lightly.",
+	},
+	["Sukuna"] = {
+		Id = "Sukuna",
+		Name = "Ryomen Sukuna",
+		Anime = "Jujutsu Kaisen",
+		Title = "King of Curses",
+		Icon = "💀",
+		Archetype = "Rushdown",
+		PrimaryColor = Color3.fromRGB(180, 20, 50),
+		AccentColor = Color3.fromRGB(20, 20, 25),
+		WalkSpeed = 18,
+		NinjaDashSpeed = 96,
+		GuardHealth = 100,
+		Stats = { Speed = 95, Power = 98, Defense = 85, Jutsu = 99 },
+		M1Name = "Dismantle Taijutsu Combo",
+		SweepName = "Cursed Energy Sweep",
+		RangedSkill = {
+			Name = "Dismantle: Invisible Air Slash",
+			Damage = 24,
+			Speed = 140,
+			Cooldown = 1.5,
+			Lifetime = 1.8,
+			Color = Color3.fromRGB(255, 40, 80),
+			Shape = "SlashBlade",
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Icon = "🩸",
+		},
+		NinjutsuSkill = {
+			Name = "Cleave (Hachigire)",
+			Damage = 35,
+			ChakraCost = 25,
+			RushSpeed = 95,
+			Color = Color3.fromRGB(200, 20, 40),
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Knockback = 48,
+			LiftY = 10,
+		},
+		AssistName = "Dismantle Rain",
+		UltimateName = "Malevolent Shrine: Fuga Open",
+		Quote = "Know your place, you fool.",
+	},
+	["Gojo"] = {
+		Id = "Gojo",
+		Name = "Satoru Gojo",
+		Anime = "Jujutsu Kaisen",
+		Title = "The Strongest Sorcerer",
+		Icon = "♾️",
+		Archetype = "Zoner",
+		PrimaryColor = Color3.fromRGB(0, 180, 255),
+		AccentColor = Color3.fromRGB(200, 50, 255),
+		WalkSpeed = 17,
+		NinjaDashSpeed = 92,
+		GuardHealth = 110,
+		Stats = { Speed = 94, Power = 96, Defense = 95, Jutsu = 100 },
+		M1Name = "Limitless Cursed Martial Arts",
+		SweepName = "Infinity Low Sweep",
+		RangedSkill = {
+			Name = "Cursed Technique Lapse: Blue",
+			Damage = 22,
+			Speed = 110,
+			Cooldown = 1.6,
+			Lifetime = 2.0,
+			Color = Color3.fromRGB(0, 160, 255),
+			Shape = "Ball",
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Icon = "🔵",
+		},
+		NinjutsuSkill = {
+			Name = "Cursed Technique Reversal: Red",
+			Damage = 33,
+			ChakraCost = 25,
+			RushSpeed = 85,
+			Color = Color3.fromRGB(255, 30, 60),
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Knockback = 55,
+			LiftY = 8,
+		},
+		AssistName = "Infinity Repulsion Field",
+		UltimateName = "Hollow Technique: Purple",
+		Quote = "Don't worry, I'm the strongest.",
+	},
+	["Yuji"] = {
+		Id = "Yuji",
+		Name = "Yuji Itadori",
+		Anime = "Jujutsu Kaisen",
+		Title = "Tiger of West Junior High",
+		Icon = "🥊",
+		Archetype = "Rushdown",
+		PrimaryColor = Color3.fromRGB(245, 95, 140),
+		AccentColor = Color3.fromRGB(25, 30, 55),
+		WalkSpeed = 18,
+		NinjaDashSpeed = 95,
+		GuardHealth = 92,
+		Stats = { Speed = 92, Power = 93, Defense = 88, Jutsu = 80 },
+		M1Name = "Divergent Fist Impact Combo",
+		SweepName = "Manji Kick Low Sweep",
+		RangedSkill = {
+			Name = "Cursed Energy Shockwave",
+			Damage = 19,
+			Speed = 125,
+			Cooldown = 1.4,
+			Lifetime = 1.6,
+			Color = Color3.fromRGB(60, 140, 255),
+			Shape = "Ball",
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Icon = "💥",
+		},
+		NinjutsuSkill = {
+			Name = "Black Flash (Kokusen)",
+			Damage = 34,
+			ChakraCost = 25,
+			RushSpeed = 96,
+			Color = Color3.fromRGB(255, 20, 60),
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Knockback = 50,
+			LiftY = 12,
+		},
+		AssistName = "Divergent Strike Striker",
+		UltimateName = "Consecutive Black Flash Burst",
+		Quote = "I don't want to regret the way I lived!",
+	},
+	["Megumi"] = {
+		Id = "Megumi",
+		Name = "Megumi Fushiguro",
+		Anime = "Jujutsu Kaisen",
+		Title = "Ten Shadows Prodigy",
+		Icon = "🐺",
+		Archetype = "Trickster",
+		PrimaryColor = Color3.fromRGB(30, 35, 60),
+		AccentColor = Color3.fromRGB(40, 200, 140),
+		WalkSpeed = 17,
+		NinjaDashSpeed = 89,
+		GuardHealth = 90,
+		Stats = { Speed = 86, Power = 85, Defense = 84, Jutsu = 93 },
+		M1Name = "Shadow Shikigami Strike",
+		SweepName = "Shadow Sink Low Sweep",
+		RangedSkill = {
+			Name = "Nue: Lightning Feather Volley",
+			Damage = 20,
+			Speed = 130,
+			Cooldown = 1.5,
+			Lifetime = 1.8,
+			Color = Color3.fromRGB(255, 230, 60),
+			Shape = "Bolt",
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Icon = "⚡",
+		},
+		NinjutsuSkill = {
+			Name = "Divine Dog: Totality Claws",
+			Damage = 30,
+			ChakraCost = 25,
+			RushSpeed = 92,
+			Color = Color3.fromRGB(20, 25, 45),
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Knockback = 38,
+			LiftY = 8,
+		},
+		AssistName = "Great Serpent Binding",
+		UltimateName = "Chimera Shadow Garden",
+		Quote = "I help people unequally. That's my way.",
 	},
 	["Killua"] = {
 		Id = "Killua",
@@ -397,9 +1031,219 @@ CombatConfig.Characters = {
 			Sound = "rbxasset://sounds/electronicpingshort.wav",
 			Icon = "⚡",
 		},
+		NinjutsuSkill = {
+			Name = "Godspeed Lightning Palm",
+			Damage = 31,
+			ChakraCost = 25,
+			RushSpeed = 105,
+			Color = Color3.fromRGB(0, 245, 255),
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Knockback = 40,
+			LiftY = 6,
+		},
 		AssistName = "Thunderbolt Striker",
 		UltimateName = "Godspeed: Whirlwind Execution",
 		Quote = "If I don't defeat you right now... I can't protect anyone!",
+	},
+	["Gon"] = {
+		Id = "Gon",
+		Name = "Gon Freecss",
+		Anime = "Hunter x Hunter",
+		Title = "Rookie Hunter / Enhancer",
+		Icon = "🎣",
+		Archetype = "Grappler",
+		PrimaryColor = Color3.fromRGB(45, 175, 65),
+		AccentColor = Color3.fromRGB(255, 130, 20),
+		WalkSpeed = 16,
+		NinjaDashSpeed = 85,
+		GuardHealth = 115,
+		Stats = { Speed = 84, Power = 95, Defense = 88, Jutsu = 85 },
+		M1Name = "Hunter Martial Arts Combo",
+		SweepName = "Roundhouse Grass Sweep",
+		RangedSkill = {
+			Name = "Jajanken: Paper (Emitted Nen)",
+			Damage = 20,
+			Speed = 110,
+			Cooldown = 1.6,
+			Lifetime = 2.0,
+			Color = Color3.fromRGB(255, 200, 50),
+			Shape = "Ball",
+			Sound = "rbxasset://sounds/volume_slider.ogg",
+			Icon = "🖐️",
+		},
+		NinjutsuSkill = {
+			Name = "Jajanken: Scissors (Nen Blade)",
+			Damage = 30,
+			ChakraCost = 25,
+			RushSpeed = 90,
+			Color = Color3.fromRGB(255, 100, 30),
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Knockback = 38,
+			LiftY = 8,
+		},
+		AssistName = "Jajanken Paper Cannon",
+		UltimateName = "Jajanken: Rock (Max Power)",
+		Quote = "I'll do whatever it takes to win!",
+	},
+	["Tanjiro"] = {
+		Id = "Tanjiro",
+		Name = "Tanjiro Kamado",
+		Anime = "Demon Slayer",
+		Title = "Sun & Water Breath Swordsman",
+		Icon = "🌊",
+		Archetype = "Sword",
+		PrimaryColor = Color3.fromRGB(35, 135, 80),
+		AccentColor = Color3.fromRGB(240, 50, 30),
+		WalkSpeed = 17,
+		NinjaDashSpeed = 89,
+		GuardHealth = 95,
+		Stats = { Speed = 88, Power = 90, Defense = 85, Jutsu = 89 },
+		M1Name = "Water Surface Slash Combo",
+		SweepName = "Water Wheel Low Sweep",
+		RangedSkill = {
+			Name = "4th Form: Striking Tide",
+			Damage = 21,
+			Speed = 120,
+			Cooldown = 1.6,
+			Lifetime = 2.0,
+			Color = Color3.fromRGB(0, 180, 255),
+			Shape = "SlashBlade",
+			Sound = "rbxasset://sounds/action_jump.mp3",
+			Icon = "🌊",
+		},
+		NinjutsuSkill = {
+			Name = "Hinokami Kagura: Clear Blue Sky",
+			Damage = 33,
+			ChakraCost = 25,
+			RushSpeed = 94,
+			Color = Color3.fromRGB(255, 60, 20),
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Knockback = 45,
+			LiftY = 12,
+		},
+		AssistName = "Waterfall Basin Assist",
+		UltimateName = "Hinokami Kagura: Flame Dance (Enbu)",
+		Quote = "No matter how weak you are, bring out your true courage!",
+	},
+	["Zenitsu"] = {
+		Id = "Zenitsu",
+		Name = "Zenitsu Agatsuma",
+		Anime = "Demon Slayer",
+		Title = "Thunder Breathing Master",
+		Icon = "⚡",
+		Archetype = "Trickster",
+		PrimaryColor = Color3.fromRGB(255, 215, 30),
+		AccentColor = Color3.fromRGB(240, 250, 255),
+		WalkSpeed = 18,
+		NinjaDashSpeed = 98,
+		GuardHealth = 78,
+		Stats = { Speed = 98, Power = 88, Defense = 72, Jutsu = 90 },
+		M1Name = "Thunderclap Quickdraw",
+		SweepName = "Electric Low Sweep",
+		RangedSkill = {
+			Name = "Thunder Spark Shuriken",
+			Damage = 20,
+			Speed = 150,
+			Cooldown = 1.4,
+			Lifetime = 1.3,
+			Color = Color3.fromRGB(255, 235, 80),
+			Shape = "Bolt",
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Icon = "⚡",
+		},
+		NinjutsuSkill = {
+			Name = "Thunderclap and Flash (Hekireki Issen)",
+			Damage = 32,
+			ChakraCost = 25,
+			RushSpeed = 110,
+			Color = Color3.fromRGB(255, 230, 40),
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
+			Knockback = 48,
+			LiftY = 6,
+		},
+		AssistName = "Thunder Sixfold Striker",
+		UltimateName = "7th Form: Flaming Thunder God",
+		Quote = "I've perfected this one technique to absolute mastery!",
+	},
+	["Deku"] = {
+		Id = "Deku",
+		Name = "Izuku Midoriya",
+		Anime = "My Hero Academia",
+		Title = "One For All 9th Successor",
+		Icon = "🥦",
+		Archetype = "Rushdown",
+		PrimaryColor = Color3.fromRGB(30, 160, 95),
+		AccentColor = Color3.fromRGB(60, 255, 210),
+		WalkSpeed = 18,
+		NinjaDashSpeed = 93,
+		GuardHealth = 88,
+		Stats = { Speed = 93, Power = 94, Defense = 84, Jutsu = 88 },
+		M1Name = "Shoot Style Kick Barrage",
+		SweepName = "Manchester Smash Low Sweep",
+		RangedSkill = {
+			Name = "Air Force: Delaware Smash Bullet",
+			Damage = 20,
+			Speed = 135,
+			Cooldown = 1.5,
+			Lifetime = 1.6,
+			Color = Color3.fromRGB(80, 255, 200),
+			Shape = "Fist",
+			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
+			Icon = "💨",
+		},
+		NinjutsuSkill = {
+			Name = "St. Louis Smash Flying Kick",
+			Damage = 31,
+			ChakraCost = 25,
+			RushSpeed = 95,
+			Color = Color3.fromRGB(50, 240, 180),
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Knockback = 42,
+			LiftY = 12,
+		},
+		AssistName = "Detroit Smash Shockwave",
+		UltimateName = "One For All 100%: United States Smash",
+		Quote = "A hero always finds a way to break through!",
+	},
+	["Bakugo"] = {
+		Id = "Bakugo",
+		Name = "Katsuki Bakugo",
+		Anime = "My Hero Academia",
+		Title = "Great Explosion Murder God",
+		Icon = "💥",
+		Archetype = "Rushdown",
+		PrimaryColor = Color3.fromRGB(255, 95, 20),
+		AccentColor = Color3.fromRGB(45, 95, 55),
+		WalkSpeed = 18,
+		NinjaDashSpeed = 94,
+		GuardHealth = 85,
+		Stats = { Speed = 92, Power = 96, Defense = 80, Jutsu = 91 },
+		M1Name = "Explosion Gauntlet Brawling",
+		SweepName = "Blast Propulsion Low Sweep",
+		RangedSkill = {
+			Name = "Stun Grenade Flash Blast",
+			Damage = 22,
+			Speed = 120,
+			Cooldown = 1.5,
+			Lifetime = 1.8,
+			Color = Color3.fromRGB(255, 120, 20),
+			Shape = "Ball",
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Icon = "💣",
+		},
+		NinjutsuSkill = {
+			Name = "AP Shot (Armor Piercing Blast)",
+			Damage = 33,
+			ChakraCost = 25,
+			RushSpeed = 96,
+			Color = Color3.fromRGB(255, 80, 10),
+			Sound = "rbxasset://sounds/impact_explosion_03.mp3",
+			Knockback = 48,
+			LiftY = 10,
+		},
+		AssistName = "Blast Rush Striker",
+		UltimateName = "Howitzer Impact: Massive Detonation",
+		Quote = "I'm gonna be number one, no matter what!",
 	},
 }
 
@@ -455,9 +1299,12 @@ local evAttack     = ensureRemote("AttackEvent")
 local evAssist     = ensureRemote("AssistEvent")
 local evLeaderSwap = ensureRemote("LeaderSwapEvent")
 local evRanged     = ensureRemote("RangedAttackEvent")
+local evSub        = ensureRemote("SubstitutionEvent")
+local evCounter    = ensureRemote("CounterEvent")
+local evNinjutsu   = ensureRemote("NinjutsuEvent")
 
 -- =========================================================
--- 2. PLAYER COMBAT STATE TRACKING
+-- 2. PLAYER COMBAT STATE TRACKING (Storm 4 + Tekken)
 -- =========================================================
 type PlayerCombatState = {
 	isBlocking: boolean,
@@ -465,6 +1312,12 @@ type PlayerCombatState = {
 	blockStartTime: number,
 	guardHealth: number,
 	lastParriedTime: number,
+	subStocks: number,
+	lastSubTime: number,
+	lastDamageTime: number,
+	isCountering: boolean,
+	counterStartTime: number,
+	lastAttacker: Model?,
 }
 
 local playerCombatStates: { [number]: PlayerCombatState } = {}
@@ -476,7 +1329,17 @@ local function setupPlayer(player: Player)
 		blockStartTime = 0,
 		guardHealth = 100,
 		lastParriedTime = 0,
+		subStocks = 4,
+		lastSubTime = 0,
+		lastDamageTime = 0,
+		isCountering = false,
+		counterStartTime = 0,
+		lastAttacker = nil,
 	}
+	player:SetAttribute("SubstitutionStocks", 4)
+	player:SetAttribute("ChakraValue", 60)
+	player:SetAttribute("IsBlocking", false)
+	player:SetAttribute("IsCountering", false)
 end
 
 Players.PlayerAdded:Connect(setupPlayer)
@@ -484,6 +1347,66 @@ Players.PlayerRemoving:Connect(function(player)
 	playerCombatStates[player.UserId] = nil
 end)
 for _, p in ipairs(Players:GetPlayers()) do setupPlayer(p) end
+
+-- Background Sub Stock Regeneration (1 stock every 12 seconds when not taking damage)
+task.spawn(function()
+	while true do
+		task.wait(1.0)
+		local now = os.clock()
+		for userId, state in pairs(playerCombatStates) do
+			local player = Players:GetPlayerByUserId(userId)
+			if player and state.subStocks < 4 then
+				-- Regenerate if player hasn't taken damage in last 3 seconds
+				if now - state.lastDamageTime >= 3.0 and now - state.lastSubTime >= 12.0 then
+					state.subStocks = math.min(4, state.subStocks + 1)
+					state.lastSubTime = now
+					player:SetAttribute("SubstitutionStocks", state.subStocks)
+				end
+			end
+		end
+	end
+end)
+
+-- =========================================================
+-- 2B. 3D WOODEN LOG & SMOKE (Storm 4 Kawarimi Effect)
+-- =========================================================
+local function spawnSubstitutionLog(cf: CFrame)
+	local log = Instance.new("Part")
+	log.Name = "KawarimiWoodLog"
+	log.Shape = Enum.PartType.Cylinder
+	log.Size = Vector3.new(2.8, 1.4, 1.4)
+	log.CFrame = cf * CFrame.Angles(0, 0, math.rad(90))
+	log.Color = Color3.fromRGB(139, 90, 43)
+	log.Material = Enum.Material.Wood
+	log.Anchored = false
+	log.CanCollide = true
+	log.Parent = Workspace
+	Debris:AddItem(log, 2.2)
+
+	-- Puff of Smoke Emitter
+	local att = Instance.new("Attachment", log)
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	pe.Color = ColorSequence.new(Color3.fromRGB(245, 245, 250), Color3.fromRGB(210, 210, 220))
+	pe.Size = NumberSequence.new(2.5, 5.0)
+	pe.Transparency = NumberSequence.new(0.2, 1.0)
+	pe.Rate = 120
+	pe.Speed = NumberRange.new(5, 14)
+	pe.SpreadAngle = Vector2.new(180, 180)
+	pe.Lifetime = NumberRange.new(0.4, 0.7)
+	pe.Parent = att
+	task.delay(0.2, function() pe.Enabled = false end)
+
+	-- Sound
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = "rbxasset://sounds/action_footsteps_plastic.mp3"
+		snd.PlaybackSpeed = 0.8
+		snd.Volume = 1.0
+		snd.Parent = log
+		snd:Play()
+	end)
+end
 
 -- =========================================================
 -- 3. FLOATING COMBAT TEXT
@@ -579,7 +1502,22 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 
 	local now = os.clock()
 
-	-- 3. Check for TEKKEN JUST-FRAME PARRY (180ms window)
+	-- 3. Check for STORM 4 COUNTER ATTACK ([Guard + Attack] / [F + J])
+	if targetState and targetState.isCountering and (now - targetState.counterStartTime <= 0.35) then
+		print(string.format(">> [STORM 4 COUNTER BLOW] %s countered %s's strike! <<", targetModel.Name, attacker.Name))
+		spawnFloatingText(tRoot.Position, "⚔️ COUNTER BLOW!", Color3.fromRGB(255, 215, 0))
+
+		-- Blow attacker back flying across arena & stagger
+		local counterDir = -aRoot.CFrame.LookVector
+		aRoot.AssemblyLinearVelocity = (counterDir * 55) + Vector3.new(0, 10, 0)
+		if targetPlayer then
+			evParry:FireClient(targetPlayer, targetPlayer, attacker)
+		end
+		evParry:FireClient(attacker, targetPlayer or attacker, attacker)
+		return
+	end
+
+	-- 3B. Check for TEKKEN JUST-FRAME PARRY (180ms window)
 	local isParry = isTargetBlocking and (targetBlockType == "Parry" or (now - targetBlockStartTime <= 0.18))
 	if isParry then
 		print(string.format(">> [TEKKEN PERFECT PARRY] %s counter-parried %s! <<", targetModel.Name, attacker.Name))
@@ -630,11 +1568,192 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 	local dmgColor = if isAwakening then Color3.fromRGB(255, 30, 30) elseif attackType == "Low" then Color3.fromRGB(255, 170, 0) elseif comboStep == 4 then Color3.fromRGB(255, 50, 50) else Color3.fromRGB(255, 255, 255)
 	spawnFloatingText(tRoot.Position, string.format("💥 -%d%s", finalDamage, isAwakening and " [RAGE]" or ""), dmgColor)
 
+	-- Update State for Substitution & Chakra Tracking
+	if targetState then
+		targetState.lastAttacker = attackerChar
+		targetState.lastDamageTime = now
+	end
+	if targetModel.Name == "TrainingDummy" then
+		targetModel:SetAttribute("LastAttackerName", attacker.Name)
+	end
+
+	-- Chakra Gain on Hit
+	local curChakra = attacker:GetAttribute("ChakraValue") or 60
+	attacker:SetAttribute("ChakraValue", math.min(100, curChakra + 10))
+	if targetPlayer then
+		local tChakra = targetPlayer:GetAttribute("ChakraValue") or 60
+		targetPlayer:SetAttribute("ChakraValue", math.min(100, tChakra + 7))
+	end
+
 	-- Apply Knockback
 	local hitDir = (tRoot.Position - aRoot.Position).Unit
 	local flatHitDir = Vector3.new(hitDir.X, 0, hitDir.Z).Unit
 	local liftY = if comboStep == 4 then 12 elseif comboStep == 3 then 6 else 0
 	tRoot.AssemblyLinearVelocity = (flatHitDir * knockback) + Vector3.new(0, liftY, 0)
+end)
+
+-- =========================================================
+-- 5B. SUBSTITUTION JUTSU (Kawarimi - The Lifeline of Combat)
+-- =========================================================
+evSub.OnServerEvent:Connect(function(player: Player)
+	local state = playerCombatStates[player.UserId]
+	if not state or state.subStocks < 1 then
+		return
+	end
+
+	local char = player.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or hum.Health <= 0 then return end
+
+	-- Find attacker to teleport behind
+	local targetChar: Model? = state.lastAttacker
+	if not targetChar or not targetChar.Parent then
+		-- Fallback: check nearest opponent in front
+		local dummy = Workspace:FindFirstChild("TrainingDummy")
+		if dummy and dummy:IsA("Model") then
+			targetChar = dummy
+		else
+			for _, p in ipairs(Players:GetPlayers()) do
+				if p ~= player and p.Character then
+					local dist = (p.Character:GetPivot().Position - root.Position).Magnitude
+					if dist <= 30 then
+						targetChar = p.Character
+						break
+					end
+				end
+			end
+		end
+	end
+
+	local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not targetRoot then return end
+
+	-- 1. Deduct Sub Stock & Reset Hitstun
+	state.subStocks -= 1
+	state.lastSubTime = os.clock()
+	player:SetAttribute("SubstitutionStocks", state.subStocks)
+
+	-- 2. Spawn 3D Wood Log & Smoke Puff at player's previous location
+	local prevCFrame = root.CFrame
+	spawnSubstitutionLog(prevCFrame)
+
+	-- 3. Teleport 8 studs directly BEHIND the attacker facing their back!
+	local behindPos = targetRoot.Position - (targetRoot.CFrame.LookVector * 8.0)
+	root.CFrame = CFrame.lookAt(behindPos, targetRoot.Position)
+	root.AssemblyLinearVelocity = Vector3.zero
+
+	-- 4. Floating Text & Broadcast
+	spawnFloatingText(root.Position, "🪵 KAWARIMI!", Color3.fromRGB(255, 215, 0))
+	evSub:FireAllClients(player, prevCFrame)
+
+	print(string.format(">> [SUBSTITUTION JUTSU] %s substituted behind %s! (%d logs left) <<", player.Name, targetChar.Name, state.subStocks))
+end)
+
+-- =========================================================
+-- 5C. STORM 4 COUNTER ATTACK STANCE TOGGLE ([F + J])
+-- =========================================================
+evCounter.OnServerEvent:Connect(function(player: Player, isCountering: boolean)
+	local state = playerCombatStates[player.UserId]
+	if state then
+		state.isCountering = isCountering
+		state.counterStartTime = if isCountering then os.clock() else 0
+		player:SetAttribute("IsCountering", isCountering)
+		evCounter:FireAllClients(player, isCountering)
+	end
+end)
+
+-- =========================================================
+-- 5D. CHARACTER NINJUTSU ([I] + [J] Chakra Rush)
+-- =========================================================
+evNinjutsu.OnServerEvent:Connect(function(player: Player, targetModel: Model?)
+	local char = player.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or hum.Health <= 0 then return end
+
+	local curChakra = player:GetAttribute("ChakraValue") or 60
+	if curChakra < 25 then
+		spawnFloatingText(root.Position, "⚠️ NOT ENOUGH CHAKRA!", Color3.fromRGB(255, 100, 100))
+		return
+	end
+
+	-- Deduct 25 Chakra
+	player:SetAttribute("ChakraValue", curChakra - 25)
+
+	local charId = tostring(player:GetAttribute("SelectedCharacter") or "Naruto")
+	local charData = CombatConfig.Characters[charId] or CombatConfig.Characters["Naruto"]
+	local jutsu = charData.NinjutsuSkill or {
+		Name = "Ninjutsu Strike",
+		Damage = 30,
+		RushSpeed = 90,
+		Color = Color3.fromRGB(0, 220, 255),
+		Knockback = 45,
+		LiftY = 12,
+	}
+
+	-- Find target
+	local tRoot: BasePart? = nil
+	local tHum: Humanoid? = nil
+	if targetModel and targetModel:FindFirstChild("HumanoidRootPart") then
+		tRoot = targetModel:FindFirstChild("HumanoidRootPart") :: BasePart
+		tHum = targetModel:FindFirstChildOfClass("Humanoid")
+	else
+		local dummy = Workspace:FindFirstChild("TrainingDummy")
+		if dummy and dummy:FindFirstChild("HumanoidRootPart") then
+			tRoot = dummy:FindFirstChild("HumanoidRootPart") :: BasePart
+			tHum = dummy:FindFirstChildOfClass("Humanoid")
+		end
+	end
+
+	-- Forward Rush Impulse
+	local rushDir = root.CFrame.LookVector
+	root.AssemblyLinearVelocity = rushDir * (jutsu.RushSpeed or 90)
+
+	-- Sonic Jutsu Visual Part
+	local jutsuPart = Instance.new("Part")
+	jutsuPart.Shape = Enum.PartType.Ball
+	jutsuPart.Size = Vector3.new(3.5, 3.5, 3.5)
+	jutsuPart.CFrame = root.CFrame * CFrame.new(0, 0, -2.5)
+	jutsuPart.Material = Enum.Material.Neon
+	jutsuPart.Color = jutsu.Color or Color3.fromRGB(0, 240, 255)
+	jutsuPart.CanCollide = false
+	jutsuPart.Anchored = false
+	jutsuPart.Parent = Workspace
+
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = root
+	w.Part1 = jutsuPart
+	w.Parent = jutsuPart
+
+	local att = Instance.new("Attachment", jutsuPart)
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	pe.Color = ColorSequence.new(jutsu.Color or Color3.fromRGB(0, 255, 255), Color3.fromRGB(255, 255, 255))
+	pe.Size = NumberSequence.new(2, 0)
+	pe.Rate = 90
+	pe.Speed = NumberRange.new(5, 15)
+	pe.Lifetime = NumberRange.new(0.3, 0.6)
+	pe.Parent = att
+
+	Debris:AddItem(jutsuPart, 0.6)
+
+	-- Hit registration
+	task.delay(0.18, function()
+		if tRoot and tHum and tHum.Health > 0 then
+			local dist = (tRoot.Position - root.Position).Magnitude
+			if dist <= 14 then
+				tHum:TakeDamage(jutsu.Damage or 30)
+				spawnFloatingText(tRoot.Position, string.format("💥 %s -%d!", jutsu.Name, jutsu.Damage or 30), jutsu.Color or Color3.fromRGB(0, 240, 255))
+				local knockDir = (tRoot.Position - root.Position).Unit
+				tRoot.AssemblyLinearVelocity = (knockDir * (jutsu.Knockback or 45)) + Vector3.new(0, jutsu.LiftY or 12, 0)
+			end
+		end
+	end)
+
+	print(string.format(">> [NINJUTSU ACTIVATED] %s unleashed %s! <<", player.Name, jutsu.Name))
 end)
 
 -- =========================================================
@@ -812,35 +1931,36 @@ evRanged.OnServerEvent:Connect(function(attacker: Player, aimDir: Vector3?, requ
 	proj.Material = Enum.Material.Neon
 	proj.Color = skill.Color or Color3.fromRGB(0, 230, 255)
 
-	-- Distinct 3D mesh shaping per anime character:
-	if charId == "Naruto" then
-		-- Rasen-Shuriken: Aerodynamic Disc
+	-- Distinct 3D mesh shaping per anime character skill shape:
+	local shape = skill.Shape or "Ball"
+	if shape == "Disc" then
+		-- Aerodynamic Disc (Rasen-Shuriken, Destructo Disc)
 		proj.Shape = Enum.PartType.Cylinder
 		proj.Size = Vector3.new(0.4, 3.2, 3.2)
 		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir) * CFrame.Angles(0, 0, math.rad(90))
-	elseif charId == "Sasuke" then
-		-- Goukakyuu Fireball: Giant Blazing Sphere
+	elseif shape == "Ball" then
+		-- Blazing Energy / Flame Sphere (Goukakyuu, Ki Blast, Blue, Stun Grenade)
 		proj.Shape = Enum.PartType.Ball
-		proj.Size = Vector3.new(3.0, 3.0, 3.0)
+		proj.Size = Vector3.new(2.8, 2.8, 2.8)
 		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
-	elseif charId == "Luffy" then
-		-- Gum-Gum Pistol: Elastic Fist Cylinder
+	elseif shape == "Fist" then
+		-- Elastic / Air Shockwave Fist (Gum-Gum Pistol, Delaware Smash)
 		proj.Shape = Enum.PartType.Cylinder
-		proj.Size = Vector3.new(3.2, 1.6, 1.6)
+		proj.Size = Vector3.new(3.0, 1.6, 1.6)
 		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir) * CFrame.Angles(0, math.rad(90), 0)
-	elseif charId == "Zoro" then
-		-- 36 Pound Phoenix: Vertical Flying Wind Blade
+	elseif shape == "SlashBlade" then
+		-- Flying Anime Blade Wave (36 Pound Phoenix, Getsuga Tensho, Dismantle, Striking Tide)
 		proj.Shape = Enum.PartType.Block
 		proj.Size = Vector3.new(0.3, 3.8, 2.4)
 		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
-	elseif charId == "Killua" then
-		-- Thunderbolt Narukami: Piercing Lightning Wedge
+	elseif shape == "Bolt" then
+		-- Piercing Lightning Bolt / Hound (Narukami, Raiju, Thunder Spark)
 		proj.Shape = Enum.PartType.Block
-		proj.Size = Vector3.new(0.8, 0.8, 3.2)
+		proj.Size = Vector3.new(0.7, 0.7, 3.4)
 		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
 	else
 		proj.Shape = Enum.PartType.Ball
-		proj.Size = Vector3.new(2, 2, 2)
+		proj.Size = Vector3.new(2.4, 2.4, 2.4)
 		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
 	end
 

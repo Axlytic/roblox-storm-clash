@@ -89,7 +89,7 @@ local function executeRangedAttack()
 		Speed = 100,
 		Cooldown = 1.6,
 		Color = Color3.fromRGB(0, 230, 255),
-		Sound = "rbxasset://sounds/action_whoosh.mp3",
+		Sound = "rbxasset://sounds/action_jump.mp3",
 	}
 
 	local now = os.clock()
@@ -140,7 +140,7 @@ local function executeRangedAttack()
 	-- Sound
 	pcall(function()
 		local snd = Instance.new("Sound")
-		snd.SoundId = rangedData.Sound or "rbxasset://sounds/action_whoosh.mp3"
+		snd.SoundId = rangedData.Sound or "rbxasset://sounds/action_jump.mp3"
 		snd.PlaybackSpeed = 1.3
 		snd.Volume = 0.9
 		snd.Parent = root
@@ -180,3 +180,4 @@ if evMobileRanged then
 end
 
 print("[StormRangedController] ✅ Loaded — Serangan Jarak Jauh [L] / Gamepad (Triangle/Y) active.")
+

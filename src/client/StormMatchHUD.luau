@@ -24,6 +24,15 @@ local evCharSelect = combatEvents:WaitForChild("CharacterSelectEvent", 10) :: Re
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Force STRICT Landscape Orientation on Mobile Devices (Naruto Storm Fighting Standard)
+pcall(function()
+	PlayerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+pcall(function()
+	local StarterGui = game:GetService("StarterGui")
+	StarterGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+
 -- Match State
 local roundTimer = 99
 local isMatchActive = true
@@ -252,6 +261,32 @@ p1GuardFill.BorderSizePixel = 0
 p1GuardFill.Parent = p1GuardBg
 Instance.new("UICorner", p1GuardFill).CornerRadius = UDim.new(0, 3)
 
+-- P1 4-Slot Substitution Gauge (Storm 4 Kawarimi Indicator)
+local p1SubContainer = Instance.new("Frame")
+p1SubContainer.Name = "P1SubContainer"
+p1SubContainer.Size = UDim2.new(0.65, 0, 0, 7)
+p1SubContainer.Position = UDim2.new(0, 66, 0, 56)
+p1SubContainer.BackgroundTransparency = 1
+p1SubContainer.Parent = p1Frame
+
+local p1SubLayout = Instance.new("UIListLayout")
+p1SubLayout.FillDirection = Enum.FillDirection.Horizontal
+p1SubLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+p1SubLayout.Padding = UDim.new(0, 4)
+p1SubLayout.Parent = p1SubContainer
+
+local p1SubSegments: { Frame } = {}
+for i = 1, 4 do
+	local seg = Instance.new("Frame")
+	seg.Name = "SubLog_" .. i
+	seg.Size = UDim2.new(0.22, 0, 1, 0)
+	seg.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+	seg.BorderSizePixel = 0
+	seg.Parent = p1SubContainer
+	Instance.new("UICorner", seg).CornerRadius = UDim.new(0, 2)
+	table.insert(p1SubSegments, seg)
+end
+
 -- =========================================================
 -- FIGHTER 2 (RIGHT SIDE - OPPONENT / TRAINING DUMMY)
 -- =========================================================
@@ -317,6 +352,49 @@ p2HealthFill.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
 p2HealthFill.BorderSizePixel = 0
 p2HealthFill.Parent = p2HealthBg
 Instance.new("UICorner", p2HealthFill).CornerRadius = UDim.new(0, 4)
+
+-- P2 Sub-bars: Chakra & Guard
+local p2ChakraBg = Instance.new("Frame")
+p2ChakraBg.Name = "P2ChakraBg"
+p2ChakraBg.Size = UDim2.new(0.65, 0, 0, 8)
+p2ChakraBg.Position = UDim2.new(0.35, -4, 0, 44)
+p2ChakraBg.BackgroundColor3 = Color3.fromRGB(15, 25, 45)
+p2ChakraBg.Parent = p2Frame
+Instance.new("UICorner", p2ChakraBg).CornerRadius = UDim.new(0, 3)
+
+local p2ChakraFill = Instance.new("Frame")
+p2ChakraFill.Name = "P2ChakraFill"
+p2ChakraFill.Size = UDim2.new(0.5, 0, 1, 0)
+p2ChakraFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+p2ChakraFill.BorderSizePixel = 0
+p2ChakraFill.Parent = p2ChakraBg
+Instance.new("UICorner", p2ChakraFill).CornerRadius = UDim.new(0, 3)
+
+-- P2 4-Slot Substitution Gauge (Opponent Kawarimi Indicator)
+local p2SubContainer = Instance.new("Frame")
+p2SubContainer.Name = "P2SubContainer"
+p2SubContainer.Size = UDim2.new(0.65, 0, 0, 7)
+p2SubContainer.Position = UDim2.new(0.35, -4, 0, 56)
+p2SubContainer.BackgroundTransparency = 1
+p2SubContainer.Parent = p2Frame
+
+local p2SubLayout = Instance.new("UIListLayout")
+p2SubLayout.FillDirection = Enum.FillDirection.Horizontal
+p2SubLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+p2SubLayout.Padding = UDim.new(0, 4)
+p2SubLayout.Parent = p2SubContainer
+
+local p2SubSegments: { Frame } = {}
+for i = 1, 4 do
+	local seg = Instance.new("Frame")
+	seg.Name = "SubLog_" .. i
+	seg.Size = UDim2.new(0.22, 0, 1, 0)
+	seg.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+	seg.BorderSizePixel = 0
+	seg.Parent = p2SubContainer
+	Instance.new("UICorner", seg).CornerRadius = UDim.new(0, 2)
+	table.insert(p2SubSegments, seg)
+end
 
 -- =========================================================
 -- ANNOUNCER OVERLAY BANNER
@@ -486,15 +564,34 @@ RunService.RenderStepped:Connect(function(dt: number)
 		end
 	end
 
-	-- 4. Local Chakra Gauge
-	local chakraVal = LocalPlayer:GetAttribute("ChakraValue") or 50
+	-- 4. Local Chakra Gauge & Chakra Load Pulse
+	local chakraVal = LocalPlayer:GetAttribute("ChakraValue") or 60
 	local chakraRatio = math.clamp(tonumber(chakraVal) :: number / 100, 0, 1)
 	p1ChakraFill.Size = UDim2.new(chakraRatio, 0, 1, 0)
-	if chakraRatio >= 1.0 then
+
+	local isChakraLoaded = LocalPlayer:GetAttribute("IsChakraLoaded") == true
+	if isChakraLoaded then
+		p1ChakraFill.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+	elseif chakraRatio >= 1.0 then
 		p1ChakraFill.BackgroundColor3 = Color3.fromRGB(255, 220, 50) -- glowing gold when ready
 	else
 		p1ChakraFill.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
 	end
+
+	-- 5. Storm 4 Substitution Bars (4 Stocks)
+	local p1Subs = LocalPlayer:GetAttribute("SubstitutionStocks") or 4
+	for i, seg in ipairs(p1SubSegments) do
+		seg.BackgroundTransparency = (i <= p1Subs) and 0 or 0.85
+	end
+
+	local targetPlayer = targetModel and Players:GetPlayerFromCharacter(targetModel)
+	local p2Subs = (targetPlayer and targetPlayer:GetAttribute("SubstitutionStocks")) or 4
+	for i, seg in ipairs(p2SubSegments) do
+		seg.BackgroundTransparency = (i <= p2Subs) and 0 or 0.85
+	end
+
+	local p2Chakra = (targetPlayer and targetPlayer:GetAttribute("ChakraValue")) or 60
+	p2ChakraFill.Size = UDim2.new(math.clamp(p2Chakra / 100, 0, 1), 0, 1, 0)
 end)
 
 print("[StormMatchHUD] ✅ Naruto Storm 4 Dual Top Screen Fighting HUD & Announcer active.")

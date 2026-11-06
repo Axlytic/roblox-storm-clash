@@ -112,6 +112,12 @@ scripts = [
         "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
         "file": os.path.join(base_dir, "client", "StormCharacterSelectHUD.luau")
     },
+    {
+        "name": "StormSubstitutionController",
+        "type": "LocalScript",
+        "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
+        "file": os.path.join(base_dir, "client", "StormSubstitutionController.luau")
+    },
 ]
 
 out = []

@@ -65,10 +65,11 @@ local function createAnimeMannequin(parent: Instance, pos: Vector3, charId: stri
 	local man = Instance.new("Model")
 	man.Name = "Mannequin_" .. charId
 
+	local manCF = CFrame.lookAt(pos + Vector3.new(0, 3.2, 0), LOBBY_CENTER + Vector3.new(0, 3.2, 0))
 	local root = Instance.new("Part")
 	root.Name = "HumanoidRootPart"
 	root.Size = Vector3.new(2, 2, 1)
-	root.CFrame = CFrame.new(pos + Vector3.new(0, 3.2, 0)) * CFrame.Angles(0, math.rad(180), 0)
+	root.CFrame = manCF
 	root.Transparency = 1
 	root.Anchored = true
 	root.CanCollide = false
@@ -364,17 +365,19 @@ local function buildLobby()
 		end
 	end)
 
-	-- 7. 5 3D Anime Character Mannequins standing in the Shinobi Lobby Courtyard
-	local rosterList = {
-		{ Id = "Naruto", Pos = LOBBY_CENTER + Vector3.new(0, 0, -22) },
-		{ Id = "Sasuke", Pos = LOBBY_CENTER + Vector3.new(-12, 0, -18) },
-		{ Id = "Luffy",  Pos = LOBBY_CENTER + Vector3.new(12, 0, -18) },
-		{ Id = "Zoro",   Pos = LOBBY_CENTER + Vector3.new(-22, 0, -10) },
-		{ Id = "Killua", Pos = LOBBY_CENTER + Vector3.new(22, 0, -10) },
+	-- 7. 16 Featured 3D Anime Character Mannequins in the Shinobi Lobby Courtyard
+	local featuredList = {
+		"Naruto", "Sasuke", "Kakashi", "Madara",
+		"Luffy", "Zoro", "Sanji", "Law",
+		"Goku", "Vegeta", "Ichigo", "Aizen",
+		"Sukuna", "Gojo", "Tanjiro", "Deku",
 	}
-
-	for _, entry in ipairs(rosterList) do
-		createAnimeMannequin(lobbyModel, entry.Pos, entry.Id)
+	local radius = 26
+	local total = #featuredList
+	for i, charId in ipairs(featuredList) do
+		local angle = math.rad(-130 + ((i - 1) / (total - 1)) * 260)
+		local offset = Vector3.new(math.sin(angle) * radius, 0, math.cos(angle) * radius - 4)
+		createAnimeMannequin(lobbyModel, LOBBY_CENTER + offset, charId)
 	end
 
 	lobbyModel.Parent = Workspace

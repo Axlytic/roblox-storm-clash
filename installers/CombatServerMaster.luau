@@ -48,9 +48,12 @@ local evAttack     = ensureRemote("AttackEvent")
 local evAssist     = ensureRemote("AssistEvent")
 local evLeaderSwap = ensureRemote("LeaderSwapEvent")
 local evRanged     = ensureRemote("RangedAttackEvent")
+local evSub        = ensureRemote("SubstitutionEvent")
+local evCounter    = ensureRemote("CounterEvent")
+local evNinjutsu   = ensureRemote("NinjutsuEvent")
 
 -- =========================================================
--- 2. PLAYER COMBAT STATE TRACKING
+-- 2. PLAYER COMBAT STATE TRACKING (Storm 4 + Tekken)
 -- =========================================================
 type PlayerCombatState = {
 	isBlocking: boolean,
@@ -58,6 +61,12 @@ type PlayerCombatState = {
 	blockStartTime: number,
 	guardHealth: number,
 	lastParriedTime: number,
+	subStocks: number,
+	lastSubTime: number,
+	lastDamageTime: number,
+	isCountering: boolean,
+	counterStartTime: number,
+	lastAttacker: Model?,
 }
 
 local playerCombatStates: { [number]: PlayerCombatState } = {}
@@ -69,7 +78,17 @@ local function setupPlayer(player: Player)
 		blockStartTime = 0,
 		guardHealth = 100,
 		lastParriedTime = 0,
+		subStocks = 4,
+		lastSubTime = 0,
+		lastDamageTime = 0,
+		isCountering = false,
+		counterStartTime = 0,
+		lastAttacker = nil,
 	}
+	player:SetAttribute("SubstitutionStocks", 4)
+	player:SetAttribute("ChakraValue", 60)
+	player:SetAttribute("IsBlocking", false)
+	player:SetAttribute("IsCountering", false)
 end
 
 Players.PlayerAdded:Connect(setupPlayer)
@@ -77,6 +96,66 @@ Players.PlayerRemoving:Connect(function(player)
 	playerCombatStates[player.UserId] = nil
 end)
 for _, p in ipairs(Players:GetPlayers()) do setupPlayer(p) end
+
+-- Background Sub Stock Regeneration (1 stock every 12 seconds when not taking damage)
+task.spawn(function()
+	while true do
+		task.wait(1.0)
+		local now = os.clock()
+		for userId, state in pairs(playerCombatStates) do
+			local player = Players:GetPlayerByUserId(userId)
+			if player and state.subStocks < 4 then
+				-- Regenerate if player hasn't taken damage in last 3 seconds
+				if now - state.lastDamageTime >= 3.0 and now - state.lastSubTime >= 12.0 then
+					state.subStocks = math.min(4, state.subStocks + 1)
+					state.lastSubTime = now
+					player:SetAttribute("SubstitutionStocks", state.subStocks)
+				end
+			end
+		end
+	end
+end)
+
+-- =========================================================
+-- 2B. 3D WOODEN LOG & SMOKE (Storm 4 Kawarimi Effect)
+-- =========================================================
+local function spawnSubstitutionLog(cf: CFrame)
+	local log = Instance.new("Part")
+	log.Name = "KawarimiWoodLog"
+	log.Shape = Enum.PartType.Cylinder
+	log.Size = Vector3.new(2.8, 1.4, 1.4)
+	log.CFrame = cf * CFrame.Angles(0, 0, math.rad(90))
+	log.Color = Color3.fromRGB(139, 90, 43)
+	log.Material = Enum.Material.Wood
+	log.Anchored = false
+	log.CanCollide = true
+	log.Parent = Workspace
+	Debris:AddItem(log, 2.2)
+
+	-- Puff of Smoke Emitter
+	local att = Instance.new("Attachment", log)
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	pe.Color = ColorSequence.new(Color3.fromRGB(245, 245, 250), Color3.fromRGB(210, 210, 220))
+	pe.Size = NumberSequence.new(2.5, 5.0)
+	pe.Transparency = NumberSequence.new(0.2, 1.0)
+	pe.Rate = 120
+	pe.Speed = NumberRange.new(5, 14)
+	pe.SpreadAngle = Vector2.new(180, 180)
+	pe.Lifetime = NumberRange.new(0.4, 0.7)
+	pe.Parent = att
+	task.delay(0.2, function() pe.Enabled = false end)
+
+	-- Sound
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.SoundId = "rbxasset://sounds/action_footsteps_plastic.mp3"
+		snd.PlaybackSpeed = 0.8
+		snd.Volume = 1.0
+		snd.Parent = log
+		snd:Play()
+	end)
+end
 
 -- =========================================================
 -- 3. FLOATING COMBAT TEXT
@@ -172,7 +251,22 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 
 	local now = os.clock()
 
-	-- 3. Check for TEKKEN JUST-FRAME PARRY (180ms window)
+	-- 3. Check for STORM 4 COUNTER ATTACK ([Guard + Attack] / [F + J])
+	if targetState and targetState.isCountering and (now - targetState.counterStartTime <= 0.35) then
+		print(string.format(">> [STORM 4 COUNTER BLOW] %s countered %s's strike! <<", targetModel.Name, attacker.Name))
+		spawnFloatingText(tRoot.Position, "⚔️ COUNTER BLOW!", Color3.fromRGB(255, 215, 0))
+
+		-- Blow attacker back flying across arena & stagger
+		local counterDir = -aRoot.CFrame.LookVector
+		aRoot.AssemblyLinearVelocity = (counterDir * 55) + Vector3.new(0, 10, 0)
+		if targetPlayer then
+			evParry:FireClient(targetPlayer, targetPlayer, attacker)
+		end
+		evParry:FireClient(attacker, targetPlayer or attacker, attacker)
+		return
+	end
+
+	-- 3B. Check for TEKKEN JUST-FRAME PARRY (180ms window)
 	local isParry = isTargetBlocking and (targetBlockType == "Parry" or (now - targetBlockStartTime <= 0.18))
 	if isParry then
 		print(string.format(">> [TEKKEN PERFECT PARRY] %s counter-parried %s! <<", targetModel.Name, attacker.Name))
@@ -223,11 +317,192 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 	local dmgColor = if isAwakening then Color3.fromRGB(255, 30, 30) elseif attackType == "Low" then Color3.fromRGB(255, 170, 0) elseif comboStep == 4 then Color3.fromRGB(255, 50, 50) else Color3.fromRGB(255, 255, 255)
 	spawnFloatingText(tRoot.Position, string.format("💥 -%d%s", finalDamage, isAwakening and " [RAGE]" or ""), dmgColor)
 
+	-- Update State for Substitution & Chakra Tracking
+	if targetState then
+		targetState.lastAttacker = attackerChar
+		targetState.lastDamageTime = now
+	end
+	if targetModel.Name == "TrainingDummy" then
+		targetModel:SetAttribute("LastAttackerName", attacker.Name)
+	end
+
+	-- Chakra Gain on Hit
+	local curChakra = attacker:GetAttribute("ChakraValue") or 60
+	attacker:SetAttribute("ChakraValue", math.min(100, curChakra + 10))
+	if targetPlayer then
+		local tChakra = targetPlayer:GetAttribute("ChakraValue") or 60
+		targetPlayer:SetAttribute("ChakraValue", math.min(100, tChakra + 7))
+	end
+
 	-- Apply Knockback
 	local hitDir = (tRoot.Position - aRoot.Position).Unit
 	local flatHitDir = Vector3.new(hitDir.X, 0, hitDir.Z).Unit
 	local liftY = if comboStep == 4 then 12 elseif comboStep == 3 then 6 else 0
 	tRoot.AssemblyLinearVelocity = (flatHitDir * knockback) + Vector3.new(0, liftY, 0)
+end)
+
+-- =========================================================
+-- 5B. SUBSTITUTION JUTSU (Kawarimi - The Lifeline of Combat)
+-- =========================================================
+evSub.OnServerEvent:Connect(function(player: Player)
+	local state = playerCombatStates[player.UserId]
+	if not state or state.subStocks < 1 then
+		return
+	end
+
+	local char = player.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or hum.Health <= 0 then return end
+
+	-- Find attacker to teleport behind
+	local targetChar: Model? = state.lastAttacker
+	if not targetChar or not targetChar.Parent then
+		-- Fallback: check nearest opponent in front
+		local dummy = Workspace:FindFirstChild("TrainingDummy")
+		if dummy and dummy:IsA("Model") then
+			targetChar = dummy
+		else
+			for _, p in ipairs(Players:GetPlayers()) do
+				if p ~= player and p.Character then
+					local dist = (p.Character:GetPivot().Position - root.Position).Magnitude
+					if dist <= 30 then
+						targetChar = p.Character
+						break
+					end
+				end
+			end
+		end
+	end
+
+	local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not targetRoot then return end
+
+	-- 1. Deduct Sub Stock & Reset Hitstun
+	state.subStocks -= 1
+	state.lastSubTime = os.clock()
+	player:SetAttribute("SubstitutionStocks", state.subStocks)
+
+	-- 2. Spawn 3D Wood Log & Smoke Puff at player's previous location
+	local prevCFrame = root.CFrame
+	spawnSubstitutionLog(prevCFrame)
+
+	-- 3. Teleport 8 studs directly BEHIND the attacker facing their back!
+	local behindPos = targetRoot.Position - (targetRoot.CFrame.LookVector * 8.0)
+	root.CFrame = CFrame.lookAt(behindPos, targetRoot.Position)
+	root.AssemblyLinearVelocity = Vector3.zero
+
+	-- 4. Floating Text & Broadcast
+	spawnFloatingText(root.Position, "🪵 KAWARIMI!", Color3.fromRGB(255, 215, 0))
+	evSub:FireAllClients(player, prevCFrame)
+
+	print(string.format(">> [SUBSTITUTION JUTSU] %s substituted behind %s! (%d logs left) <<", player.Name, targetChar.Name, state.subStocks))
+end)
+
+-- =========================================================
+-- 5C. STORM 4 COUNTER ATTACK STANCE TOGGLE ([F + J])
+-- =========================================================
+evCounter.OnServerEvent:Connect(function(player: Player, isCountering: boolean)
+	local state = playerCombatStates[player.UserId]
+	if state then
+		state.isCountering = isCountering
+		state.counterStartTime = if isCountering then os.clock() else 0
+		player:SetAttribute("IsCountering", isCountering)
+		evCounter:FireAllClients(player, isCountering)
+	end
+end)
+
+-- =========================================================
+-- 5D. CHARACTER NINJUTSU ([I] + [J] Chakra Rush)
+-- =========================================================
+evNinjutsu.OnServerEvent:Connect(function(player: Player, targetModel: Model?)
+	local char = player.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or hum.Health <= 0 then return end
+
+	local curChakra = player:GetAttribute("ChakraValue") or 60
+	if curChakra < 25 then
+		spawnFloatingText(root.Position, "⚠️ NOT ENOUGH CHAKRA!", Color3.fromRGB(255, 100, 100))
+		return
+	end
+
+	-- Deduct 25 Chakra
+	player:SetAttribute("ChakraValue", curChakra - 25)
+
+	local charId = tostring(player:GetAttribute("SelectedCharacter") or "Naruto")
+	local charData = CombatConfig.Characters[charId] or CombatConfig.Characters["Naruto"]
+	local jutsu = charData.NinjutsuSkill or {
+		Name = "Ninjutsu Strike",
+		Damage = 30,
+		RushSpeed = 90,
+		Color = Color3.fromRGB(0, 220, 255),
+		Knockback = 45,
+		LiftY = 12,
+	}
+
+	-- Find target
+	local tRoot: BasePart? = nil
+	local tHum: Humanoid? = nil
+	if targetModel and targetModel:FindFirstChild("HumanoidRootPart") then
+		tRoot = targetModel:FindFirstChild("HumanoidRootPart") :: BasePart
+		tHum = targetModel:FindFirstChildOfClass("Humanoid")
+	else
+		local dummy = Workspace:FindFirstChild("TrainingDummy")
+		if dummy and dummy:FindFirstChild("HumanoidRootPart") then
+			tRoot = dummy:FindFirstChild("HumanoidRootPart") :: BasePart
+			tHum = dummy:FindFirstChildOfClass("Humanoid")
+		end
+	end
+
+	-- Forward Rush Impulse
+	local rushDir = root.CFrame.LookVector
+	root.AssemblyLinearVelocity = rushDir * (jutsu.RushSpeed or 90)
+
+	-- Sonic Jutsu Visual Part
+	local jutsuPart = Instance.new("Part")
+	jutsuPart.Shape = Enum.PartType.Ball
+	jutsuPart.Size = Vector3.new(3.5, 3.5, 3.5)
+	jutsuPart.CFrame = root.CFrame * CFrame.new(0, 0, -2.5)
+	jutsuPart.Material = Enum.Material.Neon
+	jutsuPart.Color = jutsu.Color or Color3.fromRGB(0, 240, 255)
+	jutsuPart.CanCollide = false
+	jutsuPart.Anchored = false
+	jutsuPart.Parent = Workspace
+
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = root
+	w.Part1 = jutsuPart
+	w.Parent = jutsuPart
+
+	local att = Instance.new("Attachment", jutsuPart)
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	pe.Color = ColorSequence.new(jutsu.Color or Color3.fromRGB(0, 255, 255), Color3.fromRGB(255, 255, 255))
+	pe.Size = NumberSequence.new(2, 0)
+	pe.Rate = 90
+	pe.Speed = NumberRange.new(5, 15)
+	pe.Lifetime = NumberRange.new(0.3, 0.6)
+	pe.Parent = att
+
+	Debris:AddItem(jutsuPart, 0.6)
+
+	-- Hit registration
+	task.delay(0.18, function()
+		if tRoot and tHum and tHum.Health > 0 then
+			local dist = (tRoot.Position - root.Position).Magnitude
+			if dist <= 14 then
+				tHum:TakeDamage(jutsu.Damage or 30)
+				spawnFloatingText(tRoot.Position, string.format("💥 %s -%d!", jutsu.Name, jutsu.Damage or 30), jutsu.Color or Color3.fromRGB(0, 240, 255))
+				local knockDir = (tRoot.Position - root.Position).Unit
+				tRoot.AssemblyLinearVelocity = (knockDir * (jutsu.Knockback or 45)) + Vector3.new(0, jutsu.LiftY or 12, 0)
+			end
+		end
+	end)
+
+	print(string.format(">> [NINJUTSU ACTIVATED] %s unleashed %s! <<", player.Name, jutsu.Name))
 end)
 
 -- =========================================================
@@ -405,35 +680,36 @@ evRanged.OnServerEvent:Connect(function(attacker: Player, aimDir: Vector3?, requ
 	proj.Material = Enum.Material.Neon
 	proj.Color = skill.Color or Color3.fromRGB(0, 230, 255)
 
-	-- Distinct 3D mesh shaping per anime character:
-	if charId == "Naruto" then
-		-- Rasen-Shuriken: Aerodynamic Disc
+	-- Distinct 3D mesh shaping per anime character skill shape:
+	local shape = skill.Shape or "Ball"
+	if shape == "Disc" then
+		-- Aerodynamic Disc (Rasen-Shuriken, Destructo Disc)
 		proj.Shape = Enum.PartType.Cylinder
 		proj.Size = Vector3.new(0.4, 3.2, 3.2)
 		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir) * CFrame.Angles(0, 0, math.rad(90))
-	elseif charId == "Sasuke" then
-		-- Goukakyuu Fireball: Giant Blazing Sphere
+	elseif shape == "Ball" then
+		-- Blazing Energy / Flame Sphere (Goukakyuu, Ki Blast, Blue, Stun Grenade)
 		proj.Shape = Enum.PartType.Ball
-		proj.Size = Vector3.new(3.0, 3.0, 3.0)
+		proj.Size = Vector3.new(2.8, 2.8, 2.8)
 		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
-	elseif charId == "Luffy" then
-		-- Gum-Gum Pistol: Elastic Fist Cylinder
+	elseif shape == "Fist" then
+		-- Elastic / Air Shockwave Fist (Gum-Gum Pistol, Delaware Smash)
 		proj.Shape = Enum.PartType.Cylinder
-		proj.Size = Vector3.new(3.2, 1.6, 1.6)
+		proj.Size = Vector3.new(3.0, 1.6, 1.6)
 		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir) * CFrame.Angles(0, math.rad(90), 0)
-	elseif charId == "Zoro" then
-		-- 36 Pound Phoenix: Vertical Flying Wind Blade
+	elseif shape == "SlashBlade" then
+		-- Flying Anime Blade Wave (36 Pound Phoenix, Getsuga Tensho, Dismantle, Striking Tide)
 		proj.Shape = Enum.PartType.Block
 		proj.Size = Vector3.new(0.3, 3.8, 2.4)
 		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
-	elseif charId == "Killua" then
-		-- Thunderbolt Narukami: Piercing Lightning Wedge
+	elseif shape == "Bolt" then
+		-- Piercing Lightning Bolt / Hound (Narukami, Raiju, Thunder Spark)
 		proj.Shape = Enum.PartType.Block
-		proj.Size = Vector3.new(0.8, 0.8, 3.2)
+		proj.Size = Vector3.new(0.7, 0.7, 3.4)
 		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
 	else
 		proj.Shape = Enum.PartType.Ball
-		proj.Size = Vector3.new(2, 2, 2)
+		proj.Size = Vector3.new(2.4, 2.4, 2.4)
 		proj.CFrame = CFrame.lookAt(startPos, startPos + finalAimDir)
 	end
 

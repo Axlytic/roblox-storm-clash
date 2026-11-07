@@ -32,3 +32,4 @@ try {
 }
 
 Write-Output "== Selesai! Sistem Anti-Bolong Aktif di Windows =="
+

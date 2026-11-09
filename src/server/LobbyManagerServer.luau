@@ -19,7 +19,7 @@ local StormCharacterMorphServer = require(ServerScriptService:WaitForChild("Stor
 
 -- Positions
 local LOBBY_CENTER = Vector3.new(0, 50, -160)
-local ARENA_SPAWN  = Vector3.new(0, 52.5, 0)
+local ARENA_SPAWN  = Vector3.new(0, 5.5, 0)
 local LOBBY_SPAWN  = Vector3.new(0, 52.5, -160)
 
 -- Remotes

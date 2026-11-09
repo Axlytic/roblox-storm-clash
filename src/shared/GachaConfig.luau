@@ -115,3 +115,4 @@ GachaConfig.Rewards = {
 }
 
 return GachaConfig
+

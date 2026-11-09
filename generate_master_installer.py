@@ -118,6 +118,24 @@ scripts = [
         "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
         "file": os.path.join(base_dir, "client", "StormSubstitutionController.luau")
     },
+    {
+        "name": "GachaConfig",
+        "type": "ModuleScript",
+        "parent": "game:GetService('ReplicatedStorage')",
+        "file": os.path.join(base_dir, "shared", "GachaConfig.luau")
+    },
+    {
+        "name": "GachaServerManager",
+        "type": "Script",
+        "parent": "game:GetService('ServerScriptService')",
+        "file": os.path.join(base_dir, "server", "GachaServerManager.luau")
+    },
+    {
+        "name": "StormGachaHUD",
+        "type": "LocalScript",
+        "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')",
+        "file": os.path.join(base_dir, "client", "StormGachaHUD.luau")
+    },
 ]
 
 out = []

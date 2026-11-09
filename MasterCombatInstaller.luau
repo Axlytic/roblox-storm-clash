@@ -1612,6 +1612,9 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 	end
 	if targetModel.Name == "TrainingDummy" then
 		targetModel:SetAttribute("LastAttackerName", attacker.Name)
+		if _G.AwardCombatRyo then
+			_G.AwardCombatRyo(attacker, 2, "Combo Latihan")
+		end
 	end
 
 	-- Chakra Gain on Hit
@@ -8540,11 +8543,19 @@ pcall(function()
 end)
 
 local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+local GachaConfig = require(ReplicatedStorage:WaitForChild("GachaConfig")) :: any
 
 -- Remotes
 local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 10) :: Folder
 local evCharSelect = combatEvents:WaitForChild("CharacterSelectEvent", 10) :: RemoteEvent
 local evOpenRoster = combatEvents:WaitForChild("OpenRosterEvent", 10) :: RemoteEvent
+local evGachaSync  = combatEvents:WaitForChild("GachaSyncEvent", 10) :: RemoteEvent?
+local evOpenGacha  = combatEvents:WaitForChild("OpenGachaEvent", 10) :: RemoteEvent?
+
+local unlockedMap: { [string]: boolean } = {}
+for _, s in ipairs(GachaConfig.StarterCharacters) do
+	unlockedMap[s] = true
+end
 
 -- State
 local isOpen = false
@@ -8902,7 +8913,12 @@ local function updatePreview(charId: string)
 	ultSkillLbl.Text   = "  💥 Ultimate [I]: " .. char.UltimateName
 
 	-- Update Button State
-	if charId == currentSelectedId then
+	local isUnlocked = (unlockedMap[charId] == true) or (table.find(GachaConfig.StarterCharacters, charId) ~= nil)
+	if not isUnlocked then
+		selectBtn.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
+		selectBtn.TextColor3 = Color3.fromRGB(255, 240, 240)
+		selectBtn.Text = "🔒 TERKUNCI • BUKA DI GACHA (PULL)"
+	elseif charId == currentSelectedId then
 		selectBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 95)
 		selectBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
 		selectBtn.Text = "✓ KARAKTER TERPILIH (CURRENT)"
@@ -9038,8 +9054,30 @@ local function selectCharacter(charId: string)
 end
 
 selectBtn.MouseButton1Click:Connect(function()
+	local isUnlocked = (unlockedMap[previewSelectedId] == true) or (table.find(GachaConfig.StarterCharacters, previewSelectedId) ~= nil)
+	if not isUnlocked then
+		playUiSound("action_footsteps_plastic.mp3", 0.7)
+		if evOpenGacha then
+			evOpenGacha:FireServer()
+		end
+		screenGui.Enabled = false
+		isOpen = false
+		return
+	end
 	selectCharacter(previewSelectedId)
 end)
+
+if evGachaSync then
+	evGachaSync.OnClientEvent:Connect(function(prof: any)
+		if prof and prof.Unlocked then
+			unlockedMap = prof.Unlocked
+			for _, s in ipairs(GachaConfig.StarterCharacters) do
+				unlockedMap[s] = true
+			end
+			updatePreview(previewSelectedId)
+		end
+	end)
+end
 
 -- =========================================================
 -- MODAL TOGGLE & CONTROLS
@@ -9237,6 +9275,1345 @@ print("[StormSubstitutionController] ✅ Loaded — Substitution Jutsu [E / Q / 
 
 ]=====]
     installScript('StormSubstitutionController', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
+end
+
+-- ============================================================
+-- INSTALL: GachaConfig (ModuleScript)
+-- ============================================================
+do
+    local src = [=====[--!strict
+-- GachaConfig.luau
+-- SHARED CONFIGURATION: Storm Clash Shinobi Summon & Gacha Economy Engine
+-- Tiers, Drop Rates, Pity System, Duplicate Conversion, and Reward Payouts
+
+local GachaConfig = {}
+
+-- =========================================================
+-- 1. CURRENCY & COSTS
+-- =========================================================
+GachaConfig.CurrencyName = "Ryo"
+GachaConfig.CurrencyIcon = "🪙"
+GachaConfig.StartingRyo = 300       -- New players get 3 free single pulls
+GachaConfig.SinglePullCost = 100    -- 1x Summon Cost
+GachaConfig.MultiPullCount = 10     -- 10x Multi-Summon
+GachaConfig.MultiPullCost = 900     -- 10x Summon Cost (10% discount)
+
+-- =========================================================
+-- 2. STARTER CHARACTERS (Unlocked by default for everyone)
+-- =========================================================
+GachaConfig.StarterCharacters = {
+	"Naruto", -- Hero of Konoha (Rushdown)
+	"Luffy",  -- Straw Hat Captain (Grappler)
+	"Goku",   -- Saiyan Warrior (Balanced)
+	"Deku",   -- One For All Hero (Rushdown)
+}
+
+-- =========================================================
+-- 3. RARITY TIERS & DROP RATES
+-- =========================================================
+-- Rates sum up to 1.0 (100%):
+-- 2% Mythic + 10% Legendary + 28% Epic + 60% Rare = 100%
+GachaConfig.Tiers = {
+	["Mythic"] = {
+		Name = "Mythic Secret",
+		Stars = "★★★★★★",
+		TierRank = 4,
+		Rate = 0.02, -- 2% Drop Rate
+		Color = Color3.fromRGB(255, 30, 80),
+		GlowColor = Color3.fromRGB(255, 60, 120),
+		Sound = "rbxasset://sounds/electronicpingshort.wav",
+		SoundPitch = 0.8,
+		DuplicateShards = 300,
+		Characters = { "Madara", "Sukuna" },
+	},
+	["Legendary"] = {
+		Name = "Legendary",
+		Stars = "★★★★★",
+		TierRank = 3,
+		Rate = 0.10, -- 10% Drop Rate
+		Color = Color3.fromRGB(255, 215, 0),
+		GlowColor = Color3.fromRGB(255, 235, 120),
+		Sound = "rbxasset://sounds/electronicpingshort.wav",
+		SoundPitch = 1.0,
+		DuplicateShards = 100,
+		Characters = { "Sasuke", "Ichigo", "Aizen", "Gojo" },
+	},
+	["Epic"] = {
+		Name = "Epic",
+		Stars = "★★★★",
+		TierRank = 2,
+		Rate = 0.28, -- 28% Drop Rate
+		Color = Color3.fromRGB(180, 80, 255),
+		GlowColor = Color3.fromRGB(210, 130, 255),
+		Sound = "rbxasset://sounds/action_jump.mp3",
+		SoundPitch = 1.2,
+		DuplicateShards = 35,
+		Characters = { "Kakashi", "Zoro", "Law", "Vegeta", "Byakuya", "Tanjiro", "Bakugo", "Killua" },
+	},
+	["Rare"] = {
+		Name = "Rare",
+		Stars = "★★★",
+		TierRank = 1,
+		Rate = 0.60, -- 60% Drop Rate
+		Color = Color3.fromRGB(0, 210, 255),
+		GlowColor = Color3.fromRGB(120, 235, 255),
+		Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
+		SoundPitch = 1.4,
+		DuplicateShards = 10,
+		Characters = { "Yuji", "Gon", "Zenitsu", "Sanji", "Trunks", "Megumi" },
+	},
+}
+
+-- Lookup: Map Character Id to Rarity Tier
+GachaConfig.CharacterTierMap = {}
+for tierName, tierData in pairs(GachaConfig.Tiers) do
+	for _, charId in ipairs(tierData.Characters) do
+		GachaConfig.CharacterTierMap[charId] = tierName
+	end
+end
+-- Starters default to Starter/Rare tier for mapping
+for _, charId in ipairs(GachaConfig.StarterCharacters) do
+	if not GachaConfig.CharacterTierMap[charId] then
+		GachaConfig.CharacterTierMap[charId] = "Rare"
+	end
+end
+
+-- =========================================================
+-- 4. PITY & GUARANTEE RULES
+-- =========================================================
+GachaConfig.Pity = {
+	HardPityThreshold = 50, -- 50 pulls guarantee ★5 Legendary or ★6 Mythic!
+	MultiPullEpicGuarantee = true, -- 10-pull guarantees at least one ★4 Epic or higher!
+}
+
+-- =========================================================
+-- 5. REWARDS & COMBAT EARNINGS
+-- =========================================================
+GachaConfig.Rewards = {
+	RoundWinRyo = 100,          -- Ryo awarded for winning a 1v1 round
+	MatchFinishRyo = 50,        -- Ryo awarded for completing a full match
+	DummyComboBonus = 1,        -- Ryo awarded per 10-hit combo on Training Dummy
+	DailyLoginRyo = 250,        -- Daily Login Reward
+	DailyRewardCooldown = 86400,-- 24 Hours in seconds
+}
+
+return GachaConfig
+]=====]
+    installScript('GachaConfig', 'ModuleScript', game:GetService('ReplicatedStorage'), src)
+end
+
+-- ============================================================
+-- INSTALL: GachaServerManager (Script)
+-- ============================================================
+do
+    local src = [=====[--!strict
+-- GachaServerManager.luau
+-- SERVER SCRIPT: Authoritative Gacha Engine, Data Persistence, and Shinobi Summon Shrine
+-- Features:
+--   • Authoritative Gacha Roll Algorithm (Random rates + Hard Pity 50 + Multi 10x Guarantee)
+--   • Duplicate Character Conversion to Essence Shards
+--   • DataStore Persistence with In-Memory Mock Fallback
+--   • Combat Earnings Integration (Rounds, Dummy, Daily Reward)
+--   • 3D Shinobi Summon Shrine / Torii Altar in Lobby Courtyard
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DataStoreService = game:GetService("DataStoreService")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+
+local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+local GachaConfig = require(ReplicatedStorage:WaitForChild("GachaConfig")) :: any
+
+-- DataStore Setup with Safe Fallback
+local gachaDataStore: DataStore? = nil
+pcall(function()
+	gachaDataStore = DataStoreService:GetDataStore("StormClash_Gacha_v1")
+end)
+
+-- Remotes Folder
+local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 15) :: Folder
+local function ensureRemote(name: string): RemoteEvent
+	local ev = combatEvents:FindFirstChild(name) :: RemoteEvent?
+	if not ev then
+		ev = Instance.new("RemoteEvent")
+		ev.Name = name
+		ev.Parent = combatEvents
+	end
+	return ev
+end
+
+local evGachaPull    = ensureRemote("GachaPullEvent")
+local evGachaSync    = ensureRemote("GachaSyncEvent")
+local evClaimDaily   = ensureRemote("ClaimDailyRewardEvent")
+local evOpenGacha    = ensureRemote("OpenGachaEvent")
+local evAddRyo       = ensureRemote("AddCombatRyoEvent")
+
+-- In-Memory Player Profiles Cache
+type PlayerGachaProfile = {
+	Ryo: number,
+	Pity: number,
+	EssenceShards: number,
+	TotalPulls: number,
+	LastDaily: number,
+	Unlocked: { [string]: boolean },
+}
+
+local playerProfiles: { [number]: PlayerGachaProfile } = {}
+
+-- Helper: Create Default Profile
+local function createDefaultProfile(): PlayerGachaProfile
+	local unlocked: { [string]: boolean } = {}
+	for _, starterId in ipairs(GachaConfig.StarterCharacters) do
+		unlocked[starterId] = true
+	end
+	return {
+		Ryo = GachaConfig.StartingRyo or 300,
+		Pity = 0,
+		EssenceShards = 0,
+		TotalPulls = 0,
+		LastDaily = 0,
+		Unlocked = unlocked,
+	}
+end
+
+-- =========================================================
+-- 1. DATA PERSISTENCE (LOAD & SAVE)
+-- =========================================================
+local function loadPlayerData(player: Player)
+	local userId = player.UserId
+	local defaultProf = createDefaultProfile()
+
+	if gachaDataStore then
+		local success, saved = pcall(function()
+			return gachaDataStore:GetAsync("User_" .. tostring(userId))
+		end)
+		if success and typeof(saved) == "table" then
+			-- Merge saved data with defaults
+			defaultProf.Ryo = saved.Ryo or defaultProf.Ryo
+			defaultProf.Pity = saved.Pity or defaultProf.Pity
+			defaultProf.EssenceShards = saved.EssenceShards or defaultProf.EssenceShards
+			defaultProf.TotalPulls = saved.TotalPulls or defaultProf.TotalPulls
+			defaultProf.LastDaily = saved.LastDaily or defaultProf.LastDaily
+			if typeof(saved.Unlocked) == "table" then
+				for k, v in pairs(saved.Unlocked) do
+					if v == true then defaultProf.Unlocked[k] = true end
+				end
+			end
+			print(string.format(">> [GachaServer] Loaded data for %s (Ryo: %d, Pity: %d)", player.Name, defaultProf.Ryo, defaultProf.Pity))
+		end
+	end
+
+	playerProfiles[userId] = defaultProf
+
+	-- Set Replicated Attributes
+	player:SetAttribute("RyoValue", defaultProf.Ryo)
+	player:SetAttribute("PityCount", defaultProf.Pity)
+	player:SetAttribute("EssenceShards", defaultProf.EssenceShards)
+
+	-- Sync to client
+	task.delay(1.0, function()
+		if player.Parent then
+			evGachaSync:FireClient(player, defaultProf)
+		end
+	end)
+end
+
+local function savePlayerData(player: Player)
+	local userId = player.UserId
+	local prof = playerProfiles[userId]
+	if not prof or not gachaDataStore then return end
+
+	pcall(function()
+		gachaDataStore:SetAsync("User_" .. tostring(userId), {
+			Ryo = prof.Ryo,
+			Pity = prof.Pity,
+			EssenceShards = prof.EssenceShards,
+			TotalPulls = prof.TotalPulls,
+			LastDaily = prof.LastDaily,
+			Unlocked = prof.Unlocked,
+		})
+	end)
+	print(string.format(">> [GachaServer] Saved data for %s <<", player.Name))
+end
+
+Players.PlayerAdded:Connect(loadPlayerData)
+Players.PlayerRemoving:Connect(function(player)
+	savePlayerData(player)
+	playerProfiles[player.UserId] = nil
+end)
+for _, p in ipairs(Players:GetPlayers()) do loadPlayerData(p) end
+
+-- Auto-Save loop every 120 seconds
+task.spawn(function()
+	while true do
+		task.wait(120)
+		for _, p in ipairs(Players:GetPlayers()) do
+			savePlayerData(p)
+		end
+	end
+end)
+
+-- =========================================================
+-- 2. GACHA ROLL ALGORITHM (PITY + WEIGHTED DROP)
+-- =========================================================
+local function rollSingle(prof: PlayerGachaProfile, forceEpicPlus: boolean?): (string, string, boolean, number)
+	prof.Pity += 1
+	prof.TotalPulls += 1
+
+	local chosenTier = "Rare"
+
+	-- Check Hard Pity (50 Pulls)
+	if prof.Pity >= GachaConfig.Pity.HardPityThreshold then
+		-- Guaranteed 5-Star Legendary (80%) or 6-Star Mythic (20%)!
+		if math.random() <= 0.20 then
+			chosenTier = "Mythic"
+		else
+			chosenTier = "Legendary"
+		end
+		prof.Pity = 0
+		print(">> [GachaServer] HARD PITY TRIGGERED! Awarded: " .. chosenTier)
+	elseif forceEpicPlus then
+		-- Multi-Pull Epic Guarantee
+		local r = math.random()
+		if r <= 0.05 then
+			chosenTier = "Mythic"
+			prof.Pity = 0
+		elseif r <= 0.25 then
+			chosenTier = "Legendary"
+			prof.Pity = 0
+		else
+			chosenTier = "Epic"
+		end
+	else
+		-- Standard RNG Roll
+		local r = math.random()
+		if r <= GachaConfig.Tiers.Mythic.Rate then
+			chosenTier = "Mythic"
+			prof.Pity = 0
+		elseif r <= (GachaConfig.Tiers.Mythic.Rate + GachaConfig.Tiers.Legendary.Rate) then
+			chosenTier = "Legendary"
+			prof.Pity = 0
+		elseif r <= (GachaConfig.Tiers.Mythic.Rate + GachaConfig.Tiers.Legendary.Rate + GachaConfig.Tiers.Epic.Rate) then
+			chosenTier = "Epic"
+		else
+			chosenTier = "Rare"
+		end
+	end
+
+	-- Pick Random Character from Chosen Tier pool
+	local tierData = GachaConfig.Tiers[chosenTier]
+	local pool = tierData.Characters
+	local chosenCharId = pool[math.random(1, #pool)]
+
+	-- Check if duplicate
+	local isNew = false
+	local shardsAwarded = 0
+
+	if not prof.Unlocked[chosenCharId] then
+		isNew = true
+		prof.Unlocked[chosenCharId] = true
+	else
+		isNew = false
+		shardsAwarded = tierData.DuplicateShards or 10
+		prof.EssenceShards += shardsAwarded
+	end
+
+	return chosenCharId, chosenTier, isNew, shardsAwarded
+end
+
+-- =========================================================
+-- 3. REMOTE EVENT HANDLERS
+-- =========================================================
+evGachaPull.OnServerEvent:Connect(function(player: Player, pullType: string)
+	local prof = playerProfiles[player.UserId]
+	if not prof then return end
+
+	local isMulti = (pullType == "Multi")
+	local cost = if isMulti then GachaConfig.MultiPullCost else GachaConfig.SinglePullCost
+	local count = if isMulti then GachaConfig.MultiPullCount else 1
+
+	if prof.Ryo < cost then
+		-- Insufficient Ryo
+		evGachaPull:FireClient(player, {
+			Success = false,
+			Message = "Ryo tidak mencukupi! Butuh " .. tostring(cost) .. " Ryo.",
+		})
+		return
+	end
+
+	-- Deduct Ryo
+	prof.Ryo -= cost
+	player:SetAttribute("RyoValue", prof.Ryo)
+
+	-- Perform Pulls
+	local results = {}
+	local hasEpicPlus = false
+
+	for i = 1, count do
+		local forceEpic = false
+		-- On 10th pull of multi, guarantee Epic+ if none so far
+		if isMulti and i == count and not hasEpicPlus and GachaConfig.Pity.MultiPullEpicGuarantee then
+			forceEpic = true
+		end
+
+		local charId, tier, isNew, shards = rollSingle(prof, forceEpic)
+		if tier == "Epic" or tier == "Legendary" or tier == "Mythic" then
+			hasEpicPlus = true
+		end
+
+		table.insert(results, {
+			Id = charId,
+			Tier = tier,
+			IsNew = isNew,
+			Shards = shards,
+		})
+	end
+
+	player:SetAttribute("PityCount", prof.Pity)
+	player:SetAttribute("EssenceShards", prof.EssenceShards)
+
+	-- Send Results to Client for cinematic display
+	evGachaPull:FireClient(player, {
+		Success = true,
+		Results = results,
+		NewRyo = prof.Ryo,
+		Pity = prof.Pity,
+		Shards = prof.EssenceShards,
+		IsMulti = isMulti,
+	})
+
+	-- Also sync full state
+	evGachaSync:FireClient(player, prof)
+	print(string.format(">> [GachaServer] %s completed %s pull (%d Ryo spent). New Ryo: %d, Pity: %d", player.Name, pullType, cost, prof.Ryo, prof.Pity))
+end)
+
+-- Claim Daily Login Reward
+evClaimDaily.OnServerEvent:Connect(function(player: Player)
+	local prof = playerProfiles[player.UserId]
+	if not prof then return end
+
+	local now = os.time()
+	local elapsed = now - prof.LastDaily
+	if elapsed < GachaConfig.Rewards.DailyRewardCooldown and prof.LastDaily > 0 then
+		local remaining = GachaConfig.Rewards.DailyRewardCooldown - elapsed
+		local hours = math.floor(remaining / 3600)
+		local mins = math.floor((remaining % 3600) / 60)
+		evClaimDaily:FireClient(player, {
+			Success = false,
+			Message = string.format("Bonus harian sudah diambil! Tunggu %d jam %d menit lagi.", hours, mins),
+		})
+		return
+	end
+
+	prof.LastDaily = now
+	prof.Ryo += GachaConfig.Rewards.DailyLoginRyo
+	player:SetAttribute("RyoValue", prof.Ryo)
+
+	evClaimDaily:FireClient(player, {
+		Success = true,
+		RyoAdded = GachaConfig.Rewards.DailyLoginRyo,
+		NewRyo = prof.Ryo,
+		Message = string.format("Berhasil mengklaim bonus harian +%d Ryo!", GachaConfig.Rewards.DailyLoginRyo),
+	})
+	evGachaSync:FireClient(player, prof)
+end)
+
+-- Client Request Data Sync
+evGachaSync.OnServerEvent:Connect(function(player: Player)
+	local prof = playerProfiles[player.UserId]
+	if prof then
+		evGachaSync:FireClient(player, prof)
+	end
+end)
+
+-- Internal helper to award Ryo (e.g. from combat / training dummy)
+function _G.AwardCombatRyo(player: Player, amount: number, reason: string?)
+	local prof = playerProfiles[player.UserId]
+	if not prof then return end
+	prof.Ryo += amount
+	player:SetAttribute("RyoValue", prof.Ryo)
+	evAddRyo:FireClient(player, amount, reason or "Combat Reward")
+	print(string.format(">> [GachaServer] Awarded +%d Ryo to %s (%s). Total: %d", amount, player.Name, reason or "Combat", prof.Ryo))
+end
+
+-- =========================================================
+-- 4. 3D SHINOBI SUMMON SHRINE (TORII ALTAR IN LOBBY)
+-- =========================================================
+local function buildSummonShrine()
+	local shrinePos = Vector3.new(22, 52.5, -145)
+
+	local existing = Workspace:FindFirstChild("ShinobiSummonShrine")
+	if existing then existing:Destroy() end
+
+	local shrine = Instance.new("Model")
+	shrine.Name = "ShinobiSummonShrine"
+
+	-- 1. Base Platform
+	local base = Instance.new("Part")
+	base.Name = "ShrineBase"
+	base.Size = Vector3.new(12, 1.2, 12)
+	base.Position = shrinePos
+	base.Color = Color3.fromRGB(45, 30, 25)
+	base.Material = Enum.Material.WoodPlanks
+	base.Anchored = true
+	base.CanCollide = true
+	base.Parent = shrine
+
+	-- 2. Golden Altar Pedestal
+	local ped = Instance.new("Part")
+	ped.Name = "AltarPedestal"
+	ped.Shape = Enum.PartType.Cylinder
+	ped.Size = Vector3.new(1.8, 4.5, 4.5)
+	ped.CFrame = CFrame.new(shrinePos + Vector3.new(0, 1.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	ped.Color = Color3.fromRGB(255, 215, 0)
+	ped.Material = Enum.Material.Neon
+	ped.Anchored = true
+	ped.CanCollide = true
+	ped.Parent = shrine
+
+	-- Floating Summon Orb
+	local orb = Instance.new("Part")
+	orb.Name = "FloatingSummonOrb"
+	orb.Shape = Enum.PartType.Ball
+	orb.Size = Vector3.new(2.4, 2.4, 2.4)
+	orb.Position = shrinePos + Vector3.new(0, 4.2, 0)
+	orb.Color = Color3.fromRGB(0, 240, 255)
+	orb.Material = Enum.Material.Neon
+	orb.Anchored = true
+	orb.CanCollide = false
+	orb.Parent = shrine
+
+	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	pe.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 240, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 215, 0)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 40, 80)),
+	})
+	pe.Size = NumberSequence.new(1.2, 0)
+	pe.Rate = 25
+	pe.Speed = NumberRange.new(2, 6)
+	pe.Lifetime = NumberRange.new(0.5, 0.8)
+	pe.Parent = orb
+
+	-- 3. Small Torii Gate framing the altar
+	local function makePillar(offset: Vector3)
+		local p = Instance.new("Part")
+		p.Size = Vector3.new(1.0, 9, 1.0)
+		p.Position = shrinePos + offset
+		p.Color = Color3.fromRGB(200, 35, 25)
+		p.Material = Enum.Material.Wood
+		p.Anchored = true
+		p.CanCollide = true
+		p.Parent = shrine
+	end
+	makePillar(Vector3.new(-4.5, 4.5, 0))
+	makePillar(Vector3.new(4.5, 4.5, 0))
+
+	-- Torii Header
+	local header = Instance.new("Part")
+	header.Size = Vector3.new(12, 1.0, 1.6)
+	header.Position = shrinePos + Vector3.new(0, 9.2, 0)
+	header.Color = Color3.fromRGB(25, 25, 30)
+	header.Material = Enum.Material.Wood
+	header.Anchored = true
+	header.CanCollide = true
+	header.Parent = shrine
+
+	-- 4. Billboard Banner
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.new(0, 220, 0, 60)
+	bb.StudsOffset = Vector3.new(0, 3.2, 0)
+	bb.AlwaysOnTop = true
+	bb.Parent = orb
+
+	local titleLbl = Instance.new("TextLabel")
+	titleLbl.Size = UDim2.fromScale(1, 0.55)
+	titleLbl.BackgroundTransparency = 1
+	titleLbl.Text = "⛩️ PEMANGGILAN SHINOBI"
+	titleLbl.TextColor3 = Color3.fromRGB(255, 215, 0)
+	titleLbl.Font = Enum.Font.GothamBlack
+	titleLbl.TextScaled = true
+	titleLbl.Parent = bb
+
+	local subLbl = Instance.new("TextLabel")
+	subLbl.Size = UDim2.fromScale(1, 0.4)
+	subLbl.Position = UDim2.new(0, 0, 0.55, 0)
+	subLbl.BackgroundTransparency = 1
+	subLbl.Text = "GACHA BANNER // 24 FIGHTERS"
+	subLbl.TextColor3 = Color3.fromRGB(0, 240, 255)
+	subLbl.Font = Enum.Font.GothamBold
+	subLbl.TextScaled = true
+	subLbl.Parent = bb
+
+	-- 5. Proximity Prompt to Open Gacha Modal
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Buka Pemanggilan Shinobi"
+	prompt.ObjectText = "⛩️ GACHA BANNER"
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 14
+	prompt.Parent = base
+
+	prompt.Triggered:Connect(function(player)
+		evOpenGacha:FireClient(player)
+	end)
+
+	shrine.Parent = Workspace
+	print(">> [GachaServer] 3D Shinobi Summon Shrine built in Lobby Courtyard! <<")
+end
+
+buildSummonShrine()
+print("[GachaServerManager] ✅ Authoritative Gacha Engine fully loaded.")
+]=====]
+    installScript('GachaServerManager', 'Script', game:GetService('ServerScriptService'), src)
+end
+
+-- ============================================================
+-- INSTALL: StormGachaHUD (LocalScript)
+-- ============================================================
+do
+    local src = [=====[--!strict
+-- StormGachaHUD.luau
+-- CLIENT SCRIPT: Cinematic Shinobi Gacha Summon Interface & Dramatic Reveal Stage
+-- Features:
+--   • 1x Summon (100 Ryo) & 10x Multi-Summon (900 Ryo)
+--   • Dynamic Pity Progress Bar (0/50 Guarantee)
+--   • Daily Login Reward Claim (+250 Ryo)
+--   • Dramatic Anime Summon Reveal Cutscene:
+--       - Pulsing Summoning Orb & Screen Shake
+--       - Tier-dependent flash colors (Cyan -> Purple -> Gold -> Crimson/Rainbow)
+--       - Splash Card presentation with Stars, Title, Archetype, Quote, and New/Duplicate status
+--   • Grid layout for 10x Multi-Summon results with skip support
+--   • Full Mobile Touch, Keyboard ([G] Key), and 3D Lobby Altar Integration
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Force Landscape on Mobile
+pcall(function()
+	PlayerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeLeft
+end)
+
+local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+local GachaConfig = require(ReplicatedStorage:WaitForChild("GachaConfig")) :: any
+
+-- Remotes
+local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 15) :: Folder
+local evGachaPull    = combatEvents:WaitForChild("GachaPullEvent", 15) :: RemoteEvent
+local evGachaSync    = combatEvents:WaitForChild("GachaSyncEvent", 15) :: RemoteEvent
+local evClaimDaily   = combatEvents:WaitForChild("ClaimDailyRewardEvent", 15) :: RemoteEvent
+local evOpenGacha    = combatEvents:WaitForChild("OpenGachaEvent", 15) :: RemoteEvent
+
+-- State
+local isOpen = false
+local isSummoning = false
+local currentRyo = 300
+local currentPity = 0
+local currentShards = 0
+local unlockedMap: { [string]: boolean } = {}
+
+-- Sound Helper
+local function playSound(soundId: string, pitch: number, vol: number?)
+	task.spawn(function()
+		pcall(function()
+			local s = Instance.new("Sound")
+			s.SoundId = soundId
+			s.PlaybackSpeed = pitch or 1.0
+			s.Volume = vol or 0.8
+			s.Parent = SoundService
+			s:Play()
+			s.Ended:Connect(function() s:Destroy() end)
+		end)
+	end)
+end
+
+-- =========================================================
+-- CREATE GUI INSTANCES
+-- =========================================================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "StormGachaHUD"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Enabled = false
+screenGui.Parent = PlayerGui
+
+-- Dark Vignette Backdrop
+local backdrop = Instance.new("Frame")
+backdrop.Name = "GachaBackdrop"
+backdrop.Size = UDim2.new(1, 0, 1, 0)
+backdrop.BackgroundColor3 = Color3.fromRGB(6, 8, 14)
+backdrop.BackgroundTransparency = 0.25
+backdrop.Parent = screenGui
+
+-- Main Gacha Modal Window (Landscape 88% x 86%)
+local mainModal = Instance.new("Frame")
+mainModal.Name = "MainModal"
+mainModal.Size = UDim2.new(0.88, 0, 0.86, 0)
+mainModal.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainModal.AnchorPoint = Vector2.new(0.5, 0.5)
+mainModal.BackgroundColor3 = Color3.fromRGB(15, 18, 28)
+mainModal.BorderSizePixel = 0
+mainModal.Parent = backdrop
+Instance.new("UICorner", mainModal).CornerRadius = UDim.new(0, 14)
+
+local modalStroke = Instance.new("UIStroke")
+modalStroke.Color = Color3.fromRGB(255, 215, 0)
+modalStroke.Thickness = 2
+modalStroke.Parent = mainModal
+
+-- =========================================================
+-- HEADER: CURRENCY & PITY BAR
+-- =========================================================
+local headerFrame = Instance.new("Frame")
+headerFrame.Name = "HeaderFrame"
+headerFrame.Size = UDim2.new(1, 0, 0, 56)
+headerFrame.BackgroundColor3 = Color3.fromRGB(10, 12, 20)
+headerFrame.BackgroundTransparency = 0.2
+headerFrame.Parent = mainModal
+Instance.new("UICorner", headerFrame).CornerRadius = UDim.new(0, 14)
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(0.35, 0, 1, 0)
+titleLabel.Position = UDim2.new(0, 20, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Font = Enum.Font.GothamBlack
+titleLabel.TextSize = 20
+titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Text = "⛩️ SHINOBI SUMMON // GACHA BANNER"
+titleLabel.Parent = headerFrame
+
+-- Ryo Display
+local ryoBadge = Instance.new("Frame")
+ryoBadge.Size = UDim2.new(0, 150, 0, 36)
+ryoBadge.Position = UDim2.new(0.42, 0, 0.5, 0)
+ryoBadge.AnchorPoint = Vector2.new(0, 0.5)
+ryoBadge.BackgroundColor3 = Color3.fromRGB(25, 30, 48)
+ryoBadge.Parent = headerFrame
+Instance.new("UICorner", ryoBadge).CornerRadius = UDim.new(0, 8)
+
+local ryoLbl = Instance.new("TextLabel")
+ryoLbl.Size = UDim2.fromScale(1, 1)
+ryoLbl.BackgroundTransparency = 1
+ryoLbl.Font = Enum.Font.GothamBold
+ryoLbl.TextSize = 15
+ryoLbl.TextColor3 = Color3.fromRGB(255, 225, 50)
+ryoLbl.Text = "🪙 300 Ryo"
+ryoLbl.Parent = ryoBadge
+
+-- Shards Display
+local shardBadge = Instance.new("Frame")
+shardBadge.Size = UDim2.new(0, 140, 0, 36)
+shardBadge.Position = UDim2.new(0.58, 0, 0.5, 0)
+shardBadge.AnchorPoint = Vector2.new(0, 0.5)
+shardBadge.BackgroundColor3 = Color3.fromRGB(25, 30, 48)
+shardBadge.Parent = headerFrame
+Instance.new("UICorner", shardBadge).CornerRadius = UDim.new(0, 8)
+
+local shardLbl = Instance.new("TextLabel")
+shardLbl.Size = UDim2.fromScale(1, 1)
+shardLbl.BackgroundTransparency = 1
+shardLbl.Font = Enum.Font.GothamBold
+shardLbl.TextSize = 14
+shardLbl.TextColor3 = Color3.fromRGB(80, 230, 255)
+shardLbl.Text = "💎 0 Shards"
+shardLbl.Parent = shardBadge
+
+-- Close Button [✕]
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 38, 0, 38)
+closeBtn.Position = UDim2.new(1, -50, 0.5, 0)
+closeBtn.AnchorPoint = Vector2.new(0, 0.5)
+closeBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 40)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 18
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Text = "✕"
+closeBtn.Parent = headerFrame
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+
+-- =========================================================
+-- BANNER STAGE: FEATURED LEGENDS & PITY COUNTER
+-- =========================================================
+local bannerStage = Instance.new("Frame")
+bannerStage.Name = "BannerStage"
+bannerStage.Size = UDim2.new(1, -40, 0.65, 0)
+bannerStage.Position = UDim2.new(0, 20, 0, 68)
+bannerStage.BackgroundColor3 = Color3.fromRGB(20, 24, 38)
+bannerStage.Parent = mainModal
+Instance.new("UICorner", bannerStage).CornerRadius = UDim.new(0, 10)
+
+local bannerGradient = Instance.new("UIGradient")
+bannerGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 25, 55)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 25, 45)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 20, 35)),
+})
+bannerGradient.Rotation = 45
+bannerGradient.Parent = bannerStage
+
+-- Featured Characters Showcase Title
+local featHeader = Instance.new("TextLabel")
+featHeader.Size = UDim2.new(1, 0, 0, 30)
+featHeader.Position = UDim2.new(0, 0, 0, 10)
+featHeader.BackgroundTransparency = 1
+featHeader.Font = Enum.Font.GothamBlack
+featHeader.TextSize = 16
+featHeader.TextColor3 = Color3.fromRGB(255, 215, 0)
+featHeader.Text = "★ FEATURED MYTHIC & LEGENDARY SUMMONS ★"
+featHeader.Parent = bannerStage
+
+-- Showcase Display of Featured Roster
+local featuredChars = {
+	{ Id = "Madara",  Tier = "Mythic",    Stars = "★★★★★★", Color = Color3.fromRGB(255, 40, 80) },
+	{ Id = "Sukuna",  Tier = "Mythic",    Stars = "★★★★★★", Color = Color3.fromRGB(255, 40, 80) },
+	{ Id = "Gojo",    Tier = "Legendary", Stars = "★★★★★",  Color = Color3.fromRGB(255, 215, 0) },
+	{ Id = "Aizen",   Tier = "Legendary", Stars = "★★★★★",  Color = Color3.fromRGB(255, 215, 0) },
+	{ Id = "Sasuke",  Tier = "Legendary", Stars = "★★★★★",  Color = Color3.fromRGB(255, 215, 0) },
+}
+
+local cardsRow = Instance.new("Frame")
+cardsRow.Size = UDim2.new(1, -30, 0, 140)
+cardsRow.Position = UDim2.new(0, 15, 0, 45)
+cardsRow.BackgroundTransparency = 1
+cardsRow.Parent = bannerStage
+
+local rowLayout = Instance.new("UIListLayout")
+rowLayout.FillDirection = Enum.FillDirection.Horizontal
+rowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+rowLayout.Padding = UDim.new(0, 12)
+rowLayout.Parent = cardsRow
+
+for _, feat in ipairs(featuredChars) do
+	local char = CombatConfig.Characters[feat.Id]
+	if not char then continue end
+
+	local fCard = Instance.new("Frame")
+	fCard.Size = UDim2.new(0, 130, 1, 0)
+	fCard.BackgroundColor3 = Color3.fromRGB(15, 18, 30)
+	fCard.Parent = cardsRow
+	Instance.new("UICorner", fCard).CornerRadius = UDim.new(0, 8)
+
+	local fStroke = Instance.new("UIStroke")
+	fStroke.Color = feat.Color
+	fStroke.Thickness = 1.5
+	fStroke.Parent = fCard
+
+	local fIcon = Instance.new("TextLabel")
+	fIcon.Size = UDim2.new(1, 0, 0, 45)
+	fIcon.Position = UDim2.new(0, 0, 0, 8)
+	fIcon.BackgroundTransparency = 1
+	fIcon.Font = Enum.Font.GothamBold
+	fIcon.TextSize = 34
+	fIcon.Text = char.Icon
+	fIcon.Parent = fCard
+
+	local fName = Instance.new("TextLabel")
+	fName.Size = UDim2.new(1, -6, 0, 18)
+	fName.Position = UDim2.new(0, 3, 0, 56)
+	fName.BackgroundTransparency = 1
+	fName.Font = Enum.Font.GothamBlack
+	fName.TextSize = 12
+	fName.TextColor3 = Color3.fromRGB(255, 255, 255)
+	fName.TextScaled = true
+	fName.Text = char.Name
+	fName.Parent = fCard
+
+	local fStars = Instance.new("TextLabel")
+	fStars.Size = UDim2.new(1, 0, 0, 14)
+	fStars.Position = UDim2.new(0, 0, 0, 78)
+	fStars.BackgroundTransparency = 1
+	fStars.Font = Enum.Font.GothamBold
+	fStars.TextSize = 11
+	fStars.TextColor3 = feat.Color
+	fStars.Text = feat.Stars
+	fStars.Parent = fCard
+
+	local fTier = Instance.new("TextLabel")
+	fTier.Size = UDim2.new(0.8, 0, 0, 18)
+	fTier.Position = UDim2.new(0.1, 0, 0, 104)
+	fTier.BackgroundColor3 = feat.Color
+	fTier.BackgroundTransparency = 0.3
+	fTier.Font = Enum.Font.GothamBlack
+	fTier.TextSize = 9
+	fTier.TextColor3 = Color3.fromRGB(255, 255, 255)
+	fTier.Text = string.upper(feat.Tier)
+	fTier.Parent = fCard
+	Instance.new("UICorner", fTier).CornerRadius = UDim.new(0, 4)
+end
+
+-- Pity Progress Bar at bottom of stage
+local pityFrame = Instance.new("Frame")
+pityFrame.Size = UDim2.new(1, -40, 0, 24)
+pityFrame.Position = UDim2.new(0, 20, 1, -34)
+pityFrame.BackgroundColor3 = Color3.fromRGB(12, 14, 22)
+pityFrame.Parent = bannerStage
+Instance.new("UICorner", pityFrame).CornerRadius = UDim.new(0, 6)
+
+local pityFill = Instance.new("Frame")
+pityFill.Size = UDim2.new(0, 0, 1, 0)
+pityFill.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+pityFill.BorderSizePixel = 0
+pityFill.Parent = pityFrame
+Instance.new("UICorner", pityFill).CornerRadius = UDim.new(0, 6)
+
+local pityLbl = Instance.new("TextLabel")
+pityLbl.Size = UDim2.fromScale(1, 1)
+pityLbl.BackgroundTransparency = 1
+pityLbl.Font = Enum.Font.GothamBlack
+pityLbl.TextSize = 11
+pityLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+pityLbl.Text = "PITY GARANSI: 0 / 50 PULLS (DIJAMIN ★5/★6 PADA 50)"
+pityLbl.Parent = pityFrame
+
+-- =========================================================
+-- BOTTOM ACTION BUTTONS
+-- =========================================================
+local bottomBar = Instance.new("Frame")
+bottomBar.Name = "BottomBar"
+bottomBar.Size = UDim2.new(1, -40, 0, 52)
+bottomBar.Position = UDim2.new(0, 20, 1, -66)
+bottomBar.BackgroundTransparency = 1
+bottomBar.Parent = mainModal
+
+local btnLayout = Instance.new("UIListLayout")
+btnLayout.FillDirection = Enum.FillDirection.Horizontal
+btnLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+btnLayout.Padding = UDim.new(0, 16)
+btnLayout.Parent = bottomBar
+
+-- Daily Reward Button
+local dailyBtn = Instance.new("TextButton")
+dailyBtn.Size = UDim2.new(0, 180, 1, 0)
+dailyBtn.BackgroundColor3 = Color3.fromRGB(40, 140, 60)
+dailyBtn.Font = Enum.Font.GothamBlack
+dailyBtn.TextSize = 12
+dailyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+dailyBtn.Text = "🎁 KLAIM HARIAN\n(+250 Ryo)"
+dailyBtn.Parent = bottomBar
+Instance.new("UICorner", dailyBtn).CornerRadius = UDim.new(0, 8)
+
+-- 1x Summon Button
+local pull1Btn = Instance.new("TextButton")
+pull1Btn.Size = UDim2.new(0, 220, 1, 0)
+pull1Btn.BackgroundColor3 = Color3.fromRGB(0, 160, 240)
+pull1Btn.Font = Enum.Font.GothamBlack
+pull1Btn.TextSize = 14
+pull1Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+pull1Btn.Text = "⛩️ 1x SUMMON\n(100 🪙 Ryo)"
+pull1Btn.Parent = bottomBar
+Instance.new("UICorner", pull1Btn).CornerRadius = UDim.new(0, 8)
+
+local p1Stroke = Instance.new("UIStroke")
+p1Stroke.Color = Color3.fromRGB(255, 255, 255)
+p1Stroke.Thickness = 1.5
+p1Stroke.Parent = pull1Btn
+
+-- 10x Multi-Summon Button
+local pull10Btn = Instance.new("TextButton")
+pull10Btn.Size = UDim2.new(0, 260, 1, 0)
+pull10Btn.BackgroundColor3 = Color3.fromRGB(230, 140, 20)
+pull10Btn.Font = Enum.Font.GothamBlack
+pull10Btn.TextSize = 14
+pull10Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+pull10Btn.Text = "🔥 10x MULTI-SUMMON\n(900 🪙 Ryo • DISKON 10%)"
+pull10Btn.Parent = bottomBar
+Instance.new("UICorner", pull10Btn).CornerRadius = UDim.new(0, 8)
+
+local p10Stroke = Instance.new("UIStroke")
+p10Stroke.Color = Color3.fromRGB(255, 215, 0)
+p10Stroke.Thickness = 2
+p10Stroke.Parent = pull10Btn
+
+-- =========================================================
+-- CINEMATIC SUMMON REVEAL STAGE
+-- =========================================================
+local revealOverlay = Instance.new("Frame")
+revealOverlay.Name = "RevealOverlay"
+revealOverlay.Size = UDim2.new(1, 0, 1, 0)
+revealOverlay.BackgroundColor3 = Color3.fromRGB(4, 6, 10)
+revealOverlay.BackgroundTransparency = 0.05
+revealOverlay.Visible = false
+revealOverlay.ZIndex = 50
+revealOverlay.Parent = screenGui
+
+-- Center Flash Orb
+local summonOrb = Instance.new("Frame")
+summonOrb.Name = "SummonOrb"
+summonOrb.Size = UDim2.new(0, 140, 0, 140)
+summonOrb.Position = UDim2.new(0.5, 0, 0.45, 0)
+summonOrb.AnchorPoint = Vector2.new(0.5, 0.5)
+summonOrb.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+summonOrb.ZIndex = 52
+summonOrb.Parent = revealOverlay
+Instance.new("UICorner", summonOrb).CornerRadius = UDim.new(1, 0)
+
+-- Result Card Container
+local resultContainer = Instance.new("Frame")
+resultContainer.Name = "ResultContainer"
+resultContainer.Size = UDim2.new(0.9, 0, 0.85, 0)
+resultContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+resultContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+resultContainer.BackgroundTransparency = 1
+resultContainer.ZIndex = 55
+resultContainer.Visible = false
+resultContainer.Parent = revealOverlay
+
+-- Dismiss Button
+local continueBtn = Instance.new("TextButton")
+continueBtn.Size = UDim2.new(0, 240, 0, 48)
+continueBtn.Position = UDim2.new(0.5, 0, 1, -40)
+continueBtn.AnchorPoint = Vector2.new(0.5, 1)
+continueBtn.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+continueBtn.Font = Enum.Font.GothamBlack
+continueBtn.TextSize = 16
+continueBtn.TextColor3 = Color3.fromRGB(15, 18, 25)
+continueBtn.Text = "✓ AMBIL SEMUA HADIAH"
+continueBtn.ZIndex = 60
+continueBtn.Visible = false
+continueBtn.Parent = revealOverlay
+Instance.new("UICorner", continueBtn).CornerRadius = UDim.new(0, 10)
+
+-- =========================================================
+-- UPDATE STATE HELPERS
+-- =========================================================
+local function updateGachaState(data: any)
+	if not data then return end
+	currentRyo = data.Ryo or currentRyo
+	currentPity = data.Pity or currentPity
+	currentShards = data.EssenceShards or currentShards
+	unlockedMap = data.Unlocked or unlockedMap
+
+	ryoLbl.Text = string.format("🪙 %d Ryo", currentRyo)
+	shardLbl.Text = string.format("💎 %d Shards", currentShards)
+
+	local ratio = math.clamp(currentPity / GachaConfig.Pity.HardPityThreshold, 0, 1)
+	pityFill.Size = UDim2.new(ratio, 0, 1, 0)
+	pityLbl.Text = string.format("PITY GARANSI: %d / %d PULLS (DIJAMIN ★5/★6 PADA %d)", currentPity, GachaConfig.Pity.HardPityThreshold, GachaConfig.Pity.HardPityThreshold)
+end
+
+-- =========================================================
+-- PLAY DRAMATIC REVEAL SEQUENCE
+-- =========================================================
+local function playSummonCutscene(results: { any }, isMulti: boolean)
+	isSummoning = true
+	revealOverlay.Visible = true
+	resultContainer.Visible = false
+	continueBtn.Visible = false
+	summonOrb.Visible = true
+	summonOrb.Size = UDim2.new(0, 20, 0, 20)
+
+	-- Find highest tier for orb peak color
+	local highestTier = "Rare"
+	for _, res in ipairs(results) do
+		local t = res.Tier
+		if t == "Mythic" then highestTier = "Mythic" break end
+		if t == "Legendary" and highestTier ~= "Mythic" then highestTier = "Legendary" end
+		if t == "Epic" and highestTier == "Rare" then highestTier = "Epic" end
+	end
+
+	local tierConfig = GachaConfig.Tiers[highestTier] or GachaConfig.Tiers.Rare
+	summonOrb.BackgroundColor3 = tierConfig.Color
+
+	playSound("rbxasset://sounds/electronicpingshort.wav", 1.2, 0.8)
+
+	-- Orb Pulse Expansion Animation
+	local expandTween = TweenService:Create(summonOrb, TweenInfo.new(1.2, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, 280, 0, 280),
+		BackgroundTransparency = 0.1,
+	})
+	expandTween:Play()
+
+	task.wait(1.2)
+
+	-- Screen Flash
+	playSound("rbxasset://sounds/impact_explosion_03.mp3", tierConfig.SoundPitch or 1.0, 1.0)
+	summonOrb.Visible = false
+
+	-- Clear old result cards
+	for _, child in ipairs(resultContainer:GetChildren()) do
+		if child:IsA("GuiObject") then child:Destroy() end
+	end
+
+	resultContainer.Visible = true
+
+	if not isMulti and #results == 1 then
+		-- SINGLE SUMMON: Big Cinematic Hero Card
+		local res = results[1]
+		local char = CombatConfig.Characters[res.Id]
+		local tData = GachaConfig.Tiers[res.Tier] or GachaConfig.Tiers.Rare
+
+		local card = Instance.new("Frame")
+		card.Size = UDim2.new(0, 360, 0, 420)
+		card.Position = UDim2.new(0.5, 0, 0.45, 0)
+		card.AnchorPoint = Vector2.new(0.5, 0.5)
+		card.BackgroundColor3 = Color3.fromRGB(18, 22, 34)
+		card.Parent = resultContainer
+		Instance.new("UICorner", card).CornerRadius = UDim.new(0, 16)
+
+		local cStroke = Instance.new("UIStroke")
+		cStroke.Color = tData.Color
+		cStroke.Thickness = 3
+		cStroke.Parent = card
+
+		-- Stars Header
+		local sLbl = Instance.new("TextLabel")
+		sLbl.Size = UDim2.new(1, 0, 0, 30)
+		sLbl.Position = UDim2.new(0, 0, 0, 14)
+		sLbl.BackgroundTransparency = 1
+		sLbl.Font = Enum.Font.GothamBlack
+		sLbl.TextSize = 22
+		sLbl.TextColor3 = tData.Color
+		sLbl.Text = tData.Stars .. " " .. string.upper(tData.Name)
+		sLbl.Parent = card
+
+		-- Big Icon
+		local iconLbl = Instance.new("TextLabel")
+		iconLbl.Size = UDim2.new(1, 0, 0, 90)
+		iconLbl.Position = UDim2.new(0, 0, 0, 48)
+		iconLbl.BackgroundTransparency = 1
+		iconLbl.Font = Enum.Font.GothamBold
+		iconLbl.TextSize = 72
+		iconLbl.Text = char and char.Icon or "⚡"
+		iconLbl.Parent = card
+
+		-- Name
+		local nLbl = Instance.new("TextLabel")
+		nLbl.Size = UDim2.new(1, -20, 0, 32)
+		nLbl.Position = UDim2.new(0, 10, 0, 145)
+		nLbl.BackgroundTransparency = 1
+		nLbl.Font = Enum.Font.GothamBlack
+		nLbl.TextSize = 22
+		nLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+		nLbl.Text = char and string.upper(char.Name) or res.Id
+		nLbl.Parent = card
+
+		-- Anime Title & Archetype
+		local subLbl = Instance.new("TextLabel")
+		subLbl.Size = UDim2.new(1, 0, 0, 20)
+		subLbl.Position = UDim2.new(0, 0, 0, 180)
+		subLbl.BackgroundTransparency = 1
+		subLbl.Font = Enum.Font.GothamBold
+		subLbl.TextSize = 13
+		subLbl.TextColor3 = tData.Color
+		subLbl.Text = (char and char.Anime or "Anime") .. " • " .. (char and string.upper(char.Archetype) or "FIGHTER")
+		subLbl.Parent = card
+
+		-- Status Badge (NEW! or DUPLICATE)
+		local statusBadge = Instance.new("TextLabel")
+		statusBadge.Size = UDim2.new(0.8, 0, 0, 32)
+		statusBadge.Position = UDim2.new(0.1, 0, 0, 215)
+		statusBadge.Font = Enum.Font.GothamBlack
+		statusBadge.TextSize = 13
+		if res.IsNew then
+			statusBadge.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+			statusBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
+			statusBadge.Text = "✨ KARAKTER BARU TERBUKA (UNLOCKED!)"
+		else
+			statusBadge.BackgroundColor3 = Color3.fromRGB(180, 80, 30)
+			statusBadge.TextColor3 = Color3.fromRGB(255, 240, 150)
+			statusBadge.Text = string.format("DUPLIKAT -> +%d ESSENCE SHARDS", res.Shards or 10)
+		end
+		statusBadge.Parent = card
+		Instance.new("UICorner", statusBadge).CornerRadius = UDim.new(0, 8)
+
+		-- Quote
+		local qLbl = Instance.new("TextLabel")
+		qLbl.Size = UDim2.new(1, -30, 0, 60)
+		qLbl.Position = UDim2.new(0, 15, 0, 260)
+		qLbl.BackgroundTransparency = 1
+		qLbl.Font = Enum.Font.GothamMedium
+		qLbl.TextSize = 12
+		qLbl.TextColor3 = Color3.fromRGB(200, 210, 225)
+		qLbl.TextWrapped = true
+		qLbl.Text = char and ('"' .. char.Quote .. '"') or ""
+		qLbl.Parent = card
+	else
+		-- MULTI-SUMMON: 2x5 Grid of 10 Cards
+		local grid = Instance.new("Frame")
+		grid.Size = UDim2.new(1, 0, 0.85, 0)
+		grid.Position = UDim2.new(0, 0, 0, 10)
+		grid.BackgroundTransparency = 1
+		grid.Parent = resultContainer
+
+		local uigrid = Instance.new("UIGridLayout")
+		uigrid.CellSize = UDim2.new(0.18, 0, 0.46, 0)
+		uigrid.CellPadding = UDim2.new(0.02, 0, 0.04, 0)
+		uigrid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		uigrid.Parent = grid
+
+		for _, res in ipairs(results) do
+			local char = CombatConfig.Characters[res.Id]
+			local tData = GachaConfig.Tiers[res.Tier] or GachaConfig.Tiers.Rare
+
+			local mCard = Instance.new("Frame")
+			mCard.BackgroundColor3 = Color3.fromRGB(20, 24, 38)
+			mCard.Parent = grid
+			Instance.new("UICorner", mCard).CornerRadius = UDim.new(0, 10)
+
+			local mStroke = Instance.new("UIStroke")
+			mStroke.Color = tData.Color
+			mStroke.Thickness = 2
+			mStroke.Parent = mCard
+
+			local mIcon = Instance.new("TextLabel")
+			mIcon.Size = UDim2.new(1, 0, 0, 48)
+			mIcon.Position = UDim2.new(0, 0, 0, 8)
+			mIcon.BackgroundTransparency = 1
+			mIcon.Font = Enum.Font.GothamBold
+			mIcon.TextSize = 36
+			mIcon.Text = char and char.Icon or "⚡"
+			mIcon.Parent = mCard
+
+			local mName = Instance.new("TextLabel")
+			mName.Size = UDim2.new(1, -6, 0, 18)
+			mName.Position = UDim2.new(0, 3, 0, 58)
+			mName.BackgroundTransparency = 1
+			mName.Font = Enum.Font.GothamBlack
+			mName.TextSize = 11
+			mName.TextColor3 = Color3.fromRGB(255, 255, 255)
+			mName.TextScaled = true
+			mName.Text = char and char.Name or res.Id
+			mName.Parent = mCard
+
+			local mStars = Instance.new("TextLabel")
+			mStars.Size = UDim2.new(1, 0, 0, 14)
+			mStars.Position = UDim2.new(0, 0, 0, 78)
+			mStars.BackgroundTransparency = 1
+			mStars.Font = Enum.Font.GothamBold
+			mStars.TextSize = 9
+			mStars.TextColor3 = tData.Color
+			mStars.Text = tData.Stars
+			mStars.Parent = mCard
+
+			local mStatus = Instance.new("TextLabel")
+			mStatus.Size = UDim2.new(0.88, 0, 0, 18)
+			mStatus.Position = UDim2.new(0.06, 0, 1, -26)
+			mStatus.Font = Enum.Font.GothamBlack
+			mStatus.TextSize = 8
+			if res.IsNew then
+				mStatus.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+				mStatus.TextColor3 = Color3.fromRGB(255, 255, 255)
+				mStatus.Text = "BARU!"
+			else
+				mStatus.BackgroundColor3 = Color3.fromRGB(80, 50, 120)
+				mStatus.TextColor3 = Color3.fromRGB(200, 220, 255)
+				mStatus.Text = "+" .. tostring(res.Shards or 10) .. "💎"
+			end
+			mStatus.Parent = mCard
+			Instance.new("UICorner", mStatus).CornerRadius = UDim.new(0, 4)
+		end
+	end
+
+	continueBtn.Visible = true
+	isSummoning = false
+end
+
+-- =========================================================
+-- EVENT LISTENERS
+-- =========================================================
+pull1Btn.MouseButton1Click:Connect(function()
+	if isSummoning then return end
+	if currentRyo < GachaConfig.SinglePullCost then
+		playSound("rbxasset://sounds/action_footsteps_plastic.mp3", 0.6)
+		return
+	end
+	evGachaPull:FireServer("Single")
+end)
+
+pull10Btn.MouseButton1Click:Connect(function()
+	if isSummoning then return end
+	if currentRyo < GachaConfig.MultiPullCost then
+		playSound("rbxasset://sounds/action_footsteps_plastic.mp3", 0.6)
+		return
+	end
+	evGachaPull:FireServer("Multi")
+end)
+
+dailyBtn.MouseButton1Click:Connect(function()
+	evClaimDaily:FireServer()
+end)
+
+continueBtn.MouseButton1Click:Connect(function()
+	revealOverlay.Visible = false
+	resultContainer.Visible = false
+	continueBtn.Visible = false
+	playSound("rbxasset://sounds/action_jump.mp3", 1.4)
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+	if isSummoning then return end
+	screenGui.Enabled = false
+	isOpen = false
+end)
+
+-- Receive Gacha Pull Results
+evGachaPull.OnClientEvent:Connect(function(data: any)
+	if data and data.Success then
+		updateGachaState({
+			Ryo = data.NewRyo,
+			Pity = data.Pity,
+			EssenceShards = data.Shards,
+		})
+		playSummonCutscene(data.Results, data.IsMulti)
+	else
+		-- Error message
+		if data and data.Message then
+			print(">> [StormGacha] Error: " .. data.Message)
+		end
+	end
+end)
+
+-- Receive Full Data Sync
+evGachaSync.OnClientEvent:Connect(function(prof: any)
+	updateGachaState(prof)
+end)
+
+-- Receive Daily Reward confirmation
+evClaimDaily.OnClientEvent:Connect(function(data: any)
+	if data and data.Success then
+		playSound("rbxasset://sounds/electronicpingshort.wav", 1.5)
+		dailyBtn.Text = "✓ HARIAN DIAMBIL!"
+		dailyBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+	end
+end)
+
+-- Receive Open Request (e.g. from Altar ProximityPrompt or Hotkey)
+local function openGachaModal()
+	screenGui.Enabled = true
+	isOpen = true
+	evGachaSync:FireServer()
+end
+
+evOpenGacha.OnClientEvent:Connect(function()
+	openGachaModal()
+end)
+
+-- Keyboard [G] Key to Toggle Gacha
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == Enum.KeyCode.G then
+		if screenGui.Enabled then
+			screenGui.Enabled = false
+			isOpen = false
+		else
+			openGachaModal()
+		end
+	end
+end)
+
+-- Initial Sync
+evGachaSync:FireServer()
+print("[StormGachaHUD] ✅ Shinobi Gacha Summon HUD & Reveal Cutscene loaded. Hotkey [G] active.")
+]=====]
+    installScript('StormGachaHUD', 'LocalScript', game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts'), src)
 end
 
 print('====================================================')

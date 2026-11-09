@@ -32,11 +32,19 @@ pcall(function()
 end)
 
 local CombatConfig = require(ReplicatedStorage:WaitForChild("CombatConfig")) :: any
+local GachaConfig = require(ReplicatedStorage:WaitForChild("GachaConfig")) :: any
 
 -- Remotes
 local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 10) :: Folder
 local evCharSelect = combatEvents:WaitForChild("CharacterSelectEvent", 10) :: RemoteEvent
 local evOpenRoster = combatEvents:WaitForChild("OpenRosterEvent", 10) :: RemoteEvent
+local evGachaSync  = combatEvents:WaitForChild("GachaSyncEvent", 10) :: RemoteEvent?
+local evOpenGacha  = combatEvents:WaitForChild("OpenGachaEvent", 10) :: RemoteEvent?
+
+local unlockedMap: { [string]: boolean } = {}
+for _, s in ipairs(GachaConfig.StarterCharacters) do
+	unlockedMap[s] = true
+end
 
 -- State
 local isOpen = false
@@ -394,7 +402,12 @@ local function updatePreview(charId: string)
 	ultSkillLbl.Text   = "  💥 Ultimate [I]: " .. char.UltimateName
 
 	-- Update Button State
-	if charId == currentSelectedId then
+	local isUnlocked = (unlockedMap[charId] == true) or (table.find(GachaConfig.StarterCharacters, charId) ~= nil)
+	if not isUnlocked then
+		selectBtn.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
+		selectBtn.TextColor3 = Color3.fromRGB(255, 240, 240)
+		selectBtn.Text = "🔒 TERKUNCI • BUKA DI GACHA (PULL)"
+	elseif charId == currentSelectedId then
 		selectBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 95)
 		selectBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
 		selectBtn.Text = "✓ KARAKTER TERPILIH (CURRENT)"
@@ -530,8 +543,30 @@ local function selectCharacter(charId: string)
 end
 
 selectBtn.MouseButton1Click:Connect(function()
+	local isUnlocked = (unlockedMap[previewSelectedId] == true) or (table.find(GachaConfig.StarterCharacters, previewSelectedId) ~= nil)
+	if not isUnlocked then
+		playUiSound("action_footsteps_plastic.mp3", 0.7)
+		if evOpenGacha then
+			evOpenGacha:FireServer()
+		end
+		screenGui.Enabled = false
+		isOpen = false
+		return
+	end
 	selectCharacter(previewSelectedId)
 end)
+
+if evGachaSync then
+	evGachaSync.OnClientEvent:Connect(function(prof: any)
+		if prof and prof.Unlocked then
+			unlockedMap = prof.Unlocked
+			for _, s in ipairs(GachaConfig.StarterCharacters) do
+				unlockedMap[s] = true
+			end
+			updatePreview(previewSelectedId)
+		end
+	end)
+end
 
 -- =========================================================
 -- MODAL TOGGLE & CONTROLS

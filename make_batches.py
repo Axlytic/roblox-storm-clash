@@ -11,6 +11,7 @@ batches = [
             {"name": "CombatServerMaster", "type": "Script", "parent": "game:GetService('ServerScriptService')", "file": os.path.join(base_dir, "server", "CombatServerMaster.luau")},
             {"name": "TrainingDummySpawner", "type": "Script", "parent": "game:GetService('ServerScriptService')", "file": os.path.join(base_dir, "server", "TrainingDummySpawner.luau")},
             {"name": "StormWeaponServer", "type": "Script", "parent": "game:GetService('ServerScriptService')", "file": os.path.join(base_dir, "server", "StormWeaponServer.luau")},
+            {"name": "GachaConfig", "type": "ModuleScript", "parent": "game:GetService('ReplicatedStorage')", "file": os.path.join(base_dir, "shared", "GachaConfig.luau")},
         ]
     },
     {
@@ -18,6 +19,7 @@ batches = [
         "scripts": [
             {"name": "StormCharacterMorphServer", "type": "ModuleScript", "parent": "game:GetService('ServerScriptService')", "file": os.path.join(base_dir, "server", "StormCharacterMorphServer.luau")},
             {"name": "LobbyManagerServer", "type": "Script", "parent": "game:GetService('ServerScriptService')", "file": os.path.join(base_dir, "server", "LobbyManagerServer.luau")},
+            {"name": "GachaServerManager", "type": "Script", "parent": "game:GetService('ServerScriptService')", "file": os.path.join(base_dir, "server", "GachaServerManager.luau")},
         ]
     },
     {
@@ -46,6 +48,7 @@ batches = [
             {"name": "PerformanceSettingsManager", "type": "LocalScript", "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", "file": os.path.join(base_dir, "client", "PerformanceSettingsManager.luau")},
             {"name": "StormCharacterSelectHUD", "type": "LocalScript", "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", "file": os.path.join(base_dir, "client", "StormCharacterSelectHUD.luau")},
             {"name": "StormSubstitutionController", "type": "LocalScript", "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", "file": os.path.join(base_dir, "client", "StormSubstitutionController.luau")},
+            {"name": "StormGachaHUD", "type": "LocalScript", "parent": "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", "file": os.path.join(base_dir, "client", "StormGachaHUD.luau")},
         ]
     }
 ]

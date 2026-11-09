@@ -24,6 +24,9 @@ all_scripts = [
     ("PerformanceSettingsManager", "LocalScript", "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", os.path.join(base_dir, "client", "PerformanceSettingsManager.luau")),
     ("StormCharacterSelectHUD", "LocalScript", "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", os.path.join(base_dir, "client", "StormCharacterSelectHUD.luau")),
     ("StormSubstitutionController", "LocalScript", "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", os.path.join(base_dir, "client", "StormSubstitutionController.luau")),
+    ("GachaConfig", "ModuleScript", "game:GetService('ReplicatedStorage')", os.path.join(base_dir, "shared", "GachaConfig.luau")),
+    ("GachaServerManager", "Script", "game:GetService('ServerScriptService')", os.path.join(base_dir, "server", "GachaServerManager.luau")),
+    ("StormGachaHUD", "LocalScript", "game:GetService('StarterPlayer'):WaitForChild('StarterPlayerScripts')", os.path.join(base_dir, "client", "StormGachaHUD.luau")),
 ]
 
 for name, sType, parent, fpath in all_scripts:

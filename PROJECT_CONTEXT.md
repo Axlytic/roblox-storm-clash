@@ -111,3 +111,28 @@ Semua 24 model anime dirancang murni secara prosedural menggunakan `Part`, `Wedg
 * **Bebas Error HTTP 403**: Tidak bergantung pada asset mesh ID luar yang rawan dihapus atau gagal dimuat di mobile client.
 * **Performa Ringan**: Dihitung instan di server dengan `WeldConstraint` non-collidable (`Massless = true`, `CastShadow = false`).
 * **Visual Otentik**: Rambut anime bersudut runcing (spiky anime cluster), aksesoris khas (ikat kepala Konoha dengan lambang spiral, topi jerami jerami Mugiwara dengan pita merah, 3 katana di pinggang Zoro, syal pirus Byakuya, penutup mata Gojo, tato Sukuna, gauntlet granat Bakugo).
+
+---
+
+## ⛩️ 6. Sistem Gacha Shinobi & Ekonomi Ryo (`GachaConfig` & `GachaServerManager`)
+
+### 🎰 Rarity Tiers & Drop Rates (24 Karakter):
+* **★★★★★★ Mythic Secret (2%)**: Madara Uchiha, Ryomen Sukuna (Aura Crimson & Pelangi Kosmik).
+* **★★★★★ Legendary (10%)**: Sasuke Uchiha, Ichigo Kurosaki, Sosuke Aizen, Satoru Gojo (Aura Emas Gemerlap).
+* **★★★★ Epic (28%)**: Kakashi Hatake, Roronoa Zoro, Trafalgar Law, Vegeta, Byakuya Kuchiki, Tanjiro Kamado, Katsuki Bakugo, Killua Zoldyck (Aura Ungu Magis).
+* **★★★ Rare (60%)**: Yuji Itadori, Gon Freecss, Zenitsu Agatsuma, Vinsmoke Sanji, Future Trunks, Megumi Fushiguro (Aura Cyan Cerah).
+* **Starter Characters (Gratis Terbuka Otomatis)**: Naruto Uzumaki, Monkey D. Luffy, Son Goku, Izuku Midoriya (Deku).
+
+### 🪙 Mekanik Ekonomi & Pity System:
+* **Biaya Summon**: 1x Pull = 100 Ryo | 10x Multi-Summon = 900 Ryo (Diskon 10%).
+* **Pity Guarantee**: 50 Pulls tanpa ★5/★6 menjamin 100% mendapatkan karakter Legendary atau Mythic!
+* **10-Pull Guarantee**: Menjamin minimal satu karakter ★4 Epic ke atas.
+* **Sistem Duplikat**: Karakter yang sudah dimiliki dikonversi otomatis menjadi Essence Shards (Rare: 10, Epic: 35, Legendary: 100, Mythic: 300).
+* **Penghasilan Ryo**:
+  - Menang ronde 1v1 Arena: +100 Ryo
+  - Selesai match 1v1: +50 Ryo
+  - 10-Hit Combo pada Training Dummy: +2 Ryo
+  - Daily Login Bonus: +250 Ryo (cooldown 24 jam)
+* **Kuil Pemanggilan 3D di Lobi**: Berdiri megah di lobi dengan Torii emas, altar dupa, bola pemanggilan bercahaya, dan Proximity Prompt interaktif.
+* **Hotkey Gacha**: Tekan **`G`** pada keyboard atau tombol menu di layar sentuh mobile.
+

@@ -320,6 +320,9 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 	end
 	if targetModel.Name == "TrainingDummy" then
 		targetModel:SetAttribute("LastAttackerName", attacker.Name)
+		if _G.AwardCombatRyo then
+			_G.AwardCombatRyo(attacker, 2, "Combo Latihan")
+		end
 	end
 
 	-- Chakra Gain on Hit

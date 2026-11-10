@@ -263,6 +263,59 @@ btnSub.MouseButton1Click:Connect(function()
 end)
 
 -- =========================================================
+-- AIR CHASE TOUCH INDICATOR BANNER
+-- =========================================================
+local airChaseBadge = Instance.new("TextButton")
+airChaseBadge.Name = "AirChaseBanner"
+airChaseBadge.Size = UDim2.new(0, 220, 0, 36)
+airChaseBadge.Position = UDim2.new(0.5, -110, 0, -48)
+airChaseBadge.BackgroundColor3 = Color3.fromRGB(15, 20, 35)
+airChaseBadge.BackgroundTransparency = 0.15
+airChaseBadge.Text = "🚀 AIR CHASE • TEKAN SERANG!"
+airChaseBadge.Font = Enum.Font.GothamBlack
+airChaseBadge.TextSize = 11
+airChaseBadge.TextColor3 = Color3.fromRGB(0, 255, 240)
+airChaseBadge.Visible = false
+airChaseBadge.Parent = hudContainer
+Instance.new("UICorner", airChaseBadge).CornerRadius = UDim.new(0, 18)
+
+local acStroke = Instance.new("UIStroke")
+acStroke.Color = Color3.fromRGB(0, 240, 255)
+acStroke.Thickness = 2
+acStroke.Parent = airChaseBadge
+
+airChaseBadge.MouseButton1Click:Connect(function()
+	evMobileAttack:Fire(false)
+end)
+
+-- Monitor target airborne launch state to show/hide prompt
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local function checkTargetLaunched(): boolean
+	local dummy = Workspace:FindFirstChild("TrainingDummy")
+	if dummy and dummy:GetAttribute("IsAirborneLaunched") == true then
+		return true
+	end
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer and p.Character and p.Character:GetAttribute("IsAirborneLaunched") == true then
+			return true
+		end
+	end
+	return false
+end
+
+RunService.Heartbeat:Connect(function()
+	if hudContainer.Visible then
+		local isLaunched = checkTargetLaunched()
+		airChaseBadge.Visible = isLaunched
+		if isLaunched then
+			acStroke.Color = (math.sin(os.clock() * 10) > 0) and Color3.fromRGB(0, 255, 240) or Color3.fromRGB(255, 215, 0)
+		end
+	end
+end)
+
+-- =========================================================
 -- TOGGLE BUTTON FOR PC TESTING
 -- =========================================================
 local toggleBtn = Instance.new("TextButton")

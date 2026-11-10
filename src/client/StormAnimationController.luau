@@ -145,6 +145,22 @@ local function setupCharacter(char: Model)
 			lastHealth = newHealth
 		end)
 	end
+
+	-- Attribute Hit Reaction Listener (Replicated from server)
+	char:GetAttributeChangedSignal("VictimHitReaction"):Connect(function()
+		local react = tostring(char:GetAttribute("VictimHitReaction") or "")
+		if react == "Launched" then
+			if triggerCombatAnimation then triggerCombatAnimation("HitHead", 0.50) end
+		elseif react == "GroundBounce" then
+			if triggerCombatAnimation then triggerCombatAnimation("HitGut", 0.38) end
+		elseif react == "Stagger" then
+			if triggerCombatAnimation then triggerCombatAnimation("StaggerStun", 0.65) end
+		elseif react == "High" then
+			if triggerCombatAnimation then triggerCombatAnimation("HitHead", 0.20) end
+		elseif react == "Mid" then
+			if triggerCombatAnimation then triggerCombatAnimation("HitGut", 0.20) end
+		end
+	end)
 end
 
 if LocalPlayer.Character then

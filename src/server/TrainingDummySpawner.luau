@@ -1,18 +1,21 @@
 --!strict
 -- TrainingDummySpawner.luau
--- SERVER SCRIPT: Interactive Fighting Lab Training Dummy NPC
+-- SERVER SCRIPT: Fully Physical Interactive Fighting Lab Training Dummy NPC
 -- Features:
---   • Tagged with "IsCombatTarget" for automatic Storm 4 lock-on
+--   • 100% Unanchored Physics: Responds dynamically to Launchers, Knockbacks, & Ground Bounces!
+--   • Welded Anatomy: Torso, Head, Belt, Arms, Legs properly welded via WeldConstraint
+--   • Upright Stabilizer: Uses AlignOrientation / Spring Gyro to remain standing during neutral state
 --   • Interactive ProximityPrompt to switch Defense Modes:
---       [1] Neutral (Stand Still) -> Test Combos & Ninja Dash
+--       [1] Neutral (Stand Still) -> Test Combos, Air Launchers, & CDC Loops
 --       [2] High Guard Active -> Test Low Sweep Guard Piercing
 --       [3] Low Guard Active -> Test High/Mid Hits
 --       [4] Practice Parry -> Test Tekken Just-Frame Parry Counter
 --   • Realtime Billboard HUD with HP bar and current Defense Mode
---   • Auto HP regeneration so testing is seamless
+--   • Auto HP regeneration and boundary safety recovery
 
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
+local Debris = game:GetService("Debris")
 
 local MODES = { "Neutral", "High", "Low", "Parry" }
 local MODE_COLORS = {
@@ -22,6 +25,13 @@ local MODE_COLORS = {
 	["Parry"]   = Color3.fromRGB(255, 220, 50),
 }
 
+local function weldParts(p0: BasePart, p1: BasePart)
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = p0
+	weld.Part1 = p1
+	weld.Parent = p0
+end
+
 local function createTrainingDummy(pos: Vector3): Model
 	local existing = Workspace:FindFirstChild("TrainingDummy")
 	if existing then existing:Destroy() end
@@ -29,52 +39,89 @@ local function createTrainingDummy(pos: Vector3): Model
 	local model = Instance.new("Model")
 	model.Name = "TrainingDummy"
 
-	-- Humanoid & RootPart
+	-- HumanoidRootPart (Unanchored so physics and AssemblyLinearVelocity work!)
 	local root = Instance.new("Part")
 	root.Name = "HumanoidRootPart"
 	root.Size = Vector3.new(2, 2, 1)
 	root.Position = pos + Vector3.new(0, 3, 0)
-	root.Anchored = true
-	root.CanCollide = true
+	root.Anchored = false
+	root.CanCollide = false
 	root.Transparency = 1
 	root.Parent = model
 	model.PrimaryPart = root
 
+	-- Torso
 	local torso = Instance.new("Part")
 	torso.Name = "Torso"
 	torso.Size = Vector3.new(2, 2, 1)
 	torso.CFrame = root.CFrame
-	torso.Color = Color3.fromRGB(60, 65, 80)
+	torso.Color = Color3.fromRGB(55, 60, 75)
 	torso.Material = Enum.Material.SmoothPlastic
-	torso.Anchored = true
+	torso.Anchored = false
 	torso.CanCollide = true
 	torso.Parent = model
+	weldParts(root, torso)
 
+	-- Head
 	local head = Instance.new("Part")
 	head.Name = "Head"
 	head.Size = Vector3.new(1.2, 1.2, 1.2)
 	head.CFrame = torso.CFrame * CFrame.new(0, 1.6, 0)
 	head.Color = Color3.fromRGB(220, 180, 140)
 	head.Material = Enum.Material.SmoothPlastic
-	head.Anchored = true
+	head.Anchored = false
 	head.CanCollide = false
 	head.Parent = model
+	weldParts(torso, head)
 
-	-- Visual Gi / Shinobi Belt
+	-- Shinobi Belt
 	local belt = Instance.new("Part")
 	belt.Name = "Belt"
 	belt.Size = Vector3.new(2.1, 0.4, 1.1)
 	belt.CFrame = torso.CFrame * CFrame.new(0, -0.6, 0)
-	belt.Color = Color3.fromRGB(220, 30, 30)
+	belt.Color = Color3.fromRGB(220, 35, 35)
 	belt.Material = Enum.Material.Fabric
-	belt.Anchored = true
+	belt.Anchored = false
 	belt.CanCollide = false
 	belt.Parent = model
+	weldParts(torso, belt)
 
+	-- Limbs for visual weight and realistic ragdoll reaction
+	local function makeLimb(name: string, size: Vector3, offset: CFrame, color: Color3)
+		local limb = Instance.new("Part")
+		limb.Name = name
+		limb.Size = size
+		limb.CFrame = torso.CFrame * offset
+		limb.Color = color
+		limb.Material = Enum.Material.SmoothPlastic
+		limb.Anchored = false
+		limb.CanCollide = false
+		limb.Parent = model
+		weldParts(torso, limb)
+		return limb
+	end
+
+	makeLimb("LeftArm", Vector3.new(1, 2, 1), CFrame.new(-1.5, 0, 0), Color3.fromRGB(220, 180, 140))
+	makeLimb("RightArm", Vector3.new(1, 2, 1), CFrame.new(1.5, 0, 0), Color3.fromRGB(220, 180, 140))
+	makeLimb("LeftLeg", Vector3.new(1, 2, 1), CFrame.new(-0.5, -2, 0), Color3.fromRGB(45, 50, 60))
+	makeLimb("RightLeg", Vector3.new(1, 2, 1), CFrame.new(0.5, -2, 0), Color3.fromRGB(45, 50, 60))
+
+	-- Upright Physics Stabilizer: Keeps dummy standing upright while allowing full velocity knockbacks & launches
+	local att = Instance.new("Attachment", root)
+	local alignOrientation = Instance.new("AlignOrientation")
+	alignOrientation.Mode = Enum.OrientationAlignmentMode.OneAttachment
+	alignOrientation.Attachment0 = att
+	alignOrientation.CFrame = CFrame.Angles(0, 0, 0)
+	alignOrientation.MaxTorque = 45000
+	alignOrientation.Responsiveness = 25
+	alignOrientation.Parent = root
+
+	-- Humanoid
 	local hum = Instance.new("Humanoid")
-	hum.MaxHealth = 1000
-	hum.Health = 1000
+	hum.MaxHealth = 2000
+	hum.Health = 2000
 	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	hum.WalkSpeed = 0
 	hum.Parent = model
 
 	-- Overhead Tag
@@ -108,7 +155,7 @@ local function createTrainingDummy(pos: Vector3): Model
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Ganti Mode Latihan"
 	prompt.ObjectText = "Training Dummy"
-	prompt.HoldDuration = 0.5
+	prompt.HoldDuration = 0.3
 	prompt.MaxActivationDistance = 12
 	prompt.Parent = torso
 
@@ -127,19 +174,30 @@ local function createTrainingDummy(pos: Vector3): Model
 
 	-- Auto HP regeneration
 	hum.HealthChanged:Connect(function(newHealth)
-		if newHealth < 300 then
-			hum.Health = 1000
+		if newHealth < 500 then
+			hum.Health = 2000
+		end
+	end)
+
+	-- Boundary safety: if dummy flies off arena, reset back to center
+	task.spawn(function()
+		while model.Parent do
+			task.wait(2.0)
+			if root and (root.Position.Y < -10 or (root.Position - pos).Magnitude > 85) then
+				root.AssemblyLinearVelocity = Vector3.zero
+				root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+			end
 		end
 	end)
 
 	-- Tag as combat target
 	model:SetAttribute("IsCombatTarget", true)
 	model.Parent = Workspace
-	print(">> [TrainingDummy] Lab Dummy spawned successfully at " .. tostring(pos) .. " <<")
+	print(">> [TrainingDummy] Unanchored Physical Dummy spawned at arena floor: " .. tostring(pos) .. " <<")
 	return model
 end
 
--- Spawn Dummy in arena center (Y=52 matches DilemmaArena floor)
-task.delay(1.5, function()
-	createTrainingDummy(Vector3.new(0, 50, 15))
+-- Spawn Dummy at Combat Arena floor center (Floor is at Y = 3.0)
+task.delay(1.0, function()
+	createTrainingDummy(Vector3.new(0, 3.0, 16))
 end)

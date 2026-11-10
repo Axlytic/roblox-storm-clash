@@ -324,9 +324,6 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 	end
 	if targetModel.Name == "TrainingDummy" then
 		targetModel:SetAttribute("LastAttackerName", attacker.Name)
-		if _G.AwardCombatRyo then
-			_G.AwardCombatRyo(attacker, 2, "Combo Latihan")
-		end
 	end
 
 	-- Chakra Gain on Hit
@@ -337,11 +334,75 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 		targetPlayer:SetAttribute("ChakraValue", math.min(100, tChakra + 7))
 	end
 
-	-- Apply Knockback
+	-- Apply Knockback & Storm Connections Mechanics:
 	local hitDir = (tRoot.Position - aRoot.Position).Unit
 	local flatHitDir = Vector3.new(hitDir.X, 0, hitDir.Z).Unit
-	local liftY = if comboStep == 4 then 12 elseif comboStep == 3 then 6 else 0
-	tRoot.AssemblyLinearVelocity = (flatHitDir * knockback) + Vector3.new(0, liftY, 0)
+
+	if attackType == "High" and comboStep == 4 then
+		-- 🚀 STORM CONNECTIONS LAUNCHER (UP COMBO FINISHER)
+		-- Launch victim 54 studs high into the sky, setting up Air Chase!
+		tRoot.AssemblyLinearVelocity = (flatHitDir * 14) + Vector3.new(0, 54, 0)
+		targetModel:SetAttribute("IsAirborneLaunched", true)
+		targetModel:SetAttribute("VictimHitReaction", "Launched")
+		spawnFloatingText(tRoot.Position + Vector3.new(0, 3, 0), "🚀 AIR LAUNCH!", Color3.fromRGB(180, 100, 255))
+		
+		if _G.AwardCombatRyo then _G.AwardCombatRyo(attacker, 5, "Air Launcher") end
+
+		task.delay(1.8, function()
+			if targetModel and targetModel.Parent then
+				targetModel:SetAttribute("IsAirborneLaunched", false)
+			end
+		end)
+
+	elseif (attackType == "Low" and comboStep == 4) or (attackType == "Mid" and comboStep == 3 and tRoot.Position.Y > 8) then
+		-- 💥 GROUND SLAM & GROUND BOUNCE (DOWN COMBO FINISHER / AIR SPIKE)
+		tRoot.AssemblyLinearVelocity = (flatHitDir * 8) + Vector3.new(0, -68, 0)
+		targetModel:SetAttribute("VictimHitReaction", "GroundBounce")
+
+		-- Spawn Impact Crater when hitting ground
+		task.delay(0.12, function()
+			if not tRoot or not tRoot.Parent then return end
+			local craterPos = Vector3.new(tRoot.Position.X, 3.1, tRoot.Position.Z)
+			
+			local crater = Instance.new("Part")
+			crater.Name = "GroundImpactCrater"
+			crater.Shape = Enum.PartType.Cylinder
+			crater.Size = Vector3.new(0.3, 7.5, 7.5)
+			crater.CFrame = CFrame.new(craterPos) * CFrame.Angles(0, 0, math.rad(90))
+			crater.Material = Enum.Material.Slate
+			crater.Color = Color3.fromRGB(50, 45, 40)
+			crater.Anchored = true
+			crater.CanCollide = false
+			crater.Parent = Workspace
+			Debris:AddItem(crater, 3.0)
+
+			-- Bounce rebound impulse (OTG window)
+			tRoot.AssemblyLinearVelocity = Vector3.new(flatHitDir.X * 6, 14, flatHitDir.Z * 6)
+			targetModel:SetAttribute("IsGroundBounced", true)
+			spawnFloatingText(craterPos + Vector3.new(0, 2, 0), "💥 GROUND BOUNCE!", Color3.fromRGB(255, 170, 0))
+
+			if _G.AwardCombatRyo then _G.AwardCombatRyo(attacker, 6, "Ground Bounce OTG") end
+
+			task.delay(0.85, function()
+				if targetModel and targetModel.Parent then
+					targetModel:SetAttribute("IsGroundBounced", false)
+				end
+			end)
+		end)
+
+	elseif comboStep == 4 then
+		-- Heavy Neutral Knockback
+		tRoot.AssemblyLinearVelocity = (flatHitDir * knockback) + Vector3.new(0, 12, 0)
+		targetModel:SetAttribute("VictimHitReaction", "HeavyKnockback")
+		if _G.AwardCombatRyo then _G.AwardCombatRyo(attacker, 4, "Combo Finisher") end
+	else
+		-- Regular combo flinch (Hit 1, 2, 3)
+		local liftY = if comboStep == 3 then 6 else 0
+		tRoot.AssemblyLinearVelocity = (flatHitDir * knockback) + Vector3.new(0, liftY, 0)
+		local reactType = if comboStep == 1 then "High" elseif comboStep == 2 then "Mid" else "Stagger"
+		targetModel:SetAttribute("VictimHitReaction", reactType)
+		if _G.AwardCombatRyo then _G.AwardCombatRyo(attacker, 1, "Combo Hit") end
+	end
 end)
 
 -- =========================================================
@@ -391,8 +452,8 @@ evSub.OnServerEvent:Connect(function(player: Player)
 	local prevCFrame = root.CFrame
 	spawnSubstitutionLog(prevCFrame)
 
-	-- 3. Teleport 8 studs directly BEHIND the attacker facing their back!
-	local behindPos = targetRoot.Position - (targetRoot.CFrame.LookVector * 8.0)
+	-- 3. Teleport 4.5 studs directly BEHIND the attacker facing their back!
+	local behindPos = targetRoot.Position - (targetRoot.CFrame.LookVector * 4.5)
 	root.CFrame = CFrame.lookAt(behindPos, targetRoot.Position)
 	root.AssemblyLinearVelocity = Vector3.zero
 

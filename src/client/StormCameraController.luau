@@ -312,8 +312,10 @@ local function onRenderStep(dt: number)
 	-- 6. Calculate ideal Camera Focus
 	local targetFocus = midpoint + Vector3.new(0, 1.5 + verticalOffset * 0.5 + (math.sin(pitchRad) * 4), 0)
 
-	-- 7. Smooth Lerp Interpolation
-	local lerpFactor = math.clamp(dt * SMOOTH_SPEED, 0, 1)
+	-- 7. Smooth Lerp Interpolation (High responsiveness during combat combos)
+	local isCombatActive = dynamicZoomOffset < -0.5 or LocalPlayer:GetAttribute("IsNinjaDashing") == true
+	local currentSmoothSpeed = if isCombatActive then 22 else SMOOTH_SPEED
+	local lerpFactor = math.clamp(dt * currentSmoothSpeed, 0, 1)
 	currentCamPos = currentCamPos:Lerp(targetCamPos, lerpFactor)
 	currentCamFocus = currentCamFocus:Lerp(targetFocus, lerpFactor)
 
@@ -325,10 +327,11 @@ local function onRenderStep(dt: number)
 		Camera.CFrame = baseCF
 	end
 
-	-- 9. Smoothly Decay Offsets back to neutral
-	dynamicPitchOffset = dynamicPitchOffset + (0 - dynamicPitchOffset) * math.clamp(dt * 3.5, 0, 1)
+	-- 9. Smoothly Decay Offsets back to neutral (Holds skyward launcher angle during air combat)
+	local pitchDecayRate = if dynamicPitchOffset > 5 then 1.8 else 3.5
+	dynamicPitchOffset = dynamicPitchOffset + (0 - dynamicPitchOffset) * math.clamp(dt * pitchDecayRate, 0, 1)
 	dynamicRollOffset  = dynamicRollOffset  + (0 - dynamicRollOffset)  * math.clamp(dt * 6.0, 0, 1)
-	dynamicZoomOffset  = dynamicZoomOffset  + (0 - dynamicZoomOffset)  * math.clamp(dt * 4.0, 0, 1)
+	dynamicZoomOffset  = dynamicZoomOffset  + (0 - dynamicZoomOffset)  * math.clamp(dt * 3.2, 0, 1)
 
 	-- 10. Dynamic FOV Interpolation
 	local isDashing = LocalPlayer:GetAttribute("IsNinjaDashing") == true

@@ -313,6 +313,23 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 	local dmgColor = if isAwakening then Color3.fromRGB(255, 30, 30) elseif attackType == "Low" then Color3.fromRGB(255, 170, 0) elseif comboStep == 4 then Color3.fromRGB(255, 50, 50) else Color3.fromRGB(255, 255, 255)
 	spawnFloatingText(tRoot.Position, string.format("💥 -%d%s", finalDamage, isAwakening and " [RAGE]" or ""), dmgColor)
 
+	-- Authoritative Victim Hitstun Lock (Prevents escaping active combo strings)
+	local hitstunDuration = if comboStep == 4 then 0.45 else 0.28
+	targetModel:SetAttribute("IsHitstunned", true)
+	local origSpeed = tHum.WalkSpeed
+	if origSpeed > 0 then
+		tHum.WalkSpeed = 0
+		task.delay(hitstunDuration, function()
+			if tHum and tHum.Parent and tHum.Health > 0 then
+				local curReaction = tostring(targetModel:GetAttribute("VictimHitReaction") or "")
+				if curReaction ~= "Launched" and curReaction ~= "GroundBounce" then
+					tHum.WalkSpeed = 16
+					targetModel:SetAttribute("IsHitstunned", false)
+				end
+			end
+		end)
+	end
+
 	-- Update State for Substitution & Chakra Tracking
 	if targetState then
 		targetState.lastAttacker = attackerChar

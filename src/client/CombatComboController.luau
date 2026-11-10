@@ -2,22 +2,23 @@
 -- CombatComboController.luau
 -- CLIENT SCRIPT: Naruto x Boruto Ultimate Ninja Storm Connections Combat Engine
 -- Features:
+--   • Ultra-Responsive Input Buffering (0.32s Window) for Butter-Smooth Mashing
+--   • Multi-Frame Active Hitbox Window (Heartbeat scanning during strike snap)
+--   • Smooth Slerp Auto-Face & Magnetic Glide Tracking (No instant teleport rotation)
+--   • Hit-Confirmation Early Canceling (Next combo hit triggers the millisecond a strike connects)
 --   • Storm Connections Directional Combos:
 --       [J]: Neutral Combo (4-Hit Flurry -> Heavy Knockdown Blast)
---       [W + J]: Up Combo (4-Hit Launcher -> Launches Opponent 50 studs into the sky!)
+--       [W + J]: Up Combo (4-Hit Launcher -> Launches Opponent 50+ studs into the sky!)
 --       [S + J] / [K]: Down Combo (4-Hit Low String -> Ground Slam & Ground Bounce OTG)
 --       [Air + J]: Air Combo (3-Hit Aerial Dogfight -> Meteor Dive Spike)
---   • Air Chase System (Signature Connections Mechanic):
+--   • Air Chase System:
 --       When an opponent is launched into the air, pressing Dash or Attack triggers
---       a supersonic sonic-boom Air Chase straight to their airborne position to continue
---       into an aerial combo!
+--       a supersonic sonic-boom Air Chase straight to their airborne position!
 --   • Chakra Dash Cancel (CDC - Infinite Combo Loop Engine):
---       Cancel attack recovery at ANY point by pressing Dash while attacking (consumes 15 Chakra),
+--       Cancel attack recovery at ANY millisecond by pressing Dash (consumes 15 Chakra),
 --       instantly homing back into the enemy to reset combo strings!
---   • Auto-Face Target Tracking:
---       Smoothly re-aligns the character's orientation toward the locked target on every hit.
 --   • CyberConnect2 Impact Juice:
---       True Two-Way Micro Hitstop (0.06s freeze) + Directional Slashes + Radial Sparks + Dutch Angle Shake!
+--       Two-Way Micro Hitstop (0.06s freeze) + Directional Slashes + Radial Sparks + Dutch Angle Shake!
 --   • Storm 4 Counter Stance ([Guard + Attack] / [F + J]):
 --       Deflects rushing strikes and blows attackers flying across the arena.
 
@@ -33,18 +34,27 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera :: Camera
 
 -- Configuration
-local COMBO_RESET_TIME = 0.85
-local MAX_MELEE_RANGE = 9.5
-local LUNGE_FORCE = 36
+local COMBO_RESET_TIME = 0.65 -- Snappy reset window matching Storm 4
 local CHAKRA_CDC_COST = 15
+local BUFFER_WINDOW = 0.32 -- 320ms input buffer window for seamless combo mashing
 
+-- State Variables
 local currentComboIndex = 0
 local currentBranch = "Neutral" -- "Neutral" | "Up" | "Down" | "Air"
 local lastAttackTime = 0
 local isAttacking = false
+local canChainNext = false -- Opens early on hit confirmation!
 local isStaggered = false
 local isAirChasing = false
 local lastCounterTime = 0
+
+-- Input Buffer Structure
+type BufferedAction = {
+	action: string, -- "Attack" | "Low"
+	forceLow: boolean,
+	timestamp: number,
+}
+local bufferedInput: BufferedAction? = nil
 
 -- Remotes
 local combatEvents = ReplicatedStorage:WaitForChild("CombatEvents", 15) :: Folder
@@ -96,12 +106,13 @@ local function screenShake(intensity: number, duration: number, tiltRoll: number
 		local startTime = os.clock()
 		local roll = tiltRoll or (math.random(-1, 1) * 1.5)
 		while os.clock() - startTime < duration do
+			local alpha = 1 - ((os.clock() - startTime) / duration)
 			local offset = Vector3.new(
-				(math.random() - 0.5) * intensity,
-				(math.random() - 0.5) * intensity,
-				(math.random() - 0.5) * intensity
+				(math.random() - 0.5) * intensity * alpha,
+				(math.random() - 0.5) * intensity * alpha,
+				(math.random() - 0.5) * intensity * alpha
 			)
-			Camera.CFrame = Camera.CFrame * CFrame.new(offset) * CFrame.Angles(0, 0, math.rad(roll * (1 - (os.clock() - startTime) / duration)))
+			Camera.CFrame = Camera.CFrame * CFrame.new(offset) * CFrame.Angles(0, 0, math.rad(roll * alpha))
 			RunService.RenderStepped:Wait()
 		end
 	end)
@@ -111,8 +122,8 @@ local function triggerHitstop(duration: number, attackerRoot: BasePart, targetRo
 	local char = LocalPlayer.Character
 	if not char then return end
 	local hum = char:FindFirstChildOfClass("Humanoid")
-	
-	-- Freeze velocities briefly for authentic crunchy fighting game weight
+
+	-- Micro freeze velocities for authentic crunchy fighting game impact
 	local origAttackerVel = attackerRoot.AssemblyLinearVelocity
 	attackerRoot.AssemblyLinearVelocity = Vector3.zero
 	if targetRoot then
@@ -124,7 +135,9 @@ local function triggerHitstop(duration: number, attackerRoot: BasePart, targetRo
 		hum.WalkSpeed = 0
 		task.delay(duration, function()
 			if hum then hum.WalkSpeed = origSpeed end
-			if attackerRoot then attackerRoot.AssemblyLinearVelocity = origAttackerVel * 0.4 end
+			if attackerRoot and attackerRoot.Parent then
+				attackerRoot.AssemblyLinearVelocity = origAttackerVel * 0.35
+			end
 		end)
 	end
 end
@@ -133,14 +146,13 @@ end
 local function playAttackFX(root: BasePart, isHeavy: boolean, branch: string, index: number, targetPos: Vector3?)
 	local impactPos = targetPos or (root.Position + root.CFrame.LookVector * 3.5 + Vector3.new(0, 0.4, 0))
 
-	-- 1. Directional Comic Slash Part
+	-- 1. Directional Comic Slash Ribbon Part
 	local fxPart = Instance.new("Part")
-	fxPart.Size = Vector3.new(isHeavy and 5.0 or 3.8, isHeavy and 5.0 or 3.8, 0.2)
-	local yOffset = if branch == "Down" then -1.0 elseif branch == "Up" then 1.2 else 0.2
-	local slashAngle = math.rad(index % 2 == 0 and 42 or -42)
+	fxPart.Size = Vector3.new(isHeavy and 5.5 or 4.0, isHeavy and 5.5 or 4.0, 0.15)
+	local slashAngle = math.rad(index % 2 == 0 and 45 or -45)
 	fxPart.CFrame = CFrame.new(impactPos) * CFrame.Angles(0, root.Orientation.Y, slashAngle)
 	fxPart.Material = Enum.Material.Neon
-	
+
 	local fxColor = Color3.fromRGB(0, 240, 255)
 	if isHeavy then
 		fxColor = Color3.fromRGB(255, 110, 30)
@@ -153,14 +165,14 @@ local function playAttackFX(root: BasePart, isHeavy: boolean, branch: string, in
 	end
 
 	fxPart.Color = fxColor
-	fxPart.Transparency = 0.2
+	fxPart.Transparency = 0.15
 	fxPart.Anchored = true
 	fxPart.CanCollide = false
 	fxPart.Parent = Workspace
 
-	local tween = TweenService:Create(fxPart, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+	local tween = TweenService:Create(fxPart, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		Transparency = 1,
-		Size = fxPart.Size * 1.5,
+		Size = fxPart.Size * 1.6,
 	})
 	tween:Play()
 	tween.Completed:Connect(function() fxPart:Destroy() end)
@@ -177,15 +189,15 @@ local function playAttackFX(root: BasePart, isHeavy: boolean, branch: string, in
 	local pe = Instance.new("ParticleEmitter")
 	pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 	pe.Color = ColorSequence.new(fxColor, Color3.fromRGB(255, 255, 255))
-	pe.Size = NumberSequence.new(1.8, 0)
+	pe.Size = NumberSequence.new(2.2, 0)
 	pe.Rate = 0
-	pe.Speed = NumberRange.new(12, 28)
+	pe.Speed = NumberRange.new(14, 32)
 	pe.SpreadAngle = Vector2.new(180, 180)
-	pe.Lifetime = NumberRange.new(0.25, 0.45)
+	pe.Lifetime = NumberRange.new(0.22, 0.40)
 	pe.Parent = sparkPart
 
-	pe:Emit(isHeavy and 30 or 18)
-	Debris:AddItem(sparkPart, 0.5)
+	pe:Emit(isHeavy and 32 or 20)
+	Debris:AddItem(sparkPart, 0.45)
 
 	-- 3. Expanding Shockwave Ring on Heavy Hits
 	if isHeavy then
@@ -195,16 +207,16 @@ local function playAttackFX(root: BasePart, isHeavy: boolean, branch: string, in
 		ring.CFrame = CFrame.new(impactPos) * CFrame.Angles(0, 0, math.rad(90))
 		ring.Color = fxColor
 		ring.Material = Enum.Material.Neon
-		ring.Transparency = 0.3
+		ring.Transparency = 0.25
 		ring.Anchored = true
 		ring.CanCollide = false
 		ring.Parent = Workspace
 
-		TweenService:Create(ring, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = Vector3.new(0.2, 10, 10),
+		TweenService:Create(ring, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = Vector3.new(0.2, 11, 11),
 			Transparency = 1,
 		}):Play()
-		Debris:AddItem(ring, 0.25)
+		Debris:AddItem(ring, 0.24)
 	end
 
 	-- Sound
@@ -223,8 +235,9 @@ local function findHitTarget(myRoot: BasePart): Model?
 		overlap.FilterDescendantsInstances = { LocalPlayer.Character }
 	end
 
-	local hitBoxCFrame = myRoot.CFrame * CFrame.new(0, 0, -4.0)
-	local hitParts = Workspace:GetPartBoundsInBox(hitBoxCFrame, Vector3.new(6.0, 6.0, 8.5), overlap)
+	-- Generous 3D active hitbox volume (7w x 7h x 9.5d)
+	local hitBoxCFrame = myRoot.CFrame * CFrame.new(0, 0, -4.5)
+	local hitParts = Workspace:GetPartBoundsInBox(hitBoxCFrame, Vector3.new(7.0, 7.0, 9.5), overlap)
 
 	for _, part in ipairs(hitParts) do
 		local model = part:FindFirstAncestorOfClass("Model")
@@ -243,7 +256,7 @@ local function getLockedTarget(myRoot: BasePart): Model?
 	local dummy = Workspace:FindFirstChild("TrainingDummy")
 	if dummy and dummy:IsA("Model") and dummy:FindFirstChild("HumanoidRootPart") then
 		local dRoot = dummy:FindFirstChild("HumanoidRootPart") :: BasePart
-		if (dRoot.Position - myRoot.Position).Magnitude <= 50 then
+		if (dRoot.Position - myRoot.Position).Magnitude <= 55 then
 			return dummy
 		end
 	end
@@ -252,7 +265,7 @@ local function getLockedTarget(myRoot: BasePart): Model?
 			local root = p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			local hum = p.Character:FindFirstChildOfClass("Humanoid")
 			if root and hum and hum.Health > 0 then
-				if (root.Position - myRoot.Position).Magnitude <= 50 then
+				if (root.Position - myRoot.Position).Magnitude <= 55 then
 					return p.Character
 				end
 			end
@@ -261,13 +274,47 @@ local function getLockedTarget(myRoot: BasePart): Model?
 	return nil
 end
 
--- Auto-Orient Character toward Target before striking
-local function autoFaceTarget(myRoot: BasePart, target: Model?)
+-- Smooth Slerp Orient toward Target (over 0.08s, no jarring snap)
+local function smoothFaceTarget(myRoot: BasePart, target: Model?)
 	if not target then return end
 	local tRoot = target:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not tRoot then return end
+
 	local flatTargetPos = Vector3.new(tRoot.Position.X, myRoot.Position.Y, tRoot.Position.Z)
-	myRoot.CFrame = CFrame.lookAt(myRoot.Position, flatTargetPos)
+	local desiredCFrame = CFrame.lookAt(myRoot.Position, flatTargetPos)
+
+	task.spawn(function()
+		local startTime = os.clock()
+		while os.clock() - startTime < 0.08 do
+			local alpha = math.clamp((os.clock() - startTime) / 0.08, 0, 1)
+			if myRoot and myRoot.Parent then
+				myRoot.CFrame = myRoot.CFrame:Lerp(desiredCFrame, alpha * 0.7)
+			end
+			RunService.Heartbeat:Wait()
+		end
+		if myRoot and myRoot.Parent then
+			myRoot.CFrame = desiredCFrame
+		end
+	end)
+end
+
+-- Forward declaration of executeAttack
+local executeAttack: (forceLow: boolean?) -> ()
+
+-- Check and Consume Buffered Input
+local function tryConsumeBufferedInput()
+	if bufferedInput then
+		local now = os.clock()
+		if now - bufferedInput.timestamp <= BUFFER_WINDOW then
+			local b = bufferedInput
+			bufferedInput = nil
+			executeAttack(b.forceLow)
+			return true
+		else
+			bufferedInput = nil
+		end
+	end
+	return false
 end
 
 -- =========================================================
@@ -326,6 +373,7 @@ local function triggerAirChase(myRoot: BasePart, target: Model)
 
 	isAirChasing = true
 	isAttacking = true
+	canChainNext = false
 	currentBranch = "Air"
 	currentComboIndex = 0
 
@@ -338,17 +386,15 @@ local function triggerAirChase(myRoot: BasePart, target: Model)
 	local pe = Instance.new("ParticleEmitter")
 	pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 	pe.Color = ColorSequence.new(Color3.fromRGB(0, 240, 255), Color3.fromRGB(255, 255, 255))
-	pe.Size = NumberSequence.new(2.4, 0)
-	pe.Rate = 80
-	pe.Speed = NumberRange.new(15, 30)
+	pe.Size = NumberSequence.new(2.5, 0)
+	pe.Rate = 90
+	pe.Speed = NumberRange.new(16, 34)
 	pe.Lifetime = NumberRange.new(0.3, 0.5)
 	pe.Parent = burstAtt
 	pe:Emit(40)
 
 	-- Notify Camera of Air Chase & Launcher Tracking
 	evCamImpact:Fire("AirChase", 0.6)
-
-	-- Aerodynamic Air Chase posture
 	evAnim:Fire("NinjaDash", 0.5)
 
 	local startTime = os.clock()
@@ -374,36 +420,13 @@ local function triggerAirChase(myRoot: BasePart, target: Model)
 			isAttacking = false
 			burstAtt:Destroy()
 			myRoot.AssemblyLinearVelocity = Vector3.new(0, 4, 0) -- Hover briefly for air string
-			
-			-- Execute Air Hit 1!
+
 			task.spawn(function()
-				-- Re-run attack as Air1
-				local function execAir()
-					if isAttacking then return end
-					local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-					if not hum or hum.Health <= 0 then return end
-					
-					currentBranch = "Air"
-					currentComboIndex = 1
-					isAttacking = true
-					lastAttackTime = os.clock()
-					
-					evAnim:Fire("Air1", 0.30)
-					playAttackFX(myRoot, false, "Air", 1, tRoot.Position)
-					triggerHitstop(0.06, myRoot, tRoot)
-					screenShake(0.18, 0.12)
-					
-					evAttack:FireServer(target, 1, "Mid", 12, 6)
-					
-					task.delay(0.24, function()
-						isAttacking = false
-					end)
-				end
-				execAir()
+				executeAttack(false)
 			end)
 		else
-			-- Rocket straight toward airborne target at 92 studs/s
-			local moveVel = dir.Unit * 92
+			-- Rocket straight toward airborne target at 105 studs/s
+			local moveVel = dir.Unit * 105
 			myRoot.AssemblyLinearVelocity = moveVel
 			myRoot.CFrame = CFrame.lookAt(myRoot.Position, targetAirPos)
 		end
@@ -423,10 +446,12 @@ local function triggerChakraDashCancel(myRoot: BasePart)
 	-- Deduct Chakra
 	LocalPlayer:SetAttribute("ChakraValue", curChakra - CHAKRA_CDC_COST)
 
-	-- Immediately reset attack recovery & combo step
+	-- Immediately reset attack recovery, buffered input & combo step
 	isAttacking = false
+	canChainNext = false
 	currentComboIndex = 0
 	isAirChasing = false
+	bufferedInput = nil
 
 	print(">> [CHAKRA DASH CANCEL] Recovery cancelled into Supersonic Dash! <<")
 	playSafeSound(SOUND_HEAVY, myRoot, 1.8, 0.9)
@@ -444,11 +469,11 @@ local function triggerChakraDashCancel(myRoot: BasePart)
 	ring.CanCollide = false
 	ring.Parent = Workspace
 
-	TweenService:Create(ring, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+	TweenService:Create(ring, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		Size = Vector3.new(0.3, 14, 14),
 		Transparency = 1,
 	}):Play()
-	Debris:AddItem(ring, 0.26)
+	Debris:AddItem(ring, 0.25)
 
 	-- Fire CDC Bindable to notify Movement Controller to execute high-speed homing dash
 	evCDC:Fire()
@@ -459,7 +484,7 @@ end
 -- =========================================================
 -- EXECUTE ATTACK (Storm Connections Branching Combos)
 -- =========================================================
-local function executeAttack(forceLow: boolean?)
+executeAttack = function(forceLow: boolean?)
 	local char = LocalPlayer.Character
 	if not char then return end
 	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -473,19 +498,34 @@ local function executeAttack(forceLow: boolean?)
 	end
 
 	-- 2. Check for AIR CHASE opportunity
-	-- If a locked target was launched high into the air, Attack initiates Air Chase!
 	local lockedTarget = getLockedTarget(root)
 	if lockedTarget then
 		local isTargetLaunched = lockedTarget:GetAttribute("IsAirborneLaunched") == true
 		local tRoot = lockedTarget:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if isTargetLaunched and tRoot and tRoot.Position.Y - root.Position.Y > 6 then
+		if isTargetLaunched and tRoot and tRoot.Position.Y - root.Position.Y > 5.5 then
 			triggerAirChase(root, lockedTarget)
 			return
 		end
 	end
 
-	-- If currently in attack recovery and not staggered, pressing attack during recovery queues or continues
-	if isAttacking or isStaggered then return end
+	-- 3. If currently attacking:
+	-- If hit already landed and canChainNext is true, allow immediate combo advance!
+	-- Otherwise, buffer the attack input so it fires the exact millisecond recovery finishes!
+	if isAttacking then
+		if canChainNext then
+			-- Hit confirmed! Proceed immediately to next hit without delay!
+		else
+			-- Buffer this input!
+			bufferedInput = {
+				action = "Attack",
+				forceLow = forceLow == true,
+				timestamp = os.clock(),
+			}
+			return
+		end
+	end
+
+	if isStaggered then return end
 
 	local now = os.clock()
 	if now - lastAttackTime > COMBO_RESET_TIME then
@@ -493,14 +533,14 @@ local function executeAttack(forceLow: boolean?)
 		currentBranch = "Neutral"
 	end
 
-	-- Auto-orient to face opponent directly before lunging
-	autoFaceTarget(root, lockedTarget)
+	-- Smooth auto-orient to face opponent before lunging (no snapping!)
+	smoothFaceTarget(root, lockedTarget)
 
 	-- Determine Branch: Air, Up (Launcher), Down (Ground Bounce), or Neutral
 	local isAirborne = hum.FloorMaterial == Enum.Material.Air or math.abs(root.AssemblyLinearVelocity.Y) > 3.0
 	local isWHeld = UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsKeyDown(Enum.KeyCode.DPadUp)
 	local isSHeld = UserInputService:IsKeyDown(Enum.KeyCode.S) or UserInputService:IsKeyDown(Enum.KeyCode.DPadDown)
-	
+
 	local moveDir = hum.MoveDirection
 	local isAnalogForward = (moveDir.Magnitude > 0.25 and root.CFrame.LookVector:Dot(moveDir.Unit) > 0.45)
 	local isAnalogBackward = (moveDir.Magnitude > 0.25 and root.CFrame.LookVector:Dot(moveDir.Unit) < -0.45)
@@ -521,57 +561,114 @@ local function executeAttack(forceLow: boolean?)
 
 	lastAttackTime = now
 	isAttacking = true
+	canChainNext = false -- Reset until hit confirms or recovery opens!
 
 	-- Procedural Animation Trigger: Neutral1..4, Up1..4, Down1..4, Air1..3
 	local animName = currentBranch .. tostring(currentComboIndex)
-	local animDur = if isHeavyFinisher then 0.46 else 0.24
+	local animDur = if isHeavyFinisher then 0.42 else 0.22
 	evAnim:Fire(animName, animDur)
 
 	-- Dynamic Camera Combo framing
 	evCamImpact:Fire("ComboHit", currentComboIndex, isHeavyFinisher, currentBranch)
 
-	-- Storm Connections Forward Lunge toward Target
-	local forwardDir = root.CFrame.LookVector
-	local lungeSpeed = if isHeavyFinisher then 44 else (if currentBranch == "Down" then 26 else LUNGE_FORCE)
-	root.AssemblyLinearVelocity = Vector3.new(forwardDir.X * lungeSpeed, root.AssemblyLinearVelocity.Y, forwardDir.Z * lungeSpeed)
+	-- =========================================================
+	-- SMOOTH MAGNETIC GLIDE (CyberConnect2 Homing Track)
+	-- =========================================================
+	local tRoot = lockedTarget and lockedTarget:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if tRoot then
+		local toTarget = tRoot.Position - root.Position
+		local dist = toTarget.Magnitude
+		local flatDir = Vector3.new(toTarget.X, 0, toTarget.Z).Unit
 
-	-- Hit detection
-	local hitTarget = findHitTarget(root)
-	local attackType = if currentBranch == "Down" then "Low" elseif currentBranch == "Up" then "High" else "Mid"
-	local damage = if isHeavyFinisher then 28 elseif currentComboIndex == 3 then 16 elseif currentComboIndex == 2 then 12 else 8
-	local knockback = if isHeavyFinisher then 54 else 6
+		if dist > 4.2 and dist <= 24 then
+			-- Smooth magnetic slide towards target sweet spot (4.0 studs away)
+			local glideSpeed = math.clamp(dist * 3.8, 30, isHeavyFinisher and 48 or 40)
+			root.AssemblyLinearVelocity = Vector3.new(flatDir.X * glideSpeed, root.AssemblyLinearVelocity.Y, flatDir.Z * glideSpeed)
+		else
+			-- Already in melee pocket: slight forward punch impulse
+			local fwd = root.CFrame.LookVector
+			root.AssemblyLinearVelocity = Vector3.new(fwd.X * 12, root.AssemblyLinearVelocity.Y, fwd.Z * 12)
+		end
+	else
+		-- No locked target: standard directional lunge
+		local forwardDir = root.CFrame.LookVector
+		local lungeSpeed = if isHeavyFinisher then 40 else 28
+		root.AssemblyLinearVelocity = Vector3.new(forwardDir.X * lungeSpeed, root.AssemblyLinearVelocity.Y, forwardDir.Z * lungeSpeed)
+	end
 
-	local targetRoot = hitTarget and hitTarget:FindFirstChild("HumanoidRootPart") :: BasePart?
+	-- =========================================================
+	-- MULTI-FRAME ACTIVE HITBOX SCANNER (Active Strike Window)
+	-- =========================================================
+	local hitLanded = false
+	local attackStartTime = os.clock()
+	local scanWindow = if isHeavyFinisher then 0.20 else 0.14
+	local hitScanConn: RBXScriptConnection?
 
-	-- Visual & Sound FX
-	playAttackFX(root, isHeavyFinisher, currentBranch, currentComboIndex, targetRoot and targetRoot.Position or nil)
+	local function onHitConfirmed(hitTarget: Model)
+		if hitLanded then return end
+		hitLanded = true
+		if hitScanConn then hitScanConn:Disconnect() end
 
-	if hitTarget and targetRoot then
+		local targetRoot = hitTarget:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local attackType = if currentBranch == "Down" then "Low" elseif currentBranch == "Up" then "High" else "Mid"
+		local damage = if isHeavyFinisher then 28 elseif currentComboIndex == 3 then 16 elseif currentComboIndex == 2 then 12 else 8
+		local knockback = if isHeavyFinisher then 54 else 8
+
+		-- Visual & Sound FX
+		playAttackFX(root, isHeavyFinisher, currentBranch, currentComboIndex, targetRoot and targetRoot.Position or nil)
+
 		-- Two-way CC2 Micro Hitstop
-		local hitstopTime = isHeavyFinisher and 0.10 or 0.05
+		local hitstopTime = isHeavyFinisher and 0.09 or 0.05
 		triggerHitstop(hitstopTime, root, targetRoot)
 
 		if isHeavyFinisher then
-			screenShake(0.42, 0.25, currentBranch == "Up" and 2.5 or -2.5)
+			screenShake(0.38, 0.22, currentBranch == "Up" and 2.5 or -2.5)
 			if currentBranch == "Up" then
-				-- LAUNCHER: Opponent launched high into the sky!
 				evCamImpact:Fire("Launcher", 1.2)
 			elseif currentBranch == "Down" or currentBranch == "Air" then
-				-- GROUND BOUNCE / SPIKE
 				evCamImpact:Fire("GroundSlam", 0.6)
 			end
 		else
-			screenShake(0.14, 0.10)
+			screenShake(0.12, 0.08)
 		end
 
+		-- Authoritative Server Damage & Reaction
 		evAttack:FireServer(hitTarget, currentComboIndex, attackType, damage, knockback)
+
+		-- HIT CONFIRMED! Open chain window immediately for next combo hit!
+		if not isHeavyFinisher then
+			canChainNext = true
+			-- If player was already mashing, execute buffered attack immediately!
+			tryConsumeBufferedInput()
+		end
 	end
 
-	-- Attack recovery cooldown (can be cancelled by CDC at any millisecond!)
-	local recoveryTime = if isHeavyFinisher then 0.44 else 0.22
+	-- Active Hitbox Scanning Loop
+	hitScanConn = RunService.Heartbeat:Connect(function()
+		local elapsed = os.clock() - attackStartTime
+		if elapsed > scanWindow or hitLanded or not isAttacking then
+			if hitScanConn then hitScanConn:Disconnect() end
+			return
+		end
+
+		-- Active frames start at 0.03s (after wind-up anticipation)
+		if elapsed >= 0.03 then
+			local hitTarget = findHitTarget(root)
+			if hitTarget then
+				onHitConfirmed(hitTarget)
+			end
+		end
+	end)
+
+	-- Attack recovery timer
+	local recoveryTime = if isHeavyFinisher then 0.38 else 0.18
 	task.delay(recoveryTime, function()
+		if hitScanConn then hitScanConn:Disconnect() end
 		if not isAirChasing then
 			isAttacking = false
+			canChainNext = false
+			-- Check buffered input on recovery exit
+			tryConsumeBufferedInput()
 		end
 	end)
 end
@@ -582,7 +679,9 @@ end
 local function triggerAttackerParriedStagger()
 	isStaggered = true
 	isAttacking = false
+	canChainNext = false
 	currentComboIndex = 0
+	bufferedInput = nil
 
 	local char = LocalPlayer.Character
 	if not char then return end
@@ -610,6 +709,7 @@ local function triggerAttackerParriedStagger()
 		att:Destroy()
 		if hum then hum.WalkSpeed = 16 end
 		isStaggered = false
+		tryConsumeBufferedInput()
 	end)
 end
 
@@ -662,4 +762,4 @@ evMobileDash.Event:Connect(function()
 	end
 end)
 
-print("[CombatComboController] ✅ Naruto Storm Connections Engine Active: Air Chase, CDC Infinite Strings, 2-Way Hitstop & Dynamic Impact ready.")
+print("[CombatComboController] ✅ Naruto Storm Connections Engine Active: Buffered Combos, Multi-Frame Hitbox, Magnetic Glide & CDC ready.")

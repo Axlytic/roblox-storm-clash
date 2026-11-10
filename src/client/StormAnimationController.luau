@@ -57,6 +57,12 @@ local animDuration = 1.0
 local isLooping = true
 local currentSequence: AnimationSequence? = nil
 
+-- Buttery Smooth Crossfade Pose Blending Engine
+local lastAppliedOffsets: JointOffsets = {}
+local blendStartOffsets: JointOffsets = {}
+local blendStartTime = 0
+local BLEND_DURATION = 0.065 -- 65ms seamless crossfade eliminating all joint pops!
+
 -- Forward declaration of triggerCombatAnimation
 local triggerCombatAnimation: (animName: string, durationOverride: number?) -> ()
 
@@ -1124,6 +1130,13 @@ triggerCombatAnimation = function(animName: string, durationOverride: number?)
 		animName = "Idle"
 	end
 
+	-- Snapshot current applied offsets to start seamless crossfade blend!
+	table.clear(blendStartOffsets)
+	for k, v in pairs(lastAppliedOffsets) do
+		blendStartOffsets[k] = v
+	end
+	blendStartTime = os.clock()
+
 	currentAnimName = animName
 	currentSequence = seq
 	animStartTime = os.clock()
@@ -1231,7 +1244,27 @@ local function onRenderStep(dt: number)
 	end
 
 	-- Evaluate offsets from sequence
-	local offsets = evaluateKeyframeOffsets(seq, progress)
+	local targetOffsets = evaluateKeyframeOffsets(seq, progress)
+	local offsets: JointOffsets = {}
+
+	-- Seamless Crossfade Blend: smoothly interpolate from previous pose to new animation
+	local blendElapsed = now - blendStartTime
+	if blendElapsed < BLEND_DURATION and next(blendStartOffsets) ~= nil then
+		local bAlpha = math.clamp(blendElapsed / BLEND_DURATION, 0, 1)
+		local easedBlend = bAlpha * bAlpha * (3 - 2 * bAlpha) -- Hermite smoothstep
+		for jointName, tgtCf in pairs(targetOffsets) do
+			local startCf = blendStartOffsets[jointName] or tgtCf
+			offsets[jointName] = startCf:Lerp(tgtCf, easedBlend)
+		end
+		for jointName, startCf in pairs(blendStartOffsets) do
+			if not offsets[jointName] then
+				local tgtCf = targetOffsets[jointName] or startCf
+				offsets[jointName] = startCf:Lerp(tgtCf, easedBlend)
+			end
+		end
+	else
+		offsets = targetOffsets
+	end
 
 	-- Apply offsets to cached joints (AnimationConstraint & Motor6D compatible)
 	local char = LocalPlayer.Character
@@ -1265,6 +1298,7 @@ local function onRenderStep(dt: number)
 			end
 
 			if off then
+				lastAppliedOffsets[jointName] = off
 				if joint:IsA("AnimationConstraint") then
 					(joint :: AnimationConstraint).Transform = off
 				elseif joint:IsA("Motor6D") then

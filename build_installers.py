@@ -69,3 +69,4 @@ return 'Installed {item['cls']}: {item['name']}'
     with open(item["dst"], "w", encoding="utf-8") as f:
         f.write(template)
     print(f"Generated {item['dst']} ({len(template)} bytes)")
+

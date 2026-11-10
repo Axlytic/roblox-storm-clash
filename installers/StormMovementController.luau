@@ -391,20 +391,28 @@ evMobileChakra.Event:Connect(function(isHolding: any)
 	end
 end)
 
--- Smooth Target Orientation and AutoRotate Management
-RunService.RenderStepped:Connect(function()
+-- Smooth Target Orientation and Dynamic Shinobi Speed
+RunService.RenderStepped:Connect(function(dt: number)
 	local char = LocalPlayer.Character
 	if not char then return end
 	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not root or not hum then return end
 
+	local isBlocking = LocalPlayer:GetAttribute("IsBlocking") == true
+	local isHitstunned = LocalPlayer:GetAttribute("IsHitstunned") == true
+
+	if not isChargingChakra and not isBlocking and not isHitstunned and hum.WalkSpeed > 0 and hum.WalkSpeed < 22 then
+		hum.WalkSpeed = 22 -- Snappy ninja mobility
+	end
+
 	local target = getTarget()
 	if target and target:FindFirstChild("HumanoidRootPart") then
 		local tRoot = target:FindFirstChild("HumanoidRootPart") :: BasePart
 		local look = Vector3.new(tRoot.Position.X, root.Position.Y, tRoot.Position.Z)
 		hum.AutoRotate = false
-		root.CFrame = root.CFrame:Lerp(CFrame.lookAt(root.Position, look), 0.22)
+		local trackAlpha = math.clamp(dt * 16, 0.15, 0.5)
+		root.CFrame = root.CFrame:Lerp(CFrame.lookAt(root.Position, look), trackAlpha)
 	else
 		hum.AutoRotate = true
 	end

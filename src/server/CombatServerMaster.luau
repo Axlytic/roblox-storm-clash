@@ -47,6 +47,7 @@ local evRanged     = ensureRemote("RangedAttackEvent")
 local evSub        = ensureRemote("SubstitutionEvent")
 local evCounter    = ensureRemote("CounterEvent")
 local evNinjutsu   = ensureRemote("NinjutsuEvent")
+local evAwakening  = ensureRemote("AwakeningEvent")
 
 -- =========================================================
 -- 2. PLAYER COMBAT STATE TRACKING (Storm 4 + Tekken)
@@ -724,6 +725,81 @@ evUltimate.OnServerEvent:Connect(function(attacker: Player, targetModel: Model)
 	spawnFloatingText(tRoot.Position, string.format("⚡ ULTIMATE FINISH -%d!", ultDmg), Color3.fromRGB(255, 220, 50))
 	local hitDir = (tRoot.Position - aRoot.Position).Unit
 	tRoot.AssemblyLinearVelocity = hitDir * 75 + Vector3.new(0, 20, 0)
+end)
+
+-- =========================================================
+-- 7B. AWAKENING SYSTEM ("MODE KEBANGKITAN" - [G] Key)
+-- =========================================================
+evAwakening.OnServerEvent:Connect(function(player: Player)
+	local char = player.Character
+	if not char then return end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not hum or not root or hum.Health <= 0 then return end
+
+	local isAwk = player:GetAttribute("IsAwakening") == true
+	if isAwk then return end
+
+	player:SetAttribute("IsAwakening", true)
+	print(string.format(">> [AWAKENING ACTIVATED] %s unleashed Kurama / Serious Awakening! <<", player.Name))
+	spawnFloatingText(root.Position + Vector3.new(0, 3, 0), "🔥 AWAKENED! 🔥", Color3.fromRGB(255, 30, 30))
+
+	-- 1. 360° Shockwave Pushback (repels all nearby enemies within 35 studs)
+	local shockRadius = 35
+	for _, target in ipairs(Workspace:GetChildren()) do
+		if target:IsA("Model") and target ~= char then
+			local tRoot = target:FindFirstChild("HumanoidRootPart") :: BasePart?
+			local tHum = target:FindFirstChildOfClass("Humanoid")
+			if tRoot and tHum and tHum.Health > 0 then
+				local delta = tRoot.Position - root.Position
+				local dist = delta.Magnitude
+				if dist <= shockRadius and dist > 0.1 then
+					local pushDir = delta.Unit
+					tRoot.AssemblyLinearVelocity = pushDir * 65 + Vector3.new(0, 16, 0)
+					target:SetAttribute("IsHitstunned", true)
+					task.delay(0.6, function() target:SetAttribute("IsHitstunned", false) end)
+				end
+			end
+		end
+	end
+
+	-- 2. Visual Aura Particle Emitter (Torso / Core)
+	local auraPart = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso") or root
+	local existingAura = auraPart:FindFirstChild("AwakeningAura")
+	if existingAura then existingAura:Destroy() end
+
+	local aura = Instance.new("ParticleEmitter")
+	aura.Name = "AwakeningAura"
+	aura.Texture = "rbxasset://textures/particles/fire_main.dds"
+	aura.Color = ColorSequence.new(Color3.fromRGB(255, 50, 20), Color3.fromRGB(255, 200, 30))
+	aura.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.8),
+		NumberSequenceKeypoint.new(0.5, 2.5),
+		NumberSequenceKeypoint.new(1, 0.4),
+	})
+	aura.Rate = 50
+	aura.Speed = NumberRange.new(3, 7)
+	aura.Lifetime = NumberRange.new(0.4, 0.8)
+	aura.SpreadAngle = Vector2.new(180, 180)
+	aura.Parent = auraPart
+
+	-- 3. Stat Boosts (Speed 30)
+	local origSpeed = hum.WalkSpeed
+	hum.WalkSpeed = 30
+
+	-- Duration 22s
+	task.delay(22, function()
+		if player.Parent then
+			player:SetAttribute("IsAwakening", false)
+			if hum.Parent then
+				hum.WalkSpeed = origSpeed
+			end
+			if aura.Parent then
+				aura:Destroy()
+			end
+			spawnFloatingText(root.Position + Vector3.new(0, 2, 0), "Awakening Expired", Color3.fromRGB(180, 180, 180))
+		end
+	end)
 end)
 
 -- =========================================================

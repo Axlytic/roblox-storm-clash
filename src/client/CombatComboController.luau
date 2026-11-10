@@ -81,10 +81,13 @@ local evCDC           = getOrMakeBindable("ChakraDashCancelAction")
 local evAnim          = getOrMakeBindable("StormCombatAnimationEvent")
 local evCamImpact     = getOrMakeBindable("StormCameraImpactEvent")
 
--- Sounds
-local SOUND_PUNCH = "rbxasset://sounds/action_footsteps_plastic.mp3"
-local SOUND_HEAVY = "rbxasset://sounds/impact_explosion_03.mp3"
-local SOUND_SWEEP = "rbxasset://sounds/action_jump.mp3"
+-- Universal High-Quality Audio Engine (Meaty Crunchy Anime Impacts)
+local SOUND_SNAP    = "rbxasset://sounds/sword_hit.wav"
+local SOUND_THUMP   = "rbxasset://sounds/splat.wav"
+local SOUND_HEAVY   = "rbxasset://sounds/impact_explosion_03.mp3"
+local SOUND_SWISH   = "rbxasset://sounds/action_swish.mp3"
+local SOUND_CLANG   = "rbxasset://sounds/sword_slash.wav"
+local SOUND_SHATTER = "rbxasset://sounds/shattered.mp3"
 
 local function playSafeSound(soundId: string, parent: Instance, pitch: number, volume: number)
 	pcall(function()
@@ -97,6 +100,319 @@ local function playSafeSound(soundId: string, parent: Instance, pitch: number, v
 		task.delay(0.6, function() pcall(function() snd:Destroy() end) end)
 	end)
 end
+
+-- =========================================================
+-- FLOATING 3D DAMAGE POPUPS (TSB / Anime Battlegrounds Style)
+-- =========================================================
+local function spawnDamagePopup(worldPos: Vector3, damageNum: number, isHeavy: boolean, attackType: string)
+	local part = Instance.new("Part")
+	part.Size = Vector3.new(0.2, 0.2, 0.2)
+	local spreadX = (math.random() - 0.5) * 2.2
+	local spreadZ = (math.random() - 0.5) * 2.2
+	part.Position = worldPos + Vector3.new(spreadX, 2.8, spreadZ)
+	part.Transparency = 1
+	part.Anchored = true
+	part.CanCollide = false
+	part.Parent = Workspace
+
+	local bb = Instance.new("BillboardGui")
+	bb.Size = isHeavy and UDim2.new(0, 200, 0, 70) or UDim2.new(0, 150, 0, 50)
+	bb.AlwaysOnTop = true
+	bb.Parent = part
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.fromScale(1, 1)
+	lbl.BackgroundTransparency = 1
+	lbl.Font = Enum.Font.GothamBlack
+	lbl.TextScaled = true
+	lbl.TextColor3 = isHeavy and Color3.fromRGB(255, 65, 30) or Color3.fromRGB(255, 230, 60)
+	lbl.Text = isHeavy and string.format("🔥 %d CRIT!", damageNum) or string.format("💥 %d", damageNum)
+	lbl.Parent = bb
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(0, 0, 0)
+	stroke.Thickness = isHeavy and 3 or 2
+	stroke.Parent = lbl
+
+	-- Pop & Float Up Tween
+	local targetPos = part.Position + Vector3.new(0, isHeavy and 4.2 or 3.0, 0)
+	TweenService:Create(part, TweenInfo.new(0.65, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = targetPos,
+	}):Play()
+
+	task.delay(0.4, function()
+		TweenService:Create(lbl, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			TextTransparency = 1,
+		}):Play()
+		TweenService:Create(stroke, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Transparency = 1,
+		}):Play()
+	end)
+	Debris:AddItem(part, 0.75)
+end
+
+-- =========================================================
+-- DYNAMIC SCREEN COMBO COUNTER UI
+-- =========================================================
+local comboHits = 0
+local lastComboHitTime = 0
+
+local comboGui = Instance.new("ScreenGui")
+comboGui.Name = "StormComboDisplayHUD"
+comboGui.ResetOnSpawn = false
+comboGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local comboFrame = Instance.new("Frame")
+comboFrame.Name = "ComboFrame"
+comboFrame.Size = UDim2.new(0, 240, 0, 85)
+comboFrame.Position = UDim2.new(0.08, 0, 0.42, 0)
+comboFrame.BackgroundTransparency = 1
+comboFrame.Visible = false
+comboFrame.Parent = comboGui
+
+local comboHitsLabel = Instance.new("TextLabel")
+comboHitsLabel.Name = "ComboHits"
+comboHitsLabel.Size = UDim2.new(1, 0, 0.65, 0)
+comboHitsLabel.BackgroundTransparency = 1
+comboHitsLabel.Font = Enum.Font.GothamBlack
+comboHitsLabel.TextSize = 46
+comboHitsLabel.TextColor3 = Color3.fromRGB(255, 230, 40)
+comboHitsLabel.TextXAlignment = Enum.TextXAlignment.Left
+comboHitsLabel.Text = "4 HITS"
+comboHitsLabel.Parent = comboFrame
+
+local hitsStroke = Instance.new("UIStroke")
+hitsStroke.Color = Color3.fromRGB(20, 20, 20)
+hitsStroke.Thickness = 3
+hitsStroke.Parent = comboHitsLabel
+
+local comboSubLabel = Instance.new("TextLabel")
+comboSubLabel.Name = "ComboSub"
+comboSubLabel.Size = UDim2.new(1, 0, 0.35, 0)
+comboSubLabel.Position = UDim2.new(0, 0, 0.65, 0)
+comboSubLabel.BackgroundTransparency = 1
+comboSubLabel.Font = Enum.Font.GothamBold
+comboSubLabel.TextSize = 18
+comboSubLabel.TextColor3 = Color3.fromRGB(0, 240, 255)
+comboSubLabel.TextXAlignment = Enum.TextXAlignment.Left
+comboSubLabel.Text = "★ SHINOBI RUSH ★"
+comboSubLabel.Parent = comboFrame
+
+local function registerComboHit()
+	comboHits += 1
+	lastComboHitTime = os.clock()
+	comboFrame.Visible = true
+
+	local color = Color3.fromRGB(255, 230, 40)
+	local subText = "★ SHINOBI RUSH ★"
+	if comboHits >= 8 then
+		color = Color3.fromRGB(255, 40, 40)
+		subText = "⚡ ULTRA STORM FINISHER! ⚡"
+	elseif comboHits >= 4 then
+		color = Color3.fromRGB(255, 140, 20)
+		subText = "🔥 HEAVY COMBO! 🔥"
+	end
+
+	comboHitsLabel.Text = string.format("%d HITS", comboHits)
+	comboHitsLabel.TextColor3 = color
+	comboSubLabel.Text = subText
+
+	comboHitsLabel.TextSize = 56
+	TweenService:Create(comboHitsLabel, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		TextSize = 46,
+	}):Play()
+end
+
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+		if comboHits > 0 and (os.clock() - lastComboHitTime > 2.2) then
+			comboHits = 0
+			TweenService:Create(comboHitsLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				TextTransparency = 1,
+			}):Play()
+			task.delay(0.35, function()
+				if comboHits == 0 then
+					comboFrame.Visible = false
+					comboHitsLabel.TextTransparency = 0
+				end
+			end)
+		end
+	end
+end)
+
+-- =========================================================
+-- DESTRUCTIBLE GROUND CRATER & PHYSICS DEBRIS (TSB / JJS)
+-- =========================================================
+local function spawnGroundCrater(pos: Vector3, isMassive: boolean)
+	task.spawn(function()
+		local crater = Instance.new("Part")
+		crater.Name = "ImpactCrater"
+		crater.Shape = Enum.PartType.Cylinder
+		crater.Size = Vector3.new(0.15, isMassive and 14 or 8, isMassive and 14 or 8)
+		crater.CFrame = CFrame.new(pos.X, 2.05, pos.Z) * CFrame.Angles(0, 0, math.rad(90))
+		crater.Material = Enum.Material.Slate
+		crater.Color = Color3.fromRGB(45, 45, 50)
+		crater.Anchored = true
+		crater.CanCollide = false
+		crater.Parent = Workspace
+
+		local debrisCount = isMassive and 8 or 5
+		for i = 1, debrisCount do
+			local rock = Instance.new("Part")
+			rock.Name = "RockDebris"
+			local s = math.random(8, 16) / 10
+			rock.Size = Vector3.new(s, s, s)
+			rock.Position = pos + Vector3.new(math.random(-2, 2), 0.5, math.random(-2, 2))
+			rock.Material = Enum.Material.Cobblestone
+			rock.Color = Color3.fromRGB(80, 78, 85)
+			rock.Anchored = false
+			rock.CanCollide = true
+			rock.Parent = Workspace
+
+			local randAngle = math.rad(math.random(0, 360))
+			local forceDir = Vector3.new(math.cos(randAngle), math.random(12, 22) / 10, math.sin(randAngle)).Unit
+			rock.AssemblyLinearVelocity = forceDir * math.random(25, 48)
+			rock.AssemblyAngularVelocity = Vector3.new(math.random(-15, 15), math.random(-15, 15), math.random(-15, 15))
+
+			Debris:AddItem(rock, 2.2)
+		end
+
+		task.delay(3.5, function()
+			local tw = TweenService:Create(crater, TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Transparency = 1,
+			})
+			tw:Play()
+			tw.Completed:Connect(function() crater:Destroy() end)
+		end)
+	end)
+end
+
+-- =========================================================
+-- AWAKENING PROGRESS METER ENGINE ([G] KEY)
+-- =========================================================
+local evAwakening = combatEvents:WaitForChild("AwakeningEvent", 5) :: RemoteEvent?
+if not evAwakening then
+	evAwakening = Instance.new("RemoteEvent")
+	evAwakening.Name = "AwakeningEvent"
+	evAwakening.Parent = combatEvents
+end
+
+local awakeningProgress = 0
+local isAwakeningActive = false
+
+local awkGui = Instance.new("ScreenGui")
+awkGui.Name = "StormAwakeningHUD"
+awkGui.ResetOnSpawn = false
+awkGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local awkFrame = Instance.new("Frame")
+awkFrame.Name = "AwakeningMeterFrame"
+awkFrame.Size = UDim2.new(0, 260, 0, 32)
+awkFrame.Position = UDim2.new(0.5, 0, 1, -48)
+awkFrame.AnchorPoint = Vector2.new(0.5, 1)
+awkFrame.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
+awkFrame.BackgroundTransparency = 0.2
+awkFrame.Parent = awkGui
+Instance.new("UICorner", awkFrame).CornerRadius = UDim.new(0, 6)
+
+local awkStroke = Instance.new("UIStroke")
+awkStroke.Color = Color3.fromRGB(60, 65, 80)
+awkStroke.Thickness = 2
+awkStroke.Parent = awkFrame
+
+local awkFill = Instance.new("Frame")
+awkFill.Name = "Fill"
+awkFill.Size = UDim2.new(0, 0, 1, 0)
+awkFill.BackgroundColor3 = Color3.fromRGB(255, 60, 20)
+awkFill.BorderSizePixel = 0
+awkFill.Parent = awkFrame
+Instance.new("UICorner", awkFill).CornerRadius = UDim.new(0, 6)
+
+local awkLabel = Instance.new("TextLabel")
+awkLabel.Name = "Label"
+awkLabel.Size = UDim2.fromScale(1, 1)
+awkLabel.BackgroundTransparency = 1
+awkLabel.Font = Enum.Font.GothamBlack
+awkLabel.TextSize = 13
+awkLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+awkLabel.Text = "AWAKENING [G] : 0%"
+awkLabel.Parent = awkFrame
+
+local function updateAwakeningHUD()
+	local ratio = math.clamp(awakeningProgress / 100, 0, 1)
+	TweenService:Create(awkFill, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = UDim2.new(ratio, 0, 1, 0),
+	}):Play()
+
+	if isAwakeningActive then
+		awkLabel.Text = "⚡ AWAKENING ACTIVE! ⚡"
+		awkLabel.TextColor3 = Color3.fromRGB(255, 240, 120)
+		awkStroke.Color = Color3.fromRGB(255, 40, 40)
+	elseif awakeningProgress >= 100 then
+		awkLabel.Text = "🔥 PRESS [G] TO AWAKEN! 🔥"
+		awkLabel.TextColor3 = Color3.fromRGB(255, 230, 40)
+		awkStroke.Color = Color3.fromRGB(255, 215, 0)
+	else
+		awkLabel.Text = string.format("AWAKENING [G] : %d%%", math.floor(awakeningProgress))
+		awkLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		awkStroke.Color = Color3.fromRGB(60, 65, 80)
+	end
+end
+
+local function addAwakeningCharge(amount: number)
+	if isAwakeningActive then return end
+	awakeningProgress = math.clamp(awakeningProgress + amount, 0, 100)
+	updateAwakeningHUD()
+end
+
+local function triggerClientAwakening()
+	if isAwakeningActive or awakeningProgress < 100 then return end
+	isAwakeningActive = true
+	awakeningProgress = 0
+	updateAwakeningHUD()
+
+	if evAwakening then
+		evAwakening:FireServer()
+	end
+
+	screenShake(0.65, 0.5, 5.0)
+	playSafeSound(SOUND_HEAVY, Camera, 0.9, 1.0)
+
+	task.delay(22, function()
+		isAwakeningActive = false
+		updateAwakeningHUD()
+	end)
+end
+
+-- Click to trigger on mobile / PC
+local awkBtn = Instance.new("TextButton")
+awkBtn.Size = UDim2.fromScale(1, 1)
+awkBtn.BackgroundTransparency = 1
+awkBtn.Text = ""
+awkBtn.Parent = awkFrame
+awkBtn.MouseButton1Click:Connect(triggerClientAwakening)
+
+-- Hook taking damage to charge Awakening
+task.spawn(function()
+	local function hookHumanoid(hum: Humanoid)
+		local lastHp = hum.Health
+		hum.HealthChanged:Connect(function(newHp)
+			if newHp < lastHp and newHp > 0 then
+				addAwakeningCharge(12)
+			end
+			lastHp = newHp
+		end)
+	end
+	if LocalPlayer.Character then
+		local h = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if h then hookHumanoid(h) end
+	end
+	LocalPlayer.CharacterAdded:Connect(function(char)
+		local h = char:WaitForChild("Humanoid", 5) :: Humanoid?
+		if h then hookHumanoid(h) end
+	end)
+end)
 
 -- =========================================================
 -- CYBERCONNECT2 IMPACT JUICE: HITSTOP & DIRECTIONAL FX
@@ -219,10 +535,20 @@ local function playAttackFX(root: BasePart, isHeavy: boolean, branch: string, in
 		Debris:AddItem(ring, 0.24)
 	end
 
-	-- Sound
-	local sId = if isHeavy then SOUND_HEAVY elseif branch == "Down" then SOUND_SWEEP else SOUND_PUNCH
-	local sPitch = if isHeavy then 1.05 else 1.2 + (index * 0.12)
-	playSafeSound(sId, root, sPitch, 1.0)
+	-- Meaty Anime Audio & Ground Destruction
+	if isHeavy then
+		playSafeSound(SOUND_HEAVY, root, 1.0, 1.0)
+		playSafeSound(SOUND_SHATTER, root, 1.15, 0.8)
+		if branch == "Down" or branch == "Air" then
+			spawnGroundCrater(impactPos, true)
+		end
+	else
+		playSafeSound(SOUND_SNAP, root, 1.15 + (index * 0.1), 0.95)
+		playSafeSound(SOUND_THUMP, root, 0.88, 0.75)
+		if branch == "Down" then
+			playSafeSound(SOUND_SWISH, root, 0.85, 0.9)
+		end
+	end
 end
 
 -- =========================================================
@@ -246,6 +572,20 @@ local function findHitTarget(myRoot: BasePart): Model?
 			local root = model:FindFirstChild("HumanoidRootPart")
 			if hum and root and hum.Health > 0 then
 				return model
+			end
+		end
+	end
+	return nil
+end
+
+local function checkHitTrainingPost(myRoot: BasePart): BasePart?
+	local hitBoxCFrame = myRoot.CFrame * CFrame.new(0, 0, -4.5)
+	local arena = Workspace:FindFirstChild("StormClashArena")
+	if not arena then return nil end
+	for _, child in ipairs(arena:GetChildren()) do
+		if child.Name:find("TrainingPost") and child:IsA("BasePart") then
+			if (child.Position - hitBoxCFrame.Position).Magnitude <= 8.5 then
+				return child
 			end
 		end
 	end
@@ -621,6 +961,12 @@ executeAttack = function(forceLow: boolean?)
 		local hitstopTime = isHeavyFinisher and 0.09 or 0.05
 		triggerHitstop(hitstopTime, root, targetRoot)
 
+		-- Floating Damage & Combo Counter
+		local impactPos = (targetRoot and targetRoot.Position) or (root.Position + root.CFrame.LookVector * 4)
+		spawnDamagePopup(impactPos, damage, isHeavyFinisher, attackType)
+		registerComboHit()
+		addAwakeningCharge(isHeavyFinisher and 14 or 8)
+
 		if isHeavyFinisher then
 			screenShake(0.38, 0.22, currentBranch == "Up" and 2.5 or -2.5)
 			if currentBranch == "Up" then
@@ -643,6 +989,48 @@ executeAttack = function(forceLow: boolean?)
 		end
 	end
 
+	local function onTrainingPostHit(post: BasePart)
+		if hitLanded then return end
+		hitLanded = true
+		if hitScanConn then hitScanConn:Disconnect() end
+
+		-- Wobble Animation
+		local origCf = post.CFrame
+		local tiltDir = (post.Position - root.Position).Unit
+		local twTilt = TweenService:Create(post, TweenInfo.new(0.08, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			CFrame = origCf * CFrame.Angles(math.rad(tiltDir.Z * 14), 0, math.rad(-tiltDir.X * 14)),
+		})
+		twTilt:Play()
+		twTilt.Completed:Connect(function()
+			TweenService:Create(post, TweenInfo.new(0.28, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {
+				CFrame = origCf,
+			}):Play()
+		end)
+
+		-- Wood Splinter Particles
+		local pe = Instance.new("ParticleEmitter")
+		pe.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		pe.Color = ColorSequence.new(Color3.fromRGB(180, 130, 80), Color3.fromRGB(120, 80, 40))
+		pe.Size = NumberSequence.new(0.8, 0.1)
+		pe.Speed = NumberRange.new(8, 16)
+		pe.SpreadAngle = Vector2.new(180, 180)
+		pe.Lifetime = NumberRange.new(0.3, 0.5)
+		pe.Parent = post
+		pe:Emit(16)
+		Debris:AddItem(pe, 0.6)
+
+		playSafeSound(SOUND_SNAP, root, 1.25, 1.0)
+		playSafeSound(SOUND_THUMP, root, 0.9, 0.8)
+		spawnDamagePopup(post.Position + Vector3.new(0, 2.5, 0), 15, isHeavyFinisher, "Wood")
+		registerComboHit()
+		addAwakeningCharge(12)
+
+		if not isHeavyFinisher then
+			canChainNext = true
+			tryConsumeBufferedInput()
+		end
+	end
+
 	-- Active Hitbox Scanning Loop
 	hitScanConn = RunService.Heartbeat:Connect(function()
 		local elapsed = os.clock() - attackStartTime
@@ -656,6 +1044,11 @@ executeAttack = function(forceLow: boolean?)
 			local hitTarget = findHitTarget(root)
 			if hitTarget then
 				onHitConfirmed(hitTarget)
+			else
+				local post = checkHitTrainingPost(root)
+				if post then
+					onTrainingPostHit(post)
+				end
 			end
 		end
 	end)
@@ -741,6 +1134,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 				triggerChakraDashCancel(root)
 			end
 		end
+
+	-- 4. Awakening Transformation: [G], Gamepad ButtonY (Triangle)
+	elseif input.KeyCode == Enum.KeyCode.G or input.KeyCode == Enum.KeyCode.ButtonY then
+		triggerClientAwakening()
 	end
 end)
 

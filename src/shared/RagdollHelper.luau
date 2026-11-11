@@ -179,3 +179,4 @@ function RagdollHelper.EnableRagdoll(char: Model, fatalVelocity: Vector3?)
 end
 
 return RagdollHelper
+

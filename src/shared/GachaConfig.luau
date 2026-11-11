@@ -114,5 +114,25 @@ GachaConfig.Rewards = {
 	DailyRewardCooldown = 86400,-- 24 Hours in seconds
 }
 
+-- =========================================================
+-- 6. CHARACTER STAR EVOLUTION (1★ TO 5★)
+-- =========================================================
+GachaConfig.StarEvolution = {
+	MaxStars = 5,
+	Costs = {
+		[2] = 30,  -- 1★ -> 2★: 30 Essence Shards
+		[3] = 75,  -- 2★ -> 3★: 75 Essence Shards
+		[4] = 150, -- 3★ -> 4★: 150 Essence Shards
+		[5] = 300, -- 4★ -> 5★: 300 Essence Shards
+	},
+	Buffs = {
+		[1] = { DmgMultiplier = 1.00, SpeedBonus = 0, Label = "Base Shinobi", Color = Color3.fromRGB(180, 190, 210) },
+		[2] = { DmgMultiplier = 1.05, SpeedBonus = 1, Label = "Adept Shinobi (+5% DMG)", Color = Color3.fromRGB(200, 220, 240) },
+		[3] = { DmgMultiplier = 1.10, SpeedBonus = 2, Label = "Elite Shinobi (+10% DMG, +2 SPD)", Color = Color3.fromRGB(255, 215, 0) },
+		[4] = { DmgMultiplier = 1.15, SpeedBonus = 3, Label = "Master Shinobi (+15% DMG, +3 SPD)", Color = Color3.fromRGB(180, 80, 255) },
+		[5] = { DmgMultiplier = 1.20, SpeedBonus = 5, Label = "Ascended Legend (+20% DMG, +5 SPD)", Color = Color3.fromRGB(255, 30, 80) },
+	},
+}
+
 return GachaConfig
 

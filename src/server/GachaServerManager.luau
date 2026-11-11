@@ -40,6 +40,7 @@ local evGachaSync    = ensureRemote("GachaSyncEvent")
 local evClaimDaily   = ensureRemote("ClaimDailyRewardEvent")
 local evOpenGacha    = ensureRemote("OpenGachaEvent")
 local evAddRyo       = ensureRemote("AddCombatRyoEvent")
+local evEvolveChar   = ensureRemote("EvolveCharacterEvent")
 
 -- In-Memory Player Profiles Cache
 type PlayerGachaProfile = {
@@ -49,6 +50,7 @@ type PlayerGachaProfile = {
 	TotalPulls: number,
 	LastDaily: number,
 	Unlocked: { [string]: boolean },
+	StarLevels: { [string]: number },
 }
 
 local playerProfiles: { [number]: PlayerGachaProfile } = {}
@@ -56,8 +58,10 @@ local playerProfiles: { [number]: PlayerGachaProfile } = {}
 -- Helper: Create Default Profile
 local function createDefaultProfile(): PlayerGachaProfile
 	local unlocked: { [string]: boolean } = {}
+	local starLevels: { [string]: number } = {}
 	for _, starterId in ipairs(GachaConfig.StarterCharacters) do
 		unlocked[starterId] = true
+		starLevels[starterId] = 1
 	end
 	return {
 		Ryo = GachaConfig.StartingRyo or 300,
@@ -66,6 +70,7 @@ local function createDefaultProfile(): PlayerGachaProfile
 		TotalPulls = 0,
 		LastDaily = 0,
 		Unlocked = unlocked,
+		StarLevels = starLevels,
 	}
 end
 
@@ -92,6 +97,11 @@ local function loadPlayerData(player: Player)
 					if v == true then defaultProf.Unlocked[k] = true end
 				end
 			end
+			if typeof(saved.StarLevels) == "table" then
+				for charId, stars in pairs(saved.StarLevels) do
+					defaultProf.StarLevels[charId] = stars
+				end
+			end
 			print(string.format(">> [GachaServer] Loaded data for %s (Ryo: %d, Pity: %d)", player.Name, defaultProf.Ryo, defaultProf.Pity))
 		end
 	end
@@ -102,6 +112,9 @@ local function loadPlayerData(player: Player)
 	player:SetAttribute("RyoValue", defaultProf.Ryo)
 	player:SetAttribute("PityCount", defaultProf.Pity)
 	player:SetAttribute("EssenceShards", defaultProf.EssenceShards)
+	for charId, stars in pairs(defaultProf.StarLevels) do
+		player:SetAttribute("CharStar_" .. charId, stars)
+	end
 
 	-- Sync to client
 	task.delay(1.0, function()
@@ -124,6 +137,7 @@ local function savePlayerData(player: Player)
 			TotalPulls = prof.TotalPulls,
 			LastDaily = prof.LastDaily,
 			Unlocked = prof.Unlocked,
+			StarLevels = prof.StarLevels,
 		})
 	end)
 	print(string.format(">> [GachaServer] Saved data for %s <<", player.Name))
@@ -318,6 +332,65 @@ evGachaSync.OnServerEvent:Connect(function(player: Player)
 		evGachaSync:FireClient(player, prof)
 	end
 end)
+
+-- Character Star Evolution Handler (1★ -> 5★ using Essence Shards)
+evEvolveChar.OnServerEvent:Connect(function(player: Player, charId: string)
+	local prof = playerProfiles[player.UserId]
+	if not prof then return end
+
+	if not prof.Unlocked[charId] then
+		evEvolveChar:FireClient(player, {
+			Success = false,
+			Message = "Karakter belum dibuka! Lakukan summon di Gacha terlebih dahulu.",
+		})
+		return
+	end
+
+	prof.StarLevels = prof.StarLevels or {}
+	local curStars = prof.StarLevels[charId] or 1
+	if curStars >= GachaConfig.StarEvolution.MaxStars then
+		evEvolveChar:FireClient(player, {
+			Success = false,
+			Message = "Karakter sudah mencapai bintang maksimal (5★)! Kekuatan Ascended aktif.",
+		})
+		return
+	end
+
+	local targetStar = curStars + 1
+	local cost = GachaConfig.StarEvolution.Costs[targetStar] or 50
+	if prof.EssenceShards < cost then
+		evEvolveChar:FireClient(player, {
+			Success = false,
+			Message = string.format("Shards tidak cukup! Butuh %d 💎 (Dimiliki: %d 💎).", cost, prof.EssenceShards),
+		})
+		return
+	end
+
+	-- Deduct Shards & Upgrade Star
+	prof.EssenceShards -= cost
+	prof.StarLevels[charId] = targetStar
+	player:SetAttribute("EssenceShards", prof.EssenceShards)
+	player:SetAttribute("CharStar_" .. charId, targetStar)
+
+	local buffInfo = GachaConfig.StarEvolution.Buffs[targetStar]
+	local label = buffInfo and buffInfo.Label or ("Bintang " .. tostring(targetStar))
+
+	evEvolveChar:FireClient(player, {
+		Success = true,
+		CharId = charId,
+		NewStars = targetStar,
+		NewShards = prof.EssenceShards,
+		Message = string.format("🌟 Sukses meng-evolusi %s ke Bintang %d! (%s)", charId, targetStar, label),
+	})
+	evGachaSync:FireClient(player, prof)
+	print(string.format(">> [GachaServer] %s evolved %s to %d Stars! Shards remaining: %d", player.Name, charId, targetStar, prof.EssenceShards))
+end)
+
+function _G.GetCharacterStarLevel(player: Player, charId: string): number
+	local prof = playerProfiles[player.UserId]
+	if not prof or not prof.StarLevels then return 1 end
+	return prof.StarLevels[charId] or 1
+end
 
 -- Internal helper to award Ryo (e.g. from combat / training dummy)
 function _G.AwardCombatRyo(player: Player, amount: number, reason: string?)

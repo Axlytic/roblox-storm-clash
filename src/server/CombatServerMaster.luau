@@ -310,10 +310,14 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 
 	-- 5. CLEAN HIT!
 	local isAwakening = attacker:GetAttribute("IsAwakening") == true
-	local finalDamage = if isAwakening then math.floor(damage * 1.25) else damage
+	local charId = tostring(attacker:GetAttribute("SelectedCharacter") or "Naruto")
+	local starLevel = tonumber(attacker:GetAttribute("CharStar_" .. charId)) or 1
+	local starMult = 1.0 + math.clamp(starLevel - 1, 0, 4) * 0.05
+	local baseHitDmg = math.floor(damage * starMult)
+	local finalDamage = if isAwakening then math.floor(baseHitDmg * 1.25) else baseHitDmg
 	tHum:TakeDamage(finalDamage)
-	local dmgColor = if isAwakening then Color3.fromRGB(255, 30, 30) elseif attackType == "Low" then Color3.fromRGB(255, 170, 0) elseif comboStep == 4 then Color3.fromRGB(255, 50, 50) else Color3.fromRGB(255, 255, 255)
-	spawnFloatingText(tRoot.Position, string.format("💥 -%d%s", finalDamage, isAwakening and " [RAGE]" or ""), dmgColor)
+	local dmgColor = if isAwakening then Color3.fromRGB(255, 30, 30) elseif starLevel >= 4 then Color3.fromRGB(255, 215, 0) elseif attackType == "Low" then Color3.fromRGB(255, 170, 0) elseif comboStep == 4 then Color3.fromRGB(255, 50, 50) else Color3.fromRGB(255, 255, 255)
+	spawnFloatingText(tRoot.Position, string.format("💥 -%d%s", finalDamage, isAwakening and " [RAGE]" or (starLevel >= 4 and " ★" or "")), dmgColor)
 
 	-- Update Quests
 	if _G.AddQuestProgress then

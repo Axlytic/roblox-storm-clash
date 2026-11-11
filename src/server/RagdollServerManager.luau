@@ -91,6 +91,9 @@ function _G.TriggerKO(victimModel: Model, killerPlayer: Player?, fatalImpulse: V
 
 	-- 3. Economy & Quest rewards for killer
 	if killerPlayer then
+		local curKills = tonumber(killerPlayer:GetAttribute("KillsCount")) or 0
+		killerPlayer:SetAttribute("KillsCount", curKills + 1)
+
 		if _G.AwardCombatRyo then
 			_G.AwardCombatRyo(killerPlayer, 100, "K.O. Shinobi Victory")
 		end
@@ -160,3 +163,4 @@ for _, p in ipairs(Players:GetPlayers()) do
 end
 
 print("[RagdollServerManager] ✅ Authoritative K.O. & Ragdoll Lifecycle Engine active.")
+

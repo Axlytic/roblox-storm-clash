@@ -36,6 +36,12 @@ local evCharSelect = combatEvents:WaitForChild("CharacterSelectEvent", 10) :: Re
 local evOpenRoster = combatEvents:WaitForChild("OpenRosterEvent", 10) :: RemoteEvent
 local evGachaSync  = combatEvents:WaitForChild("GachaSyncEvent", 10) :: RemoteEvent?
 local evOpenGacha  = combatEvents:WaitForChild("OpenGachaEvent", 10) :: RemoteEvent?
+local evEvolveChar = combatEvents:WaitForChild("EvolveCharacterEvent", 10) :: RemoteEvent?
+if not evEvolveChar then
+	evEvolveChar = Instance.new("RemoteEvent")
+	evEvolveChar.Name = "EvolveCharacterEvent"
+	evEvolveChar.Parent = combatEvents
+end
 
 local unlockedMap: { [string]: boolean } = {}
 for _, s in ipairs(GachaConfig.StarterCharacters) do
@@ -185,7 +191,7 @@ previewScroll.Position = UDim2.new(0, 0, 0, 0)
 previewScroll.BackgroundTransparency = 1
 previewScroll.ScrollBarThickness = 4
 previewScroll.ScrollBarImageColor3 = Color3.fromRGB(0, 240, 255)
-previewScroll.CanvasSize = UDim2.new(0, 0, 0, 360)
+previewScroll.CanvasSize = UDim2.new(0, 0, 0, 460)
 previewScroll.Parent = previewPanel
 
 -- Top Info: Large Icon + Name + Title
@@ -339,6 +345,73 @@ local sweepSkillLbl = createSkillRow("⚡ Sweep", "Uzumaki Low Sweep")
 local assistSkillLbl = createSkillRow("👥 Assist", "Shadow Clone Rasengan")
 local ultSkillLbl  = createSkillRow("💥 Ultimate", "Wind Style: Rasenshuriken")
 
+-- STAR EVOLUTION BOX (1★ TO 5★ SYSTEM)
+local starBox = Instance.new("Frame")
+starBox.Name = "StarEvolutionBox"
+starBox.Size = UDim2.new(1, -32, 0, 94)
+starBox.Position = UDim2.new(0, 16, 0, 340)
+starBox.BackgroundColor3 = Color3.fromRGB(18, 22, 34)
+starBox.BackgroundTransparency = 0.35
+starBox.Parent = previewScroll
+Instance.new("UICorner", starBox).CornerRadius = UDim.new(0, 8)
+
+local starBoxStroke = Instance.new("UIStroke")
+starBoxStroke.Color = Color3.fromRGB(255, 205, 50)
+starBoxStroke.Thickness = 1.2
+starBoxStroke.Parent = starBox
+
+local starTitle = Instance.new("TextLabel")
+starTitle.Size = UDim2.new(1, -20, 0, 18)
+starTitle.Position = UDim2.new(0, 10, 0, 8)
+starTitle.BackgroundTransparency = 1
+starTitle.Font = Enum.Font.GothamBlack
+starTitle.TextSize = 11
+starTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+starTitle.TextXAlignment = Enum.TextXAlignment.Left
+starTitle.Text = "⭐ TINGKAT BINTANG & EVOLUSI (STAR RANK)"
+starTitle.Parent = starBox
+
+local starsDisplayLbl = Instance.new("TextLabel")
+starsDisplayLbl.Size = UDim2.new(0.5, 0, 0, 22)
+starsDisplayLbl.Position = UDim2.new(0, 10, 0, 28)
+starsDisplayLbl.BackgroundTransparency = 1
+starsDisplayLbl.Font = Enum.Font.GothamBlack
+starsDisplayLbl.TextSize = 16
+starsDisplayLbl.TextColor3 = Color3.fromRGB(255, 215, 0)
+starsDisplayLbl.TextXAlignment = Enum.TextXAlignment.Left
+starsDisplayLbl.Text = "★ ★ ★ ☆ ☆  (3★)"
+starsDisplayLbl.Parent = starBox
+
+local starBuffDescLbl = Instance.new("TextLabel")
+starBuffDescLbl.Size = UDim2.new(0.5, -10, 0, 22)
+starBuffDescLbl.Position = UDim2.new(0.5, 0, 0, 28)
+starBuffDescLbl.BackgroundTransparency = 1
+starBuffDescLbl.Font = Enum.Font.GothamBold
+starBuffDescLbl.TextSize = 10
+starBuffDescLbl.TextColor3 = Color3.fromRGB(0, 240, 255)
+starBuffDescLbl.TextXAlignment = Enum.TextXAlignment.Right
+starBuffDescLbl.Text = "+10% Serangan"
+starBuffDescLbl.Parent = starBox
+
+local evolveBtn = Instance.new("TextButton")
+evolveBtn.Name = "EvolveButton"
+evolveBtn.Size = UDim2.new(1, -20, 0, 30)
+evolveBtn.Position = UDim2.new(0, 10, 0, 56)
+evolveBtn.BackgroundColor3 = Color3.fromRGB(255, 190, 30)
+evolveBtn.Font = Enum.Font.GothamBlack
+evolveBtn.TextSize = 11
+evolveBtn.TextColor3 = Color3.fromRGB(15, 18, 24)
+evolveBtn.Text = "⭐ UPGRADE KE BINTANG 4 (150 💎)"
+evolveBtn.Parent = starBox
+Instance.new("UICorner", evolveBtn).CornerRadius = UDim.new(0, 6)
+
+evolveBtn.MouseButton1Click:Connect(function()
+	playUiSound("action_jump.mp3", 1.2)
+	if evEvolveChar then
+		evEvolveChar:FireServer(previewSelectedId)
+	end
+end)
+
 -- BOTTOM ACTION BUTTON (Docked at base of PreviewPanel)
 local selectBtn = Instance.new("TextButton")
 selectBtn.Name = "SelectFighterButton"
@@ -397,12 +470,51 @@ local function updatePreview(charId: string)
 	assistSkillLbl.Text = "  👥 Assist [U]: " .. char.AssistName
 	ultSkillLbl.Text   = "  💥 Ultimate [I]: " .. char.UltimateName
 
+	-- Update Star Rank & Evolution
+	local starLevel = tonumber(LocalPlayer:GetAttribute("CharStar_" .. charId)) or 1
+	local starsStr = ""
+	for i = 1, 5 do
+		starsStr = starsStr .. (if i <= starLevel then "★ " else "☆ ")
+	end
+	starsDisplayLbl.Text = starsStr .. string.format("(%d★)", starLevel)
+
+	local curBuff = GachaConfig.StarEvolution.Buffs[starLevel]
+	starBuffDescLbl.Text = curBuff and curBuff.Label or "Base Shinobi"
+	starBuffDescLbl.TextColor3 = curBuff and curBuff.Color or Color3.fromRGB(200, 220, 240)
+
 	-- Update Button State
 	local isUnlocked = (unlockedMap[charId] == true) or (table.find(GachaConfig.StarterCharacters, charId) ~= nil)
 	if not isUnlocked then
 		selectBtn.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
 		selectBtn.TextColor3 = Color3.fromRGB(255, 240, 240)
 		selectBtn.Text = "🔒 TERKUNCI • BUKA DI GACHA (PULL)"
+
+		evolveBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
+		evolveBtn.TextColor3 = Color3.fromRGB(150, 160, 180)
+		evolveBtn.Text = "🔒 BUKA DULU DI GACHA UNTUK EVOLUSI"
+		evolveBtn.Active = false
+	else
+		if starLevel >= 5 then
+			evolveBtn.BackgroundColor3 = Color3.fromRGB(40, 35, 55)
+			evolveBtn.TextColor3 = Color3.fromRGB(255, 215, 0)
+			evolveBtn.Text = "👑 LEVEL BINTANG MAKSIMAL (ASCENDED)"
+			evolveBtn.Active = false
+		else
+			local nextStar = starLevel + 1
+			local cost = GachaConfig.StarEvolution.Costs[nextStar] or 50
+			local myShards = tonumber(LocalPlayer:GetAttribute("EssenceShards")) or 0
+			if myShards >= cost then
+				evolveBtn.BackgroundColor3 = Color3.fromRGB(255, 190, 30)
+				evolveBtn.TextColor3 = Color3.fromRGB(15, 18, 24)
+				evolveBtn.Text = string.format("⭐ UPGRADE KE %d★ (%d 💎 SHARDS)", nextStar, cost)
+				evolveBtn.Active = true
+			else
+				evolveBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65)
+				evolveBtn.TextColor3 = Color3.fromRGB(160, 170, 190)
+				evolveBtn.Text = string.format("🔒 BUTUH %d 💎 (PUNYA %d 💎)", cost, myShards)
+				evolveBtn.Active = false
+			end
+		end
 	elseif charId == currentSelectedId then
 		selectBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 95)
 		selectBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -615,6 +727,16 @@ evCharSelect.OnClientEvent:Connect(function(player: Player, charId: string, char
 		updatePreview(charId)
 	end
 end)
+
+-- Listen to Character Star Evolution responses
+if evEvolveChar then
+	evEvolveChar.OnClientEvent:Connect(function(res)
+		if res and res.Success then
+			playUiSound("victory.mp3", 1.1)
+			updatePreview(previewSelectedId)
+		end
+	end)
+end
 
 -- Expose to global/other scripts via bindable if needed
 local bindable = Instance.new("BindableFunction")

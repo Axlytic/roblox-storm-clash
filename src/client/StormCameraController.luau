@@ -184,9 +184,41 @@ local function findNearestTarget(): Model?
 	if not myRoot then return nil end
 
 	local bestTarget: Model? = nil
-	local closestDist = 120
+	local closestDist = 140
 
-	-- 1. Training Dummy
+	-- 1. Wave Survival Enemies (Folder or Model in Workspace)
+	local waveFolder = Workspace:FindFirstChild("WaveEnemies")
+	if waveFolder then
+		for _, enemy in ipairs(waveFolder:GetChildren()) do
+			if enemy:IsA("Model") and enemy:FindFirstChild("HumanoidRootPart") then
+				local hum = enemy:FindFirstChildOfClass("Humanoid")
+				if hum and hum.Health > 0 then
+					local dist = (enemy.HumanoidRootPart.Position - myRoot.Position).Magnitude
+					if dist < closestDist then
+						closestDist = dist
+						bestTarget = enemy
+					end
+				end
+			end
+		end
+	end
+
+	-- Also check individual spawned boss/clones directly in Workspace
+	for _, child in ipairs(Workspace:GetChildren()) do
+		if child:IsA("Model") and (child.Name == "ShadowGenin" or child.Name == "RogueChunin" or child.Name == "AkatsukiBoss" or child:GetAttribute("IsWaveEnemy") == true) then
+			local root = child:FindFirstChild("HumanoidRootPart") :: BasePart?
+			local hum = child:FindFirstChildOfClass("Humanoid")
+			if root and hum and hum.Health > 0 then
+				local dist = (root.Position - myRoot.Position).Magnitude
+				if dist < closestDist then
+					closestDist = dist
+					bestTarget = child
+				end
+			end
+		end
+	end
+
+	-- 2. Training Dummy
 	local dummy = Workspace:FindFirstChild("TrainingDummy")
 	if dummy and dummy:IsA("Model") and dummy:FindFirstChild("HumanoidRootPart") then
 		local dRoot = dummy:FindFirstChild("HumanoidRootPart") :: BasePart
@@ -197,7 +229,7 @@ local function findNearestTarget(): Model?
 		end
 	end
 
-	-- 2. Other Players
+	-- 3. Other Players in Match / Arena
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p ~= LocalPlayer and p.Character then
 			local root = p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -342,18 +374,31 @@ end
 RunService:BindToRenderStep("StormLockOnCamera", Enum.RenderPriority.Camera.Value + 1, onRenderStep)
 
 -- Toggle Lock-On with Key 'Z' or Middle Click
+local function toggleLockOn(): boolean
+	isLockOnActive = not isLockOnActive
+	if isLockOnActive then
+		currentTarget = findNearestTarget()
+	else
+		currentTarget = nil
+		Camera.CameraType = Enum.CameraType.Custom
+		Camera.FieldOfView = FOV_DEFAULT
+	end
+	print(">> [Storm Camera] Lock-On:", isLockOnActive and "ON" or "OFF", "<<")
+	return isLockOnActive
+end
+
+_G.ToggleLockOn = toggleLockOn
+_G.IsLockOnActive = function(): boolean
+	return isLockOnActive
+end
+_G.GetLockOnTarget = function(): Model?
+	return currentTarget
+end
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	if input.KeyCode == Enum.KeyCode.Z or input.UserInputType == Enum.UserInputType.MouseButton3 then
-		isLockOnActive = not isLockOnActive
-		if isLockOnActive then
-			currentTarget = findNearestTarget()
-		else
-			currentTarget = nil
-			Camera.CameraType = Enum.CameraType.Custom
-			Camera.FieldOfView = FOV_DEFAULT
-		end
-		print(">> [Storm Camera] Lock-On:", isLockOnActive and "ON" or "OFF", "<<")
+		toggleLockOn()
 	end
 end)
 

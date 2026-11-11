@@ -147,14 +147,14 @@ CombatConfig.Combo = {
 		[3] = { Damage = 24, Hitstun = 1.00, Knockback = 15, LiftY = -35, AttackType = "Mid", Finisher = "DiveSpike" },
 	},
 
-	-- Legacy Crouch M1: Low Shinobi Sweep ([K])
+	-- Legacy Crouch M1: Low Shinobi Sweep ([S + J])
 	CrouchSweep = {
 		Damage = 16,
 		Hitstun = 0.75,
 		Knockback = 12,
 		AttackType = "Low",   -- LOW attack (Bypasses High Guard!)
-		Sound = "rbxasset://sounds/action_jump.mp3",
-		Pitch = 1.4,
+		Sound = "rbxasset://sounds/action_swish.mp3",
+		Pitch = 1.25,
 	},
 }
 
@@ -297,7 +297,7 @@ CombatConfig.Characters = {
 			Lifetime = 2.2,
 			Color = Color3.fromRGB(0, 235, 255),
 			Shape = "Disc",
-			Sound = "rbxasset://sounds/action_jump.mp3",
+			Sound = "rbxasset://sounds/action_swish.mp3",
 			Icon = "🌀",
 		},
 		NinjutsuSkill = {
@@ -306,7 +306,7 @@ CombatConfig.Characters = {
 			ChakraCost = 25,
 			RushSpeed = 90,
 			Color = Color3.fromRGB(0, 220, 255),
-			Sound = "rbxasset://sounds/action_jump.mp3",
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
 			Knockback = 35,
 			LiftY = 12,
 		},
@@ -457,7 +457,7 @@ CombatConfig.Characters = {
 			Lifetime = 1.2,
 			Color = Color3.fromRGB(245, 185, 140),
 			Shape = "Fist",
-			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
+			Sound = "rbxasset://sounds/action_swish.mp3",
 			Icon = "👊",
 		},
 		NinjutsuSkill = {
@@ -537,7 +537,7 @@ CombatConfig.Characters = {
 			Lifetime = 1.8,
 			Color = Color3.fromRGB(255, 100, 25),
 			Shape = "Ball",
-			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
+			Sound = "rbxasset://sounds/sword_swing_fast.wav",
 			Icon = "🔥",
 		},
 		NinjutsuSkill = {
@@ -617,7 +617,7 @@ CombatConfig.Characters = {
 			Lifetime = 1.8,
 			Color = Color3.fromRGB(255, 230, 40),
 			Shape = "Ball",
-			Sound = "rbxasset://sounds/volume_slider.ogg",
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
 			Icon = "✨",
 		},
 		NinjutsuSkill = {
@@ -657,7 +657,7 @@ CombatConfig.Characters = {
 			Lifetime = 2.2,
 			Color = Color3.fromRGB(90, 180, 255),
 			Shape = "Ball",
-			Sound = "rbxasset://sounds/volume_slider.ogg",
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
 			Icon = "💥",
 		},
 		NinjutsuSkill = {
@@ -697,7 +697,7 @@ CombatConfig.Characters = {
 			Lifetime = 1.9,
 			Color = Color3.fromRGB(255, 200, 30),
 			Shape = "Ball",
-			Sound = "rbxasset://sounds/volume_slider.ogg",
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
 			Icon = "🔥",
 		},
 		NinjutsuSkill = {
@@ -1057,7 +1057,7 @@ CombatConfig.Characters = {
 			Lifetime = 2.0,
 			Color = Color3.fromRGB(255, 200, 50),
 			Shape = "Ball",
-			Sound = "rbxasset://sounds/volume_slider.ogg",
+			Sound = "rbxasset://sounds/electronicpingshort.wav",
 			Icon = "🖐️",
 		},
 		NinjutsuSkill = {
@@ -1177,7 +1177,7 @@ CombatConfig.Characters = {
 			Lifetime = 1.6,
 			Color = Color3.fromRGB(80, 255, 200),
 			Shape = "Fist",
-			Sound = "rbxasset://sounds/action_footsteps_plastic.mp3",
+			Sound = "rbxasset://sounds/action_swish.mp3",
 			Icon = "💨",
 		},
 		NinjutsuSkill = {

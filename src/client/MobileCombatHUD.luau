@@ -81,8 +81,8 @@ screenGui.Parent = PlayerGui
 local isTouchDevice = UserInputService.TouchEnabled
 local hudContainer = Instance.new("Frame")
 hudContainer.Name = "ActionCluster"
-hudContainer.Size = UDim2.new(0, 260, 0, 260)
-hudContainer.Position = UDim2.new(1, -270, 1, -270)
+hudContainer.Size = UDim2.new(0, 290, 0, 290)
+hudContainer.Position = UDim2.new(1, -300, 1, -300)
 hudContainer.BackgroundTransparency = 1
 hudContainer.Visible = isTouchDevice -- Auto-shows on Mobile
 hudContainer.Parent = screenGui
@@ -168,9 +168,9 @@ btnAttack.MouseButton1Click:Connect(function()
 	evMobileAttack:Fire(false)
 end)
 
--- 2. LOW SWEEP [K] (Serangan Bawah)
+-- 2. LOW SWEEP [S+J] (Serangan Bawah)
 local btnLow = createActionButton(
-	"BtnLow", "⚡", "LOW [K]", Color3.fromRGB(255, 180, 20),
+	"BtnLow", "⚡", "SWEEP", Color3.fromRGB(255, 180, 20),
 	UDim2.new(0.88, 0, 0.65, 0), UDim2.new(0, 56, 0, 56)
 )
 btnLow.MouseButton1Click:Connect(function()
@@ -260,6 +260,47 @@ local btnSub = createActionButton(
 )
 btnSub.MouseButton1Click:Connect(function()
 	evMobileSub:Fire()
+end)
+
+-- 9. TARGET LOCK-ON [Z] (Auto-Framing Camera Lock)
+local btnLock, lockStroke = createActionButton(
+	"BtnLock", "🎯", "LOCK [Z]", Color3.fromRGB(0, 240, 255),
+	UDim2.new(0.12, 0, 0.38, 0), UDim2.new(0, 52, 0, 52)
+)
+btnLock.MouseButton1Click:Connect(function()
+	if _G.ToggleLockOn then
+		local active = _G.ToggleLockOn()
+		lockStroke.Color = active and Color3.fromRGB(0, 255, 240) or Color3.fromRGB(120, 130, 150)
+		btnLock.BackgroundColor3 = active and Color3.fromRGB(18, 38, 55) or Color3.fromRGB(18, 22, 34)
+	end
+end)
+
+-- 10. AWAKENING MODE [G] (Mode Kebangkitan)
+local combatEventsFolder = ReplicatedStorage:WaitForChild("CombatEvents", 10) :: Folder?
+local evAwaken = combatEventsFolder and combatEventsFolder:FindFirstChild("AwakeningEvent") :: RemoteEvent?
+
+local btnAwaken, awakenStroke = createActionButton(
+	"BtnAwaken", "🔥", "AWAKEN", Color3.fromRGB(255, 60, 20),
+	UDim2.new(0.65, 0, 0.04, 0), UDim2.new(0, 62, 0, 48)
+)
+btnAwaken.Visible = false
+
+btnAwaken.MouseButton1Click:Connect(function()
+	if evAwaken then
+		evAwaken:FireServer(true)
+	end
+end)
+
+-- Awakening Gauge Watcher
+LocalPlayer:GetAttributeChangedSignal("AwakeningValue"):Connect(function()
+	local cur = tonumber(LocalPlayer:GetAttribute("AwakeningValue")) or 0
+	local isAwakened = LocalPlayer:GetAttribute("IsAwakened") == true
+	if cur >= 100 and not isAwakened then
+		btnAwaken.Visible = true
+		awakenStroke.Color = Color3.fromRGB(255, 215, 0)
+	else
+		btnAwaken.Visible = false
+	end
 end)
 
 -- =========================================================

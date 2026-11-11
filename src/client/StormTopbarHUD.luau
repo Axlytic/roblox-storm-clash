@@ -49,7 +49,7 @@ screenGui.Parent = PlayerGui
 -- Main Container (Top-Left Dock)
 local dockContainer = Instance.new("Frame")
 dockContainer.Name = "TopLeftDock"
-dockContainer.Size = UDim2.new(0, 570, 0, 44)
+dockContainer.Size = UDim2.new(0, 660, 0, 44)
 dockContainer.Position = UDim2.new(0, 16, 0, 14)
 dockContainer.BackgroundTransparency = 1
 dockContainer.Parent = screenGui
@@ -199,6 +199,18 @@ createNavButton("Cosmetics", "✨ GELAR", "K", 5, function()
 	end
 end)
 
+-- Button 5: Ranked 1v1 PvP Duel [P]
+createNavButton("Duel", "⚔️ 1v1", "P", 6, function()
+	if _G.ToggleDuelHUD then
+		_G.ToggleDuelHUD()
+	else
+		local duelGui = PlayerGui:FindFirstChild("StormDuelHUD") :: ScreenGui?
+		if duelGui then
+			duelGui.Enabled = not duelGui.Enabled
+		end
+	end
+end)
+
 -- =========================================================
 -- 3. ANIME BATTLE BGM JUKEBOX & MUTE TOGGLE
 -- =========================================================
@@ -213,7 +225,7 @@ bgmSound.Parent = SoundService
 local isBgmPlaying = true
 pcall(function() bgmSound:Play() end)
 
-local bgmBtn = createNavButton("BGM", "🎵 BGM", "", 6, function()
+local bgmBtn = createNavButton("BGM", "🎵 BGM", "", 7, function()
 	isBgmPlaying = not isBgmPlaying
 	if isBgmPlaying then
 		bgmSound.Volume = 0.28

@@ -4,7 +4,7 @@
 import json
 import os
 
-studio_id = "29bff57e-28ab-47c2-a9ae-4a925a43d0e2"
+studio_id = "606a55e2-7d88-4d6f-80e6-dd6903a47a2d"
 
 files_to_sync = [
     # 1. ReplicatedStorage
@@ -12,6 +12,9 @@ files_to_sync = [
     {"name": "CosmeticsConfig", "type": "ModuleScript", "parent": "ReplicatedStorage", "path": "src/shared/CosmeticsConfig.luau"},
     {"name": "RagdollHelper", "type": "ModuleScript", "parent": "ReplicatedStorage", "path": "src/shared/RagdollHelper.luau"},
     {"name": "QuestConfig", "type": "ModuleScript", "parent": "ReplicatedStorage", "path": "src/shared/QuestConfig.luau"},
+    {"name": "SoundConfig", "type": "ModuleScript", "parent": "ReplicatedStorage", "path": "src/shared/SoundConfig.luau"},
+    {"name": "DuelConfig", "type": "ModuleScript", "parent": "ReplicatedStorage", "path": "src/shared/DuelConfig.luau"},
+    {"name": "CombatConfig", "type": "ModuleScript", "parent": "ReplicatedStorage", "path": "src/shared/CombatConfig.luau"},
 
     # 2. ServerScriptService
     {"name": "GachaServerManager", "type": "Script", "parent": "ServerScriptService", "path": "src/server/GachaServerManager.luau"},
@@ -22,6 +25,7 @@ files_to_sync = [
     {"name": "WaveSurvivalServerManager", "type": "Script", "parent": "ServerScriptService", "path": "src/server/WaveSurvivalServerManager.luau"},
     {"name": "CosmeticsServerManager", "type": "Script", "parent": "ServerScriptService", "path": "src/server/CosmeticsServerManager.luau"},
     {"name": "CombatServerMaster", "type": "Script", "parent": "ServerScriptService", "path": "src/server/CombatServerMaster.luau"},
+    {"name": "DuelServerManager", "type": "Script", "parent": "ServerScriptService", "path": "src/server/DuelServerManager.luau"},
 
     # 3. StarterPlayerScripts
     {"name": "StormDailyQuestHUD", "type": "LocalScript", "parent": "StarterPlayerScripts", "path": "src/client/StormDailyQuestHUD.luau"},
@@ -32,6 +36,10 @@ files_to_sync = [
     {"name": "StormGachaHUD", "type": "LocalScript", "parent": "StarterPlayerScripts", "path": "src/client/StormGachaHUD.luau"},
     {"name": "StormCharacterSelectHUD", "type": "LocalScript", "parent": "StarterPlayerScripts", "path": "src/client/StormCharacterSelectHUD.luau"},
     {"name": "CombatComboController", "type": "LocalScript", "parent": "StarterPlayerScripts", "path": "src/client/CombatComboController.luau"},
+    {"name": "StormAudioController", "type": "LocalScript", "parent": "StarterPlayerScripts", "path": "src/client/StormAudioController.luau"},
+    {"name": "StormDuelHUD", "type": "LocalScript", "parent": "StarterPlayerScripts", "path": "src/client/StormDuelHUD.luau"},
+    {"name": "StormCameraController", "type": "LocalScript", "parent": "StarterPlayerScripts", "path": "src/client/StormCameraController.luau"},
+    {"name": "MobileCombatHUD", "type": "LocalScript", "parent": "StarterPlayerScripts", "path": "src/client/MobileCombatHUD.luau"},
 ]
 
 os.makedirs("build_payloads", exist_ok=True)
@@ -52,12 +60,11 @@ if not inst then
     inst.Name = '{item["name"]}'
     inst.Parent = parent
 end
-inst.Source = {json.dumps(src)}
+inst.Source = {json.dumps(src, ensure_ascii=False)}
 return 'OK: {item["name"]} synced ({len(src)} bytes)'
 """
     out_file = f"build_payloads/{item['name']}.lua"
     with open(out_file, "w", encoding="utf-8") as out:
         out.write(luau_code.strip())
 
-print(f"Generated {len(files_to_sync)} payload files in build_payloads/")
-
+print(f"Generated {len(files_to_sync)} payload chunks in build_payloads/")

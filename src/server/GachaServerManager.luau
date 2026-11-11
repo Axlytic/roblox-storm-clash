@@ -386,6 +386,14 @@ evEvolveChar.OnServerEvent:Connect(function(player: Player, charId: string)
 	print(string.format(">> [GachaServer] %s evolved %s to %d Stars! Shards remaining: %d", player.Name, charId, targetStar, prof.EssenceShards))
 end)
 
+function _G.AwardEssenceShards(player: Player, amount: number)
+	local prof = playerProfiles[player.UserId]
+	if prof then
+		prof.EssenceShards += amount
+		player:SetAttribute("EssenceShards", prof.EssenceShards)
+	end
+end
+
 function _G.GetCharacterStarLevel(player: Player, charId: string): number
 	local prof = playerProfiles[player.UserId]
 	if not prof or not prof.StarLevels then return 1 end

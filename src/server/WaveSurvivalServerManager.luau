@@ -441,10 +441,11 @@ local function spawnWave(waveNum: number)
 								if _G.AwardCombatRyo then
 									_G.AwardCombatRyo(waveStarterPlayer, 500, "Grand Wave Clear Bounty")
 								end
-								local pProf = playerProfiles and playerProfiles[waveStarterPlayer.UserId]
-								if pProf then
-									pProf.EssenceShards += 50
-									waveStarterPlayer:SetAttribute("EssenceShards", pProf.EssenceShards)
+								if _G.AwardEssenceShards then
+									_G.AwardEssenceShards(waveStarterPlayer, 50)
+								else
+									local cur = tonumber(waveStarterPlayer:GetAttribute("EssenceShards")) or 0
+									waveStarterPlayer:SetAttribute("EssenceShards", cur + 50)
 								end
 							end
 

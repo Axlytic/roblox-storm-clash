@@ -1131,8 +1131,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if input.KeyCode == Enum.KeyCode.J or input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonX then
 		executeAttack(false)
 
-	-- 2. Dedicated Low Sweep: [K], Gamepad DPadDown
-	elseif input.KeyCode == Enum.KeyCode.K or input.KeyCode == Enum.KeyCode.DPadDown then
+	-- 2. Dedicated Low Sweep: Gamepad DPadDown (Keyboard uses [S + J])
+	elseif input.KeyCode == Enum.KeyCode.DPadDown then
 		executeAttack(true)
 
 	-- 3. Dash Button / Shift: If attacking, triggers CHAKRA DASH CANCEL (CDC)!

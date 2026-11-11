@@ -1,0 +1,7 @@
+# Build and payload artifacts
+build_payloads/
+temp_sync_payload.lua
+*.tmp
+*.log
+__pycache__/
+*.pyc

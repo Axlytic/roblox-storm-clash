@@ -303,3 +303,4 @@ evEquipCosmetic.OnServerEvent:Connect(function(player: Player, kind: string, cos
 end)
 
 print("[CosmeticsServerManager] ✅ Shinobi Titles & K.O. Kill FX active.")
+

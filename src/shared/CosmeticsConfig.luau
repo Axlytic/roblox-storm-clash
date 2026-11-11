@@ -118,3 +118,4 @@ CosmeticsConfig.KillEffects = {
 }
 
 return CosmeticsConfig
+

@@ -60,3 +60,4 @@ return 'OK: {item["name"]} synced ({len(src)} bytes)'
         out.write(luau_code.strip())
 
 print(f"Generated {len(files_to_sync)} payload files in build_payloads/")
+

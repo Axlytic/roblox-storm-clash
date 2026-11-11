@@ -320,6 +320,10 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 		_G.AddQuestProgress(attacker, "ShinobiRush", 1)
 		if tHum.Health <= 0 then
 			_G.AddQuestProgress(attacker, "ArenaVictor", 1)
+			if _G.TriggerKO then
+				local fatalImpulse = flatHitDir * (knockback * 1.5) + Vector3.new(0, 22, 0)
+				_G.TriggerKO(targetModel, attacker, fatalImpulse)
+			end
 		end
 	end
 
@@ -734,6 +738,10 @@ evUltimate.OnServerEvent:Connect(function(attacker: Player, targetModel: Model)
 	spawnFloatingText(tRoot.Position, string.format("⚡ ULTIMATE FINISH -%d!", ultDmg), Color3.fromRGB(255, 220, 50))
 	local hitDir = (tRoot.Position - aRoot.Position).Unit
 	tRoot.AssemblyLinearVelocity = hitDir * 75 + Vector3.new(0, 20, 0)
+
+	if tHum.Health <= 0 and _G.TriggerKO then
+		_G.TriggerKO(targetModel, attacker, hitDir * 85 + Vector3.new(0, 25, 0))
+	end
 end)
 
 -- =========================================================
@@ -953,6 +961,9 @@ evRanged.OnServerEvent:Connect(function(attacker: Player, aimDir: Vector3?, requ
 			local hitColor = skill.Color or Color3.fromRGB(255, 120, 30)
 			spawnFloatingText(tRoot.Position, string.format("💥 %s -%d!", skill.Name, finalDmg), hitColor)
 			tRoot.AssemblyLinearVelocity = finalAimDir * 42 + Vector3.new(0, 8, 0)
+			if tHum.Health <= 0 and _G.TriggerKO then
+				_G.TriggerKO(targetModel, attacker, finalAimDir * 55 + Vector3.new(0, 16, 0))
+			end
 		end
 
 		-- Hit burst particle

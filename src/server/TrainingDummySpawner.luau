@@ -118,8 +118,8 @@ local function createTrainingDummy(pos: Vector3): Model
 
 	-- Humanoid
 	local hum = Instance.new("Humanoid")
-	hum.MaxHealth = 2000
-	hum.Health = 2000
+	hum.MaxHealth = 350
+	hum.Health = 350
 	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	hum.WalkSpeed = 0
 	hum.Parent = model
@@ -172,10 +172,15 @@ local function createTrainingDummy(pos: Vector3): Model
 		print(string.format(">> [Training Lab] %s changed Dummy Mode to: %s <<", player.Name, newMode))
 	end)
 
-	-- Auto HP regeneration
+	-- K.O. & Elimination Detection
 	hum.HealthChanged:Connect(function(newHealth)
-		if newHealth < 500 then
-			hum.Health = 2000
+		if newHealth <= 0 then
+			local attackerName = model:GetAttribute("LastAttackerName")
+			local killerPlayer = attackerName and Players:FindFirstChild(attackerName)
+			local fatalVel = root and root.AssemblyLinearVelocity or Vector3.new(0, 18, -35)
+			if _G.TriggerKO then
+				_G.TriggerKO(model, killerPlayer, fatalVel)
+			end
 		end
 	end)
 
@@ -183,6 +188,7 @@ local function createTrainingDummy(pos: Vector3): Model
 	task.spawn(function()
 		while model.Parent do
 			task.wait(2.0)
+			if model:GetAttribute("IsKilled") == true then break end
 			if root and (root.Position.Y < -10 or (root.Position - pos).Magnitude > 85) then
 				root.AssemblyLinearVelocity = Vector3.zero
 				root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
@@ -197,7 +203,12 @@ local function createTrainingDummy(pos: Vector3): Model
 	return model
 end
 
+-- Global Dummy Respawn API for K.O. Engine
+function _G.RespawnTrainingDummy(): Model
+	return createTrainingDummy(Vector3.new(0, 3.0, 16))
+end
+
 -- Spawn Dummy at Combat Arena floor center (Floor is at Y = 3.0)
 task.delay(1.0, function()
-	createTrainingDummy(Vector3.new(0, 3.0, 16))
+	_G.RespawnTrainingDummy()
 end)

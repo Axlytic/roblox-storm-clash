@@ -87,3 +87,4 @@ QuestConfig.Sounds = {
 }
 
 return QuestConfig
+

@@ -552,6 +552,9 @@ RunService.RenderStepped:Connect(function(dt: number)
 			elseif tRatio > lastP2HP then
 				p2GhostBar.Size = UDim2.new(tRatio, 0, 1, 0)
 				lastP2HP = tRatio
+				if tRatio > 0.5 then
+					isMatchActive = true
+				end
 			end
 
 			if tRatio <= 0 and isMatchActive then

@@ -79,6 +79,12 @@ function _G.TriggerKO(victimModel: Model, killerPlayer: Player?, fatalImpulse: V
 	-- 1. Convert to physical ragdoll
 	RagdollHelper.EnableRagdoll(victimModel, impulse)
 
+	-- 1B. Trigger Killer's Equipped Kill Effect
+	local effectId = killerPlayer and killerPlayer:GetAttribute("EquippedKillEffect") or "ClassicSmoke"
+	if _G.PlayKillEffect then
+		_G.PlayKillEffect(effectId, centerPos)
+	end
+
 	-- 2. Broadcast K.O. to all clients for slow-mo and announcer
 	evKO:FireAllClients({
 		VictimName = victimModel.Name,

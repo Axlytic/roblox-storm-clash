@@ -49,7 +49,7 @@ screenGui.Parent = PlayerGui
 -- Main Container (Top-Left Dock)
 local dockContainer = Instance.new("Frame")
 dockContainer.Name = "TopLeftDock"
-dockContainer.Size = UDim2.new(0, 480, 0, 44)
+dockContainer.Size = UDim2.new(0, 570, 0, 44)
 dockContainer.Position = UDim2.new(0, 16, 0, 14)
 dockContainer.BackgroundTransparency = 1
 dockContainer.Parent = screenGui
@@ -187,6 +187,18 @@ createNavButton("Quests", "📜 MISI", "M", 4, function()
 	end
 end)
 
+-- Button 4: Gelar / Titles & Kill Effects [K]
+createNavButton("Cosmetics", "✨ GELAR", "K", 5, function()
+	if _G.ToggleCosmeticsHUD then
+		_G.ToggleCosmeticsHUD()
+	else
+		local cosGui = PlayerGui:FindFirstChild("StormCosmeticsHUD") :: ScreenGui?
+		if cosGui then
+			cosGui.Enabled = not cosGui.Enabled
+		end
+	end
+end)
+
 -- =========================================================
 -- 3. ANIME BATTLE BGM JUKEBOX & MUTE TOGGLE
 -- =========================================================
@@ -201,7 +213,7 @@ bgmSound.Parent = SoundService
 local isBgmPlaying = true
 pcall(function() bgmSound:Play() end)
 
-local bgmBtn = createNavButton("BGM", "🎵 BGM", "", 5, function()
+local bgmBtn = createNavButton("BGM", "🎵 BGM", "", 6, function()
 	isBgmPlaying = not isBgmPlaying
 	if isBgmPlaying then
 		bgmSound.Volume = 0.28

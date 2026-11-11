@@ -278,3 +278,4 @@ evWaveReward.OnClientEvent:Connect(function(res)
 end)
 
 print("[StormBossHUD] ✅ Dynamic Wave Tracker, Akatsuki Boss HP Bar, and Fanfare active.")
+

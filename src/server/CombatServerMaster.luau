@@ -48,6 +48,7 @@ local evSub        = ensureRemote("SubstitutionEvent")
 local evCounter    = ensureRemote("CounterEvent")
 local evNinjutsu   = ensureRemote("NinjutsuEvent")
 local evAwakening  = ensureRemote("AwakeningEvent")
+local evPostHit    = ensureRemote("TrainingPostHitEvent")
 
 -- =========================================================
 -- 2. PLAYER COMBAT STATE TRACKING (Storm 4 + Tekken)
@@ -313,6 +314,14 @@ evAttack.OnServerEvent:Connect(function(attacker: Player, targetModel: Model, co
 	tHum:TakeDamage(finalDamage)
 	local dmgColor = if isAwakening then Color3.fromRGB(255, 30, 30) elseif attackType == "Low" then Color3.fromRGB(255, 170, 0) elseif comboStep == 4 then Color3.fromRGB(255, 50, 50) else Color3.fromRGB(255, 255, 255)
 	spawnFloatingText(tRoot.Position, string.format("💥 -%d%s", finalDamage, isAwakening and " [RAGE]" or ""), dmgColor)
+
+	-- Update Quests
+	if _G.AddQuestProgress then
+		_G.AddQuestProgress(attacker, "ShinobiRush", 1)
+		if tHum.Health <= 0 then
+			_G.AddQuestProgress(attacker, "ArenaVictor", 1)
+		end
+	end
 
 	-- Authoritative Victim Hitstun Lock (Prevents escaping active combo strings)
 	local hitstunDuration = if comboStep == 4 then 0.45 else 0.28
@@ -744,6 +753,11 @@ evAwakening.OnServerEvent:Connect(function(player: Player)
 	print(string.format(">> [AWAKENING ACTIVATED] %s unleashed Kurama / Serious Awakening! <<", player.Name))
 	spawnFloatingText(root.Position + Vector3.new(0, 3, 0), "🔥 AWAKENED! 🔥", Color3.fromRGB(255, 30, 30))
 
+	-- Track Quest Progress
+	if _G.AddQuestProgress then
+		_G.AddQuestProgress(player, "ChakraBurst", 1)
+	end
+
 	-- 1. 360° Shockwave Pushback (repels all nearby enemies within 35 studs)
 	local shockRadius = 35
 	for _, target in ipairs(Workspace:GetChildren()) do
@@ -800,6 +814,16 @@ evAwakening.OnServerEvent:Connect(function(player: Player)
 			spawnFloatingText(root.Position + Vector3.new(0, 2, 0), "Awakening Expired", Color3.fromRGB(180, 180, 180))
 		end
 	end)
+end)
+
+-- 7C. TRAINING POST HIT / DOJO DEMOLISHER QUEST
+evPostHit.OnServerEvent:Connect(function(player: Player, postName: string?)
+	if _G.AddQuestProgress then
+		_G.AddQuestProgress(player, "DojoDemolisher", 1)
+	end
+	if _G.AwardCombatRyo then
+		_G.AwardCombatRyo(player, 12, "Dojo Training Post")
+	end
 end)
 
 -- =========================================================

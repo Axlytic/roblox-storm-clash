@@ -721,10 +721,10 @@ evOpenGacha.OnClientEvent:Connect(function()
 	openGachaModal()
 end)
 
--- Keyboard [G] Key to Toggle Gacha
+-- Keyboard [N] Key to Toggle Gacha Summon Modal (Avoids conflict with [G] Awakening)
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
-	if input.KeyCode == Enum.KeyCode.G then
+	if input.KeyCode == Enum.KeyCode.N then
 		if screenGui.Enabled then
 			screenGui.Enabled = false
 			isOpen = false
@@ -736,5 +736,5 @@ end)
 
 -- Initial Sync
 evGachaSync:FireServer()
-print("[StormGachaHUD] ✅ Shinobi Gacha Summon HUD & Reveal Cutscene loaded. Hotkey [G] active.")
+print("[StormGachaHUD] ✅ Shinobi Gacha Summon HUD & Reveal Cutscene loaded. Hotkey [N] active.")
 

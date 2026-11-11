@@ -297,6 +297,12 @@ if not evAwakening then
 	evAwakening.Name = "AwakeningEvent"
 	evAwakening.Parent = combatEvents
 end
+local evPostHit = combatEvents:WaitForChild("TrainingPostHitEvent", 5) :: RemoteEvent?
+if not evPostHit then
+	evPostHit = Instance.new("RemoteEvent")
+	evPostHit.Name = "TrainingPostHitEvent"
+	evPostHit.Parent = combatEvents
+end
 
 local awakeningProgress = 0
 local isAwakeningActive = false
@@ -1024,6 +1030,9 @@ executeAttack = function(forceLow: boolean?)
 		spawnDamagePopup(post.Position + Vector3.new(0, 2.5, 0), 15, isHeavyFinisher, "Wood")
 		registerComboHit()
 		addAwakeningCharge(12)
+		if evPostHit then
+			evPostHit:FireServer(post.Name)
+		end
 
 		if not isHeavyFinisher then
 			canChainNext = true

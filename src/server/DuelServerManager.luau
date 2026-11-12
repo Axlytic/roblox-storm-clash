@@ -471,3 +471,4 @@ evQueue.OnServerEvent:Connect(function(player: Player, action: string)
 end)
 
 print("[DuelServerManager] ✅ Loaded — Ranked 1v1 Matchmaking, Sky Arena & Best-of-3 Engine active.")
+

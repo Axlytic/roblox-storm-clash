@@ -59,3 +59,4 @@ function DuelConfig.GetTierForElo(elo: number): RankTier
 end
 
 return DuelConfig
+
